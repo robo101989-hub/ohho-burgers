@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffd400" />
+    <meta name="description" content="OHHO BURGERS serves delicious burgers, pizza, sandwiches and crispy chicken at great prices. Explore our menu, find an outlet or explore franchise opportunities." />
+    <title>OHHO BURGERS | Good Food. Good Price. Happiness in Every Bite.</title>
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="noise"></div>
+    <header class="site-header" id="home">
+      <a href="#home" class="brand" aria-label="OHHO Burgers home"><span>OHHO</span><small>BURGERS</small></a>
+      <nav class="desktop-nav" aria-label="Primary navigation">
+        <a class="active" href="index.html">Home</a><a href="menu.html">Menu</a><a href="about.html">About Us</a><a href="about.html#journey">Our Journey</a><a href="franchise.html">Franchise</a><a href="contact.html">Contact</a>
+      </nav>
+      <div class="nav-actions"><a class="pill pill-outline franchise-link" href="#franchise">Franchise with us</a><a class="pill pill-yellow order-link" href="#order">Order now <span>↗</span></a></div>
+      <button class="menu-toggle" aria-label="Open menu" aria-expanded="false"><i></i><i></i></button>
+      <nav class="mobile-nav" aria-label="Mobile navigation"><a href="menu.html">Menu</a><a href="about.html">About Us</a><a href="about.html#journey">Journey</a><a href="franchise.html">Franchise</a><a href="contact.html">Contact</a></nav>
+    </header>
+
+    <main>
+      <section class="hero section-shell">
+        <div class="hero-copy reveal">
+          <p class="eyebrow"><span></span> Happiness in every bite</p>
+          <h1>BIG FLAVOUR.<br><em>GOOD PRICE.</em><br>ZERO BORING BITES.</h1>
+          <p class="hero-description">Good food shouldn't have to cost a fortune. Burgers, pizza, sandwiches and crispy chicken for everyday cravings.</p>
+          <div class="hero-actions"><a class="pill pill-yellow order-link" href="#order">Order now <span>↗</span></a><a class="text-link" href="#menu">Explore menu <b>→</b></a></div>
+          <p class="trust">✦ Built by us. Proven by us. Now we're ready to grow.</p>
+        </div>
+        <div class="hero-art reveal delay-1">
+          <div class="burst"></div>
+          <div class="hero-sticker sticker-top">FRESH<br>EVERYDAY <b>✦</b></div>
+          <img class="hero-food" src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1100&q=88" alt="Loaded burger" />
+          <div class="roundel">CRAVE<br>IT. BITE<br>IT. LOVE<br>IT.</div>
+          <div class="hero-sticker sticker-bottom">₹ <b>GOOD FOOD<br>GOOD PRICE</b></div>
+          <p class="floating-words">FRESH <i>•</i> CRISPY <i>•</i> AFFORDABLE</p>
+        </div>
+        <div class="hero-scroll">SCROLL TO CRAVE <span>↓</span></div>
+      </section>
+
+      <section class="ticker"><div>GOOD FOOD <b>✦</b> GOOD PRICE <b>✦</b> BIG FLAVOUR <b>✦</b> HAPPINESS IN EVERY BITE <b>✦</b> GOOD FOOD <b>✦</b> GOOD PRICE <b>✦</b></div></section>
+
+      <section class="section-shell categories" id="menu">
+        <div class="section-heading reveal"><p class="eyebrow"><span></span> Pick your craving</p><h2>WHAT'S YOUR <em>OHHO</em> MOOD?</h2><a href="#favourites" class="arrow-link">View full menu <b>→</b></a></div>
+        <div class="category-grid" id="categoryGrid"></div>
+      </section>
+
+      <section class="favourites section-shell" id="favourites">
+        <div class="section-heading on-dark reveal"><p class="eyebrow"><span></span> The crowd has spoken</p><h2>THE OHHO <em>FAVOURITES</em></h2><p>Big taste. No overthinking.</p></div>
+        <div class="product-grid" id="productGrid"></div>
+      </section>
+
+      <section class="why-ohho"><div class="section-shell">
+        <div class="why-intro reveal"><p class="eyebrow dark"><span></span> It hits different here</p><h2>WHY <em>OHHO?</em></h2><p>We make everyday food worth getting excited about.</p></div>
+        <div class="why-grid" id="whyGrid"></div>
+      </div></section>
+
+      <section class="story section-shell" id="story">
+        <div class="story-image reveal"><img src="https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1000&q=85" alt="Burger and fries on a table" /><div class="story-stamp">WE RUN IT.<br>WE PROVE IT.<br><b>THEN WE<br>FRANCHISE IT.</b></div></div>
+        <div class="story-copy reveal delay-1"><p class="eyebrow"><span></span> More than a menu</p><h2>WE DIDN'T START WITH <em>FRANCHISES.</em><br>WE STARTED WITH FOOD.</h2><p>OHHO believes a franchise should not be sold as an idea. It should be built on a model tested in the real world.</p><p>We operate our own outlets first. We learn what works, fix what doesn't and build systems that turn good food into a consistently good experience.</p><a href="#journey" class="text-link">Our journey <b>→</b></a></div>
+      </section>
+
+      <section class="journey" id="journey"><div class="section-shell"><div class="journey-header reveal"><p class="eyebrow"><span></span> The OHHO story so far</p><h2>FROM ONE IDEA TO<br>A <em>BIGGER VISION.</em></h2></div><div class="timeline" id="timeline"></div></div></section>
+
+      <section class="offer-section section-shell"><div class="offer-main reveal"><p class="eyebrow dark"><span></span> Made for sharing</p><h2>GOOD FOOD.<br><em>BETTER DEALS.</em></h2><p>Because the best kind of plans include an extra side of fries.</p><a href="#order" class="pill pill-black">See all offers <span>↗</span></a></div><div class="offer-cards" id="offerCards"></div></section>
+
+      <section class="franchise" id="franchise"><div class="section-shell"><div class="franchise-hero reveal"><p class="eyebrow"><span></span> For future food founders</p><h2>WANT TO<br>BUILD AN <em>OHHO?</em></h2><p>We don't sell dreams. We build and prove the model first.</p><a class="pill pill-yellow" href="#leadForm">Explore franchise opportunity <span>↗</span></a></div><div class="approach reveal"><p class="mini-heading">OUR OPERATOR-FIRST APPROACH</p><div class="approach-list" id="approachList"></div></div></div></section>
+
+      <section class="benefits section-shell"><div class="section-heading reveal"><p class="eyebrow"><span></span> Built to back you</p><h2>MORE THAN A <em>NAME ON THE SIGN.</em></h2></div><div class="benefit-grid" id="benefitGrid"></div><p class="disclaimer">Business performance depends on location, operations, investment and market conditions.</p></section>
+
+      <section class="lead-section section-shell" id="contact"><div class="lead-intro reveal"><p class="eyebrow dark"><span></span> Ready when you are</p><h2>LET'S TALK <em>BUSINESS.</em></h2><p>Tell us a little about your ambition. Our franchise team will get in touch.</p><div class="contact-actions"><a href="tel:" class="contact-chip">☎ <span>Call us<br><b>Team OHHO</b></span></a><a href="#" class="contact-chip">◉ <span>WhatsApp us<br><b>Start a chat</b></span></a></div></div><form class="lead-form reveal delay-1" id="leadForm"><label>Full name<input required name="name" placeholder="Your name" /></label><label>Phone number<input required name="phone" type="tel" placeholder="Your number" /></label><label>Email<input required name="email" type="email" placeholder="you@email.com" /></label><div class="form-row"><label>City<input name="city" placeholder="Your city" /></label><label>State<input name="state" placeholder="Your state" /></label></div><div class="form-row"><label>Investment range<select name="investment"><option value="">Select range</option><option>To be discussed</option></select></label><label>Outlet format<select name="format"><option value="">Select format</option><option>To be discussed</option></select></label></div><label>Previous business experience<input name="experience" placeholder="Optional — tell us about it" /></label><label>Anything else?<textarea name="message" placeholder="Tell us about your plans"></textarea></label><button class="pill pill-black" type="submit">Submit franchise interest <span>↗</span></button><p class="form-message" role="status"></p></form></section>
+
+      <section class="social-proof section-shell"><div class="social-header reveal"><div><p class="eyebrow"><span></span> Replace with your real love notes</p><h2>PEOPLE LOVE <em>OHHO</em> <b>♥</b></h2></div><a class="pill pill-outline" href="#">Follow the journey ↗</a></div><div class="review-grid" id="reviewGrid"></div></section>
+
+      <section class="locations section-shell" id="locations"><div class="section-heading reveal"><p class="eyebrow"><span></span> Your next bite is nearby</p><h2>FIND YOUR NEAREST <em>OHHO.</em></h2></div><div class="location-grid" id="locationGrid"></div></section>
+
+      <section class="order-cta" id="order"><div class="section-shell order-inner"><div><p class="eyebrow dark"><span></span> Your cravings called</p><h2>HUNGRY<br><em>YET?</em></h2><p>Your next favourite bite is just a click away.</p></div><div class="order-platforms"><button class="platform-btn" data-platform="zomato">ZOMATO <span>↗</span></button><button class="platform-btn" data-platform="swiggy">SWIGGY <span>↗</span></button><button class="platform-btn" data-platform="direct">ORDER DIRECT <span>↗</span></button><small>Ordering links will appear here when your platforms are connected.</small></div></div></section>
+    </main>
+
+    <footer><div class="section-shell footer-top"><a href="#home" class="brand footer-brand"><span>OHHO</span><small>BURGERS</small><em>Happiness in Every Bite</em></a><div><b>Explore</b><a href="#menu">Menu</a><a href="#story">About Us</a><a href="#journey">Our Journey</a></div><div><b>Customer</b><a href="#order">Order Online</a><a href="#locations">Locations</a><a href="#favourites">Offers</a></div><div><b>Business</b><a href="#franchise">Franchise</a><a href="#contact">Partner With Us</a></div><div><b>Follow OHHO</b><a href="#">Instagram ↗</a><a href="#">Facebook ↗</a><a href="#">YouTube ↗</a></div></div><div class="section-shell footer-bottom"><span>© 2026 OHHO BURGERS. All rights reserved.</span><span><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Refund Policy</a></span></div></footer>
+    <a class="mobile-order order-link" href="#order">ORDER NOW <span>↗</span></a>
+    <script src="app.js"></script>
+  </body>
+</html>
