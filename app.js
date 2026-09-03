@@ -1,5 +1,5 @@
 const siteData = {
-  ordering: { zomato: "", swiggy: "", direct: "" },
+  ordering: { zomato: "https://zomato.onelink.me/xqzv/z6t4s6bk", swiggy: "https://www.swiggy.com/menu/1421622?source=sharing", direct: "" },
   categories: [
     { icon: "🍔", name: "BURGERS", copy: "Juicy. Loaded. Unapologetically good.", image: "https://images.unsplash.com/photo-1550317138-10000687a72b?auto=format&fit=crop&w=700&q=82" },
     { icon: "🍕", name: "PIZZA", copy: "Cheesy slices made for sharing.", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=700&q=82" },
