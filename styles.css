@@ -6,3 +6,4 @@
 @media(max-width:860px){.page-hero{padding:127px 0 72px;min-height:410px}.page-hero h1{font-size:clamp(57px,16vw,85px)}.menu-page{padding-bottom:85px}.menu-page .product-grid{width:100%}.contact-page{display:block;padding:5px 0 85px}.contact-page>div{margin-bottom:50px}.legal{padding:120px 0 85px}.legal h1{font-size:clamp(54px,15vw,80px)}}
 
 .hero-tagline{font-size:13px;letter-spacing:2px;font-weight:700;color:var(--yellow);margin-bottom:22px}.hero-tagline span{width:34px;height:3px}
+.location-card div{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:27px}.location-card div a{border:1px solid #444;padding:11px 8px;text-align:center;border-radius:4px;transition:.2s}.location-card div a:hover{background:var(--yellow);border-color:var(--yellow);color:var(--ink)}@media(max-width:860px){.location-card div{grid-template-columns:1fr 1fr}}

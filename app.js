@@ -1,5 +1,5 @@
 const siteData = {
-  ordering: { zomato: "https://zomato.onelink.me/xqzv/z6t4s6bk", swiggy: "https://www.swiggy.com/menu/1421622?source=sharing", direct: "" },
+  ordering: { zomato: "https://www.zomato.com/shamli/ohho-burgers-shamli-locality/order", swiggy: "https://www.swiggy.com/menu/1421622?source=sharing", direct: "" },
   categories: [
     { icon: "🍔", name: "BURGERS", copy: "Juicy. Loaded. Unapologetically good.", image: "https://images.unsplash.com/photo-1550317138-10000687a72b?auto=format&fit=crop&w=700&q=82" },
     { icon: "🍕", name: "PIZZA", copy: "Cheesy slices made for sharing.", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=700&q=82" },
@@ -7,10 +7,10 @@ const siteData = {
     { icon: "🍗", name: "CRISPY CHICKEN", copy: "Crunch outside. Juicy inside.", image: "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=700&q=82" }
   ],
   products: [
-    { name: "OHHO Classic Burger", desc: "A no-fuss, full-flavour classic.", price: "₹ —", veg: true, image: "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=82" },
-    { name: "OHHO Cheese Burger", desc: "Melty, cheesy and made for cravings.", price: "₹ —", veg: true, image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=700&q=82" },
-    { name: "Loaded Chicken Burger", desc: "Serious crunch. Serious flavour.", price: "₹ —", veg: false, image: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=700&q=82" },
-    { name: "Crispy Chicken Bucket", desc: "Pass the bucket. Or don't.", price: "₹ —", veg: false, image: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=700&q=82" }
+    { name: "Crispy Chicken Burger", desc: "Crispy, juicy and loaded with OHHO flavour.", price: "₹ —", veg: false, image: "images/crispy-chicken-burger.jpeg" },
+    { name: "OHHO Special Chicken Pizza", desc: "Cheesy, loaded and made for serious cravings.", price: "₹ —", veg: false, image: "images/ohho-special-chicken-pizza.jpeg" },
+    { name: "OHHO Special Chicken Sandwich", desc: "Loaded between perfect slices with big flavour.", price: "₹ —", veg: false, image: "images/ohho-special-chicken-sandwich.jpeg" },
+    { name: "Crispy Chicken Bucket", desc: "Crunchy, juicy and perfect for sharing.", price: "₹ —", veg: false, image: "images/crispy-chicken-bucket.jpeg" }
   ],
   why: [["01", "GOOD FOOD", "Made to taste great."], ["02", "GOOD PRICE", "Everyday food without crazy prices."], ["03", "FRESH", "Quality-focused processes, every day."], ["04", "CONSISTENT", "The same happy bite, every time."], ["05", "PROVEN MODEL", "We operate before we franchise."]],
   journey: [["01", "THE IDEA", "A simple vision: good food at a good price."], ["02", "FIRST OUTLET", "We took the idea to real customers."], ["03", "LEARNING", "Everyday operations taught us what matters."], ["04", "BUILDING THE SYSTEM", "Products, process, supply chain and experience."], ["05", "PROVING THE MODEL", "Operate first. Improve continuously."], ["06", "EXPANSION", "Build with selected partners."]],
@@ -18,7 +18,7 @@ const siteData = {
   approach: [["01", "WE OPERATE", "We run our own outlets."], ["02", "WE LEARN", "We understand customers, operations and challenges."], ["03", "WE OPTIMIZE", "We improve products, processes and unit economics."], ["04", "WE PROVE", "We validate the model in the real market."], ["05", "WE SCALE", "We help franchise partners replicate the model."]],
   benefits: [["✦", "BRAND", "Build under a growing QSR brand."], ["◌", "PRODUCT", "A focused menu for mass-market appeal."], ["⌁", "OPERATIONS", "Standardised operational systems."], ["↗", "TRAINING", "Support for franchise partners."], ["◎", "MARKETING", "Central brand and marketing support."], ["+", "GROWTH", "Designed with scalability in mind."]],
   reviews: [["“", "A real customer review will live here — use this space to show the moments that make people come back.", "Customer name • City"], ["✦", "Add genuine reviews, creator content and customer photos as OHHO grows.", "Social proof placeholder"], ["♥", "Real ratings and platform feedback can be connected here later.", "Ratings placeholder"]],
-  locations: [{ name: "OHHO outlet", address: "Outlet address coming soon", hours: "Opening hours coming soon" }, { name: "New OHHO location", address: "Your next location could be here", hours: "Details will be added soon" }]
+  locations: [{ name: "Shamli", address: "OHHO BURGERS, Taimurshah Delhi Road, Shamli, Uttar Pradesh 247776", hours: "5:00 PM – 1:00 AM", phone: "9650443642", maps: "", zomato: String.fromCharCode(104,116,116,112,115,58,47,47,119,119,119,46,122,111,109,97,116,111,46,99,111,109,47,115,104,97,109,108,105,47,111,104,104,111,45,98,117,114,103,101,114,115,45,115,104,97,109,108,105,45,108,111,99,97,108,105,116,121,47,111,114,100,101,114), swiggy: String.fromCharCode(104,116,116,112,115,58,47,47,119,119,119,46,115,119,105,103,103,121,46,99,111,109,47,99,105,116,121,47,115,104,97,109,108,105,47,104,111,104,111,45,98,117,114,103,101,114,115,45,107,97,107,97,45,110,97,103,97,114,45,114,101,115,116,49,52,50,49,54,50,50)  }, { name: "Kairana", address: "OHHO BURGERS, besides Nawab Market, Panipat Road, Kairana, Uttar Pradesh 247774", hours: "5:00 PM – 1:00 AM", phone: "9650443642", maps: "", zomato: "", swiggy: "" }]
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -31,7 +31,7 @@ render('#offerCards', siteData.offers.map((x, i) => `<article class="offer-card 
 render('#approachList', siteData.approach.map((x, i) => `<article><span>${x[0]}</span><div><h3>${x[1]}</h3><p>${x[2]}</p></div>${i < 4 ? '<i>↓</i>' : ''}</article>`).join(''));
 render('#benefitGrid', siteData.benefits.map(x => `<article class="benefit-card reveal"><span>${x[0]}</span><h3>${x[1]}</h3><p>${x[2]}</p></article>`).join(''));
 render('#reviewGrid', siteData.reviews.map(x => `<article class="review-card reveal"><span>${x[0]}</span><p>${x[1]}</p><small>${x[2]}</small></article>`).join(''));
-render('#locationGrid', siteData.locations.map((x, i) => `<article class="location-card reveal"><span>0${i + 1}</span><h3>${x.name}</h3><p>⌖ ${x.address}</p><p>◷ ${x.hours}</p><div><button>Maps ↗</button><a href="tel:">Call ↗</a></div></article>`).join(''));
+render('#locationGrid', siteData.locations.map((x, i) => { const maps = ["https:","//","www.google.com/maps/search/?api=1&query="].join("") + encodeURIComponent(x.address); const zomato = x.zomato; const swiggy = x.swiggy; return `<article class="location-card reveal"><span>0${i + 1}</span><h3>${x.name}</h3><p>⌖ ${x.address}</p><p>◷ ${x.hours}</p><div><a href="${maps}" target="_blank" rel="noopener">Maps ↗</a><a href="tel:${x.phone}">Call ↗</a>${zomato ? `<a href="${zomato}" target="_blank" rel="noopener">Zomato ↗</a>` : ""}${swiggy ? `<a href="${swiggy}" target="_blank" rel="noopener">Swiggy ↗</a>` : ""}</div></article>`; }).join(''));
 
 $('.menu-toggle')?.addEventListener('click', () => { const open = document.body.classList.toggle('menu-open'); $('.menu-toggle').setAttribute('aria-expanded', open); });
 document.querySelectorAll('.mobile-nav a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('menu-open')));
