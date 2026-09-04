@@ -17,9 +17,13 @@ const siteData = {
     { name: "Chicken Supreme Pizza", desc: "A loaded supreme pizza for the biggest appetite.", price: "₹250", veg: false, image: "images/ohho-special-chicken-pizza.jpeg" },
     { name: "Classic Chicken Sandwich", desc: "Classic chicken loaded between perfect slices.", price: "₹99", veg: false, image: "images/ohho-special-chicken-sandwich.jpeg" },
     { name: "OHHO Special Sandwich", desc: "Loaded between perfect slices with big flavour.", price: "₹120", veg: false, image: "images/ohho-special-chicken-sandwich.jpeg" },
-    { name: "French Fries", desc: "Crispy golden fries made for every craving.", price: "₹59", veg: true, image: "images/ohho-special-chicken-sandwich.jpeg" },
     { name: "Crispy Chicken Bucket (Half)", desc: "Crunchy, juicy crispy chicken for sharing.", price: "₹150", veg: false, image: "images/crispy-chicken-bucket.jpeg" },
-    { name: "Crispy Chicken Bucket (Full)", desc: "A full bucket of crunchy, juicy crispy chicken.", price: "₹250", veg: false, image: "images/crispy-chicken-bucket.jpeg" }
+    { name: "Crispy Chicken Bucket (Full)", desc: "A full bucket of crunchy, juicy crispy chicken.", price: "₹250", veg: false, image: "images/crispy-chicken-bucket.jpeg" },
+    { name: "French Fries", desc: "Crispy golden fries made for every craving.", price: "₹59", veg: true, image: "images/ohho-special-chicken-sandwich.jpeg" },
+    { name: "Cold Coffee", desc: "A chilled, creamy coffee to go with your meal.", price: "₹80", veg: true, image: "images/ohho-special-chicken-sandwich.jpeg" },
+    { name: "Extra Patty", desc: "Add an extra patty to make it bigger.", price: "₹70", veg: false, image: "images/crispy-chicken-burger.jpeg" },
+    { name: "Extra Cheese", desc: "Make it extra cheesy.", price: "₹30", veg: true, image: "images/ohho-special-chicken-pizza.jpeg" },
+    { name: "Extra Dips", desc: "Add extra dips for more flavour.", price: "₹10", veg: true, image: "images/crispy-chicken-bucket.jpeg" }
   ],
   why: [["01", "GOOD FOOD", "Made to taste great."], ["02", "GOOD PRICE", "Everyday food without crazy prices."], ["03", "FRESH", "Quality-focused processes, every day."], ["04", "CONSISTENT", "The same happy bite, every time."], ["05", "PROVEN MODEL", "We operate before we franchise."]],
   journey: [["01", "THE IDEA", "A simple vision: good food at a good price."], ["02", "FIRST OUTLET", "We took the idea to real customers."], ["03", "LEARNING", "Everyday operations taught us what matters."], ["04", "BUILDING THE SYSTEM", "Products, process, supply chain and experience."], ["05", "PROVING THE MODEL", "Operate first. Improve continuously."], ["06", "EXPANSION", "Build with selected partners."]],
@@ -33,8 +37,8 @@ const siteData = {
 const $ = (selector) => document.querySelector(selector);
 const render = (selector, markup) => { const target = $(selector); if (target) target.innerHTML = markup; };
 render('#categoryGrid', siteData.categories.map((c, i) => `<article class="category-card reveal delay-${i % 3}"><img loading="lazy" src="${c.image}" alt="${c.name}"/><div class="category-shade"></div><span class="category-icon">${c.icon}</span><div><h3>${c.name}</h3><p>${c.copy}</p><a href="menu.html">Explore <b>→</b></a></div></article>`).join(''));
-const isMenuPage = window.location.pathname.endsWith('/menu.html') || window.location.pathname.endsWith('menu.html');
-const favouriteIndexes = [0, 6, 9, 12];
+const isMenuPage = window.location.pathname === '/menu' || window.location.pathname.endsWith('/menu.html') || window.location.pathname.endsWith('menu.html');
+const favouriteIndexes = [0, 6, 9, 11];
 const visibleProducts = isMenuPage ? siteData.products : favouriteIndexes.map(i => siteData.products[i]);
 render('#productGrid', visibleProducts.map((p, i) => `<article class="product-card reveal delay-${i % 3}"><div class="product-image"><img loading="lazy" src="${p.image}" alt="${p.name}"/><span class="food-dot ${p.veg ? 'veg' : 'nonveg'}"></span><button aria-label="Add ${p.name}">+</button></div><div class="product-info"><div><h3>${p.name}</h3><p>${p.desc}</p></div><b>${p.price}</b></div></article>`).join(''));
 render('#whyGrid', siteData.why.map(x => `<article class="why-card reveal"><span>${x[0]}</span><h3>${x[1]}</h3><p>${x[2]}</p></article>`).join(''));
