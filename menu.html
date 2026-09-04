@@ -31,6 +31,33 @@
       .menu-price{font-size:17px}
     }
   </style>
+<style>
+.clean-menu{max-width:1100px;margin:0 auto;padding:40px 24px 100px}
+.clean-menu-intro{text-align:center;max-width:700px;margin:0 auto 70px}
+.clean-menu-intro .eyebrow{color:var(--yellow);font:800 11px var(--mono);letter-spacing:3px}
+.clean-menu-intro h1{font-size:clamp(52px,9vw,100px);line-height:.9;margin:18px 0 24px}
+.clean-menu-intro p{color:#aaa;font-size:16px}
+.menu-category{margin:0 0 72px}
+.menu-category-header{display:flex;align-items:center;gap:18px;border-bottom:1px solid #333;padding-bottom:16px;margin-bottom:8px}
+.menu-category-header span{font:800 11px var(--mono);color:var(--yellow);letter-spacing:2px}
+.menu-category-header h2{font-size:clamp(26px,4vw,42px);margin:0;letter-spacing:-1px}
+.menu-list{border-top:1px solid #222}
+.menu-item{display:grid;grid-template-columns:1fr auto;gap:24px;padding:25px 0;border-bottom:1px solid #222;transition:padding .2s ease}
+.menu-item:hover{padding-left:10px;padding-right:10px}
+.menu-item h3{margin:0 0 7px;font-size:20px}
+.menu-item p{margin:0;color:#888;font-size:14px;line-height:1.5}
+.menu-price{font:800 18px var(--mono);color:var(--yellow);white-space:nowrap}
+@media(max-width:600px){
+.clean-menu{padding:25px 18px 70px}
+.clean-menu-intro{margin-bottom:50px}
+.menu-category{margin-bottom:52px}
+.menu-category-header h2{font-size:25px}
+.menu-item{grid-template-columns:1fr auto;gap:12px;padding:21px 0}
+.menu-item h3{font-size:17px}
+.menu-item p{font-size:13px}
+.menu-price{font-size:16px}
+}
+</style>
 </head>
 
 <body>
