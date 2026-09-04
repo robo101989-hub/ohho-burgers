@@ -40,7 +40,29 @@ render('#categoryGrid', siteData.categories.map((c, i) => `<article class="categ
 const isMenuPage = window.location.pathname === '/menu' || window.location.pathname.endsWith('/menu.html') || window.location.pathname.endsWith('menu.html');
 const favouriteIndexes = [0, 6, 9, 11];
 const visibleProducts = isMenuPage ? siteData.products : favouriteIndexes.map(i => siteData.products[i]);
-render('#productGrid', visibleProducts.map((p, i) => `<article class="product-card reveal delay-${i % 3}"><div class="product-image"><img loading="lazy" src="${p.image}" alt="${p.name}"/><span class="food-dot ${p.veg ? 'veg' : 'nonveg'}"></span><button aria-label="Add ${p.name}">+</button></div><div class="product-info"><div><h3>${p.name}</h3><p>${p.desc}</p></div><b>${p.price}</b></div></article>`).join(''));
+if (isMenuPage) {
+  const menuOrder = ["BURGERS", "PIZZAS", "SANDWICHES", "OHHO SPECIAL BUCKETS", "FRIES", "SIPS & ADDONS"];
+  render('.clean-menu', menuOrder.map((category, i) => {
+    const items = siteData.products.filter(p => p.category === category);
+    return `<section class="menu-category reveal">
+      <div class="menu-category-header">
+        <span>0${i + 1}</span>
+        <h2>${category}</h2>
+      </div>
+      <div class="menu-list">
+        ${items.map(p => `<article class="menu-item" data-menu-id="${p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}" data-menu-image="${p.image || ''}">
+          <div>
+            <h3>${p.name}</h3>
+            <p>${p.desc}</p>
+          </div>
+          <span class="menu-price">${p.price}</span>
+        </article>`).join('')}
+      </div>
+    </section>`;
+  }).join(''));
+} else {
+  render('#productGrid', visibleProducts.map((p, i) => `<article class="product-card reveal delay-${i % 3}"><div class="product-image"><img loading="lazy" src="${p.image}" alt="${p.name}"/><span class="food-dot ${p.veg ? 'veg' : 'nonveg'}"></span><button aria-label="Add ${p.name}">+</button></div><div class="product-info"><div><h3>${p.name}</h3><p>${p.desc}</p></div><b>${p.price}</b></div></article>`).join(''));
+}
 render('#whyGrid', siteData.why.map(x => `<article class="why-card reveal"><span>${x[0]}</span><h3>${x[1]}</h3><p>${x[2]}</p></article>`).join(''));
 render('#timeline', siteData.journey.map((x, i) => `<article class="timeline-item reveal"><span>${x[0]}</span><div class="timeline-dot"></div><h3>${x[1]}</h3><p>${x[2]}</p></article>`).join(''));
 render('#offerCards', siteData.offers.map((x, i) => `<article class="offer-card offer-${i} reveal"><span>LIMITED-TIME</span><h3>${x[0]}</h3><p>${x[1]}</p><b>→</b></article>`).join(''));
