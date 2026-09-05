@@ -172,50 +172,28 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
     openCart();
   };
 
+  const checkoutPanel = document.querySelector('[data-checkout-panel]');
   const checkoutForm = document.querySelector('[data-checkout-form]');
+  const checkoutReview = document.querySelector('[data-checkout-review]');
   const addressField = document.querySelector('[data-address-field]');
   const orderTypeField = checkoutForm?.querySelector('[name="orderType"]');
 
   let checkoutData = null;
 
-  orderTypeField?.addEventListener('change', () => {
-    const delivery = orderTypeField.value === 'DELIVERY';
-    if (addressField) {
-      addressField.hidden = !delivery;
-      addressField.querySelector('textarea')?.toggleAttribute('required', delivery);
+  const showCheckoutForm = () => {
+    if (checkoutForm) checkoutForm.hidden = false;
+    if (checkoutReview) {
+      checkoutReview.hidden = true;
+      checkoutReview.innerHTML = '';
     }
-  });
+  };
 
-  checkoutForm?.addEventListener('submit', event => {
-    event.preventDefault();
+  const showCheckoutReview = () => {
+    if (!checkoutForm || !checkoutReview || !checkoutData) return;
 
-    const formData = new FormData(checkoutForm);
-    const orderType = formData.get('orderType');
-    const address = String(formData.get('address') || '').trim();
+    const typeLabel = checkoutData.orderType === 'DELIVERY' ? 'Delivery' : 'Pickup';
 
-    if (orderType === 'DELIVERY' && !address) {
-      addressField?.querySelector('textarea')?.focus();
-      return;
-    }
-
-    const reviewPanel = document.querySelector('[data-checkout-panel]');
-    if (!reviewPanel) return;
-
-    const customerName = String(formData.get('name') || '').trim();
-    const phone = String(formData.get('phone') || '').trim();
-    const outlet = String(formData.get('outlet') || '').trim();
-    const deliveryAddress = String(formData.get('address') || '').trim();
-    const typeLabel = orderType === 'DELIVERY' ? 'Delivery' : 'Pickup';
-
-    checkoutData = {
-      name: customerName,
-      phone,
-      outlet,
-      orderType,
-      address: deliveryAddress
-    };
-
-    reviewPanel.innerHTML = `
+    checkoutReview.innerHTML = `
       <div class="cart-header">
         <div>
           <p class="eyebrow"><span></span> REVIEW ORDER</p>
@@ -228,17 +206,24 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
         <div class="checkout-order">
           <p>Customer</p>
           <ul>
-            <li><span>Name</span><b>${customerName}</b></li>
-            <li><span>Phone</span><b>${phone}</b></li>
+            <li><span>Name</span><b>${checkoutData.name}</b></li>
+            <li><span>Phone</span><b>${checkoutData.phone}</b></li>
             <li><span>Order Type</span><b>${typeLabel}</b></li>
-            ${orderType === 'DELIVERY' ? `<li><span>Address</span><b>${deliveryAddress}</b></li>` : ''}
+            ${checkoutData.orderType === 'DELIVERY'
+              ? `<li><span>Address</span><b>${checkoutData.address}</b></li>`
+              : ''}
           </ul>
         </div>
 
         <div class="checkout-order">
           <p>Order Summary</p>
           <ul>
-            ${cart.map(item => `<li><span>${item.name} × ${Number(item.qty)}</span><b>${money(item.price * item.qty)}</b></li>`).join('')}
+            ${cart.map(item => `
+              <li>
+                <span>${item.name} × ${Number(item.qty)}</span>
+                <b>${money(item.price * item.qty)}</b>
+              </li>
+            `).join('')}
           </ul>
           <div>
             <span>Total</span>
@@ -257,6 +242,41 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
         <p class="checkout-status" data-checkout-status></p>
       </div>
     `;
+
+    checkoutForm.hidden = true;
+    checkoutReview.hidden = false;
+  };
+
+  orderTypeField?.addEventListener('change', () => {
+    const delivery = orderTypeField.value === 'DELIVERY';
+
+    if (addressField) {
+      addressField.hidden = !delivery;
+      addressField.querySelector('textarea')?.toggleAttribute('required', delivery);
+    }
+  });
+
+  checkoutForm?.addEventListener('submit', event => {
+    event.preventDefault();
+
+    const formData = new FormData(checkoutForm);
+    const orderType = String(formData.get('orderType') || '');
+    const address = String(formData.get('address') || '').trim();
+
+    if (orderType === 'DELIVERY' && !address) {
+      addressField?.querySelector('textarea')?.focus();
+      return;
+    }
+
+    checkoutData = {
+      name: String(formData.get('name') || '').trim(),
+      phone: String(formData.get('phone') || '').trim(),
+      outlet: String(formData.get('outlet') || '').trim(),
+      orderType,
+      address
+    };
+
+    showCheckoutReview();
   });
 
   document.addEventListener('click', async event => {
@@ -347,43 +367,8 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
       return;
     }
 
-    if (event.target.closest('[data-review-back]') ) {
-      const panel = document.querySelector('[data-checkout-panel]');
-      if (!panel || !checkoutData) return;
-
-      panel.innerHTML = `
-        <div class="cart-header">
-          <div>
-            <p class="eyebrow"><span></span> CHECKOUT</p>
-            <h2>YOUR DETAILS</h2>
-          </div>
-          <button class="cart-close" type="button" data-checkout-close aria-label="Close checkout">×</button>
-        </div>
-        <form class="checkout-form" data-checkout-form>
-          <label>
-            Outlet
-            <select name="outlet" required>
-              <option value="shamli" ${checkoutData.outlet === "shamli" ? "selected" : ""}>Shamli</option>
-              <option value="kairana" ${checkoutData.outlet === "kairana" ? "selected" : ""}>Kairana</option>
-            </select>
-          </label>
-          <label>Name<input type="text" name="name" autocomplete="name" value="${checkoutData.name}" required></label>
-          <label>Phone<input type="tel" name="phone" autocomplete="tel" value="${checkoutData.phone}" required></label>
-          <label>Order Type<select name="orderType" required><option value="PICKUP" ${checkoutData.orderType === "PICKUP" ? "selected" : ""}>Pickup</option><option value="DELIVERY" ${checkoutData.orderType === "DELIVERY" ? "selected" : ""}>Delivery</option></select></label>
-          <label data-address-field ${checkoutData.orderType === "DELIVERY" ? "" : "hidden"}>Address<textarea name="address" rows="3" autocomplete="street-address" ${checkoutData.orderType === "DELIVERY" ? "required" : ""}>${checkoutData.address || ""}</textarea></label>
-          <button class="pill pill-yellow" type="submit">Review Order <span>→</span></button>
-        </form>
-      `;
-
-      const form = panel.querySelector('[data-checkout-form]');
-      const address = panel.querySelector('[data-address-field]');
-      const type = form?.querySelector('[name="orderType"]');
-      type?.addEventListener("change", () => {
-        const delivery = type.value === "DELIVERY";
-        address.hidden = !delivery;
-        address.querySelector("textarea")?.toggleAttribute("required", delivery);
-      });
-
+    if (event.target.closest('[data-review-back]')) {
+      showCheckoutForm();
       return;
     }
 
