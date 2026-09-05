@@ -347,11 +347,43 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
       return;
     }
 
-    if (event.target.closest('[data-review-back]')) {
+    if (event.target.closest('[data-review-back]') ) {
       const panel = document.querySelector('[data-checkout-panel]');
-      if (panel) panel.innerHTML = '';
-      document.body.classList.remove('checkout-open');
-      document.querySelector('[data-checkout-panel]')?.setAttribute('aria-hidden', 'true');
+      if (!panel || !checkoutData) return;
+
+      panel.innerHTML = `
+        <div class="cart-header">
+          <div>
+            <p class="eyebrow"><span></span> CHECKOUT</p>
+            <h2>YOUR DETAILS</h2>
+          </div>
+          <button class="cart-close" type="button" data-checkout-close aria-label="Close checkout">×</button>
+        </div>
+        <form class="checkout-form" data-checkout-form>
+          <label>
+            Outlet
+            <select name="outlet" required>
+              <option value="shamli" ${checkoutData.outlet === "shamli" ? "selected" : ""}>Shamli</option>
+              <option value="kairana" ${checkoutData.outlet === "kairana" ? "selected" : ""}>Kairana</option>
+            </select>
+          </label>
+          <label>Name<input type="text" name="name" autocomplete="name" value="${checkoutData.name}" required></label>
+          <label>Phone<input type="tel" name="phone" autocomplete="tel" value="${checkoutData.phone}" required></label>
+          <label>Order Type<select name="orderType" required><option value="PICKUP" ${checkoutData.orderType === "PICKUP" ? "selected" : ""}>Pickup</option><option value="DELIVERY" ${checkoutData.orderType === "DELIVERY" ? "selected" : ""}>Delivery</option></select></label>
+          <label data-address-field ${checkoutData.orderType === "DELIVERY" ? "" : "hidden"}>Address<textarea name="address" rows="3" autocomplete="street-address" ${checkoutData.orderType === "DELIVERY" ? "required" : ""}>${checkoutData.address || ""}</textarea></label>
+          <button class="pill pill-yellow" type="submit">Review Order <span>→</span></button>
+        </form>
+      `;
+
+      const form = panel.querySelector('[data-checkout-form]');
+      const address = panel.querySelector('[data-address-field]');
+      const type = form?.querySelector('[name="orderType"]');
+      type?.addEventListener("change", () => {
+        const delivery = type.value === "DELIVERY";
+        address.hidden = !delivery;
+        address.querySelector("textarea")?.toggleAttribute("required", delivery);
+      });
+
       return;
     }
 
