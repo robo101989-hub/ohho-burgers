@@ -5,75 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OHHO BURGERS — Menu</title>
   <link rel="stylesheet" href="styles.css">
-  <style>
-    .clean-menu{max-width:1100px;margin:0 auto;padding:80px 24px 100px}
-    .clean-menu-intro{text-align:center;margin-bottom:70px}
-    .clean-menu-intro .eyebrow{color:var(--yellow);font-size:12px;font-weight:800;letter-spacing:3px;margin-bottom:18px}
-    .clean-menu-intro h1{font-size:clamp(48px,8vw,96px);line-height:.9;margin:0 0 20px;text-transform:uppercase}
-    .clean-menu-intro p{max-width:520px;margin:0 auto;color:#aaa;font-size:15px;line-height:1.7}
-    .menu-category{margin-bottom:70px}
-    .menu-category-header{display:flex;align-items:center;gap:18px;margin-bottom:24px;padding-bottom:14px;border-bottom:1px solid #333}
-    .menu-category-number{color:var(--yellow);font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:1px}
-    .menu-category h2{margin:0;font-size:clamp(22px,4vw,34px);letter-spacing:1px;text-transform:uppercase}
-    .menu-list{display:flex;flex-direction:column}
-    .menu-item{display:flex;justify-content:space-between;align-items:center;gap:30px;padding:22px 0;border-bottom:1px solid #242424}
-    .menu-item:last-child{border-bottom:none}
-    .menu-item-info h3{margin:0 0 7px;font-size:18px;font-weight:800}
-    .menu-item-info p{margin:0;color:#777;font-size:13px}
-    .menu-price{flex-shrink:0;color:var(--yellow);font-size:19px;font-weight:900;white-space:nowrap}
-    @media(max-width:600px){
-      .clean-menu{padding:55px 18px 70px}
-      .clean-menu-intro{margin-bottom:50px}
-      .menu-category{margin-bottom:55px}
-      .menu-item{gap:15px;padding:19px 0}
-      .menu-item-info h3{font-size:16px}
-      .menu-item-info p{font-size:12px}
-      .menu-price{font-size:17px}
-    }
-  </style>
-<style>
-.clean-menu{max-width:1100px;margin:0 auto;padding:40px 24px 100px}
-.clean-menu-intro{text-align:center;max-width:700px;margin:0 auto 70px}
-.clean-menu-intro .eyebrow{color:var(--yellow);font:800 11px var(--mono);letter-spacing:3px}
-.clean-menu-intro h1{font-size:clamp(52px,9vw,100px);line-height:.9;margin:18px 0 24px}
-.clean-menu-intro p{color:#aaa;font-size:16px}
-.menu-category{margin:0 0 72px}
-.menu-category-header{display:flex;align-items:center;gap:18px;border-bottom:1px solid #333;padding-bottom:16px;margin-bottom:8px}
-.menu-category-header span{font:800 11px var(--mono);color:var(--yellow);letter-spacing:2px}
-.menu-category-header h2{font-size:clamp(26px,4vw,42px);margin:0;letter-spacing:-1px}
-.menu-list{border-top:1px solid #222}
-.menu-item{display:grid;grid-template-columns:1fr auto;gap:24px;padding:25px 0;border-bottom:1px solid #222;transition:padding .2s ease}
-.menu-item:hover{padding-left:10px;padding-right:10px}
-.menu-item h3{margin:0 0 7px;font-size:20px}
-.menu-item p{margin:0;color:#888;font-size:14px;line-height:1.5}
-.menu-price{font:800 18px var(--mono);color:var(--yellow);white-space:nowrap}
-@media(max-width:600px){
-.clean-menu{padding:25px 18px 70px}
-.clean-menu-intro{margin-bottom:50px}
-.menu-category{margin-bottom:52px}
-.menu-category-header h2{font-size:25px}
-.menu-item{grid-template-columns:1fr auto;gap:12px;padding:21px 0}
-.menu-item h3{font-size:17px}
-.menu-item p{font-size:13px}
-.menu-price{font-size:16px}
-}
-</style>
 </head>
 
 <body>
+<div class="noise"></div>
 
-<header class="site-header">
-  <a href="index.html" class="brand">OHHO<span>BURGER</span>S</a>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="menu.html" class="active">Menu</a>
-    <a href="locations.html">Locations</a>
-    <a href="franchise.html">Franchise</a>
-    <a href="contact.html">Contact</a>
+<header class="site-header scrolled">
+  <a href="index.html" class="brand" aria-label="OHHO Burgers home"><span>OHHO</span><small>BURGERS</small></a>
+  <nav class="desktop-nav" aria-label="Primary navigation">
+    <a href="index.html">Home</a><a class="active" href="menu.html">Menu</a><a href="about.html">About Us</a><a href="about.html#journey">Our Journey</a><a href="franchise.html">Franchise</a><a href="contact.html">Contact</a>
   </nav>
+  <div class="nav-actions"><button class="cart-trigger" type="button" data-cart-toggle aria-label="Open cart">Cart <b data-cart-count>0</b></button><a class="pill pill-outline" href="franchise.html">Franchise with us</a><a class="pill pill-yellow" href="index.html#order">Order now <span>↗</span></a></div>
+  <button class="menu-toggle" aria-label="Open menu" aria-expanded="false"><i></i><i></i></button>
+  <nav class="mobile-nav" aria-label="Mobile navigation"><a href="index.html">Home</a><a href="menu.html">Menu</a><a href="about.html">About Us</a><a href="franchise.html">Franchise</a><a href="contact.html">Contact</a></nav>
 </header>
 
-<main class="clean-menu">
+<main class="clean-menu section-shell">
 
   <section class="clean-menu-intro">
     <div class="eyebrow">OHHO BURGERS</div>
@@ -81,6 +28,7 @@
     <p>Big flavour. Good price. Everything you want, nothing boring.</p>
   </section>
 
+  <div id="menuContent">
   <section class="menu-category">
     <div class="menu-category-header">
       <span class="menu-category-number">01</span>
@@ -92,21 +40,21 @@
           <h3>Crispy Chicken Burger</h3>
           <p>Crispy chicken, fresh ingredients and OHHO flavour.</p>
         </div>
-        <div class="menu-price">₹120</div>
+        <div class="menu-price">₹120</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
       <article class="menu-item" data-menu-image="" data-menu-id="burger-ohho-signature-chicken">
         <div class="menu-item-info">
           <h3>OHHO Signature Chicken Burger</h3>
           <p>Our signature chicken burger packed with flavour.</p>
         </div>
-        <div class="menu-price">₹120</div>
+        <div class="menu-price">₹120</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
       <article class="menu-item" data-menu-image="" data-menu-id="burger-ohho-special-chicken">
         <div class="menu-item-info">
           <h3>OHHO Special Chicken Burger</h3>
           <p>Our premium chicken burger made the OHHO way.</p>
         </div>
-        <div class="menu-price">₹170</div>
+        <div class="menu-price">₹170</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
     </div>
   </section>
@@ -122,35 +70,35 @@
           <h3>Fire Chicken Pizza</h3>
           <p>Chicken pizza with a bold spicy kick.</p>
         </div>
-        <div class="menu-price">₹89</div>
+        <div class="menu-price">₹89</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
       <article class="menu-item" data-menu-image="" data-menu-id="pizza-veg-supreme">
         <div class="menu-item-info">
           <h3>Veg Supreme Pizza</h3>
           <p>Loaded with delicious vegetarian toppings.</p>
         </div>
-        <div class="menu-price">₹99</div>
+        <div class="menu-price">₹99</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
       <article class="menu-item" data-menu-image="" data-menu-id="pizza-classic-chicken">
         <div class="menu-item-info">
           <h3>Classic Chicken Pizza</h3>
           <p>A classic chicken pizza packed with flavour.</p>
         </div>
-        <div class="menu-price">₹120</div>
+        <div class="menu-price">₹120</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
       <article class="menu-item" data-menu-image="" data-menu-id="pizza-ohho-special-chicken">
         <div class="menu-item-info">
           <h3>OHHO Special Chicken Pizza</h3>
           <p>Our special chicken pizza with the OHHO touch.</p>
         </div>
-        <div class="menu-price">₹150</div>
+        <div class="menu-price">₹150</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
       <article class="menu-item" data-menu-image="" data-menu-id="pizza-chicken-supreme">
         <div class="menu-item-info">
           <h3>Chicken Supreme Pizza</h3>
           <p>A loaded premium chicken pizza.</p>
         </div>
-        <div class="menu-price">₹250</div>
+        <div class="menu-price">₹250</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
     </div>
   </section>
@@ -166,14 +114,14 @@
           <h3>Classic Chicken Sandwich</h3>
           <p>Classic chicken sandwich with fresh ingredients.</p>
         </div>
-        <div class="menu-price">₹99</div>
+        <div class="menu-price">₹99</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
       <article class="menu-item" data-menu-image="" data-menu-id="sandwich-ohho-special">
         <div class="menu-item-info">
           <h3>OHHO Special Sandwich</h3>
           <p>Our special sandwich loaded with OHHO flavour.</p>
         </div>
-        <div class="menu-price">₹120</div>
+        <div class="menu-price">₹120</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
     </div>
   </section>
@@ -189,14 +137,14 @@
           <h3>Crispy Chicken Bucket (Half)</h3>
           <p>Crispy chicken bucket for a satisfying meal.</p>
         </div>
-        <div class="menu-price">₹150</div>
+        <div class="menu-price">₹150</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
       <article class="menu-item" data-menu-image="" data-menu-id="bucket-crispy-full">
         <div class="menu-item-info">
           <h3>Crispy Chicken Bucket (Full)</h3>
           <p>Our full-size crispy chicken bucket.</p>
         </div>
-        <div class="menu-price">₹250</div>
+        <div class="menu-price">₹250</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
     </div>
   </section>
@@ -212,7 +160,7 @@
           <h3>French Fries</h3>
           <p>Crispy golden fries.</p>
         </div>
-        <div class="menu-price">₹59</div>
+        <div class="menu-price">₹59</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
     </div>
   </section>
@@ -228,46 +176,104 @@
           <h3>Cold Coffee</h3>
           <p>Chilled and creamy cold coffee.</p>
         </div>
-        <div class="menu-price">₹80</div>
+        <div class="menu-price">₹80</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
       <article class="menu-item" data-menu-image="" data-menu-id="addon-extra-patty">
         <div class="menu-item-info">
           <h3>Extra Patty</h3>
           <p>Add an extra patty to your meal.</p>
         </div>
-        <div class="menu-price">₹70</div>
+        <div class="menu-price">₹70</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
       <article class="menu-item" data-menu-image="" data-menu-id="addon-extra-cheese">
         <div class="menu-item-info">
           <h3>Extra Cheese</h3>
           <p>Add extra cheese to your favourite item.</p>
         </div>
-        <div class="menu-price">₹30</div>
+        <div class="menu-price">₹30</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
       <article class="menu-item" data-menu-image="" data-menu-id="addon-extra-dips">
         <div class="menu-item-info">
           <h3>Extra Dips</h3>
           <p>Extra dip for that perfect bite.</p>
         </div>
-        <div class="menu-price">₹10</div>
+        <div class="menu-price">₹10</div><button class="menu-add" type="button" data-add-to-cart>Add</button>
       </article>
     </div>
   </section>
 
+  </div>
 </main>
 
-<footer class="site-footer">
-  <div>
-    <strong>OHHO BURGERS</strong>
-    <p>Happiness in Every Bite.</p>
-  </div>
-  <div>
-    <a href="menu.html">Menu</a>
-    <a href="locations.html">Locations</a>
-    <a href="franchise.html">Franchise</a>
-  </div>
-</footer>
 
-<script src="app.js"></script>
+<div class="cart-backdrop" data-cart-backdrop></div>
+<aside class="cart-drawer" data-cart-drawer aria-label="Shopping cart">
+  <div class="cart-header">
+    <div>
+      <p class="eyebrow"><span></span> YOUR ORDER</p>
+      <h2>YOUR CART</h2>
+    </div>
+    <button class="cart-close" type="button" data-cart-close aria-label="Close cart">×</button>
+  </div>
+
+  <ul class="cart-items" data-cart-items>
+    <li class="cart-empty">Your cart is empty.<br>Add something delicious from the menu.</li>
+  </ul>
+
+  <div class="cart-summary">
+    <div>
+      <span>Total</span>
+      <strong data-cart-total>₹0</strong>
+    </div>
+    <button class="pill pill-yellow" type="button" data-checkout-open disabled>Proceed to checkout <span>→</span></button>
+    <p>Review your order before proceeding to checkout.</p>
+  </div>
+</aside>
+
+
+<div class="checkout-panel" data-checkout-panel aria-hidden="true">
+  <div class="cart-header">
+    <div>
+      <p class="eyebrow"><span></span> CHECKOUT</p>
+      <h2>YOUR DETAILS</h2>
+    </div>
+    <button class="cart-close" type="button" data-checkout-close aria-label="Close checkout">×</button>
+  </div>
+
+  <form class="checkout-form" data-checkout-form>
+    <label>
+      Name
+      <input type="text" name="name" autocomplete="name" required>
+    </label>
+
+    <label>
+      Phone
+      <input type="tel" name="phone" autocomplete="tel" required>
+    </label>
+
+    <label>
+      Order Type
+      <select name="orderType" required>
+        <option value="PICKUP">Pickup</option>
+        <option value="DELIVERY">Delivery</option>
+      </select>
+    </label>
+
+    <label data-address-field hidden>
+      Address
+      <textarea name="address" rows="3" autocomplete="street-address"></textarea>
+    </label>
+
+    <button class="pill pill-yellow" type="submit">
+      Review Order <span>→</span>
+    </button>
+  </form>
+</div>
+
+
+<footer><div class="section-shell footer-top"><a href="index.html" class="brand footer-brand"><span>OHHO</span><small>BURGERS</small><em>Happiness in Every Bite</em></a><div><b>Explore</b><a href="menu.html">Menu</a><a href="about.html">About Us</a><a href="about.html#journey">Our Journey</a></div><div><b>Customer</b><a href="index.html#order">Order Online</a><a href="index.html#locations">Locations</a><a href="index.html#favourites">Offers</a></div><div><b>Business</b><a href="franchise.html">Franchise</a><a href="contact.html">Partner With Us</a></div><div><b>Follow OHHO</b><a href="#">Instagram ↗</a><a href="#">Facebook ↗</a><a href="#">YouTube ↗</a></div></div><div class="section-shell footer-bottom"><span>© 2026 OHHO BURGERS. All rights reserved.</span><span><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="#">Refund Policy</a></span></div></footer>
+<a class="mobile-order" href="index.html#order">ORDER NOW <span>↗</span></a>
+
+<script type="module" src="app.js"></script>
 </body>
 </html>

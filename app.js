@@ -55,7 +55,7 @@ if (isMenuPage) {
             <h3>${p.name}</h3>
             <p>${p.desc}</p>
           </div>
-          <span class="menu-price">${p.price}</span>
+          <span class="menu-price">${p.price}</span><button class="menu-add" type="button" data-add-to-cart="${p.name}">Add</button>
         </article>`).join('')}
       </div>
     </section>`;
@@ -80,3 +80,239 @@ $('#leadForm')?.addEventListener('submit', e => { e.preventDefault(); const form
 $('#generalForm')?.addEventListener('submit', e => { e.preventDefault(); const form = e.currentTarget; form.querySelector('.form-message').textContent = 'Thanks — your message has been received. We’ll get back to you soon.'; form.reset(); });
 document.querySelectorAll('.menu-tabs button').forEach(button => button.addEventListener('click', () => { document.querySelectorAll('.menu-tabs button').forEach(b => b.classList.remove('active')); button.classList.add('active'); }));
 document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('click', () => { const link = siteData.ordering[btn.dataset.platform]; if (link) window.open(link, '_blank', 'noopener'); else alert('This ordering link will be added soon.'); }));
+
+
+/* OHHO_CART_LOGIC */
+(() => {
+  const cartKey = 'ohho-cart';
+  let cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
+    .filter(item => item && typeof item.name === 'string' && item.name.trim() && Number.isFinite(Number(item.price)) && Number(item.price) > 0 && Number.isFinite(Number(item.qty)) && Number(item.qty) >= 1)
+    .map(item => ({
+      name: item.name.trim(),
+      price: Number(item.price),
+      qty: Math.max(1, Math.floor(Number(item.qty)))
+    }));
+
+  localStorage.setItem(cartKey, JSON.stringify(cart));
+
+  const drawer = document.querySelector('[data-cart-drawer]');
+  const backdrop = document.querySelector('[data-cart-backdrop]');
+  const itemsEl = document.querySelector('[data-cart-items]');
+  const totalEl = document.querySelector('[data-cart-total]');
+  const countEls = document.querySelectorAll('[data-cart-count]');
+  const checkoutBtn = document.querySelector('[data-checkout-open]');
+  const cartTrigger = document.querySelector('[data-cart-toggle]');
+  const closeBtn = document.querySelector('[data-cart-close]');
+
+  const money = value => `₹${Number(value).toLocaleString('en-IN')}`;
+
+  const save = () => {
+    localStorage.setItem(cartKey, JSON.stringify(cart));
+  };
+
+  const totalItems = () => cart.reduce((sum, item) => sum + item.qty, 0);
+  const totalPrice = () => cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+
+  const openCart = () => document.body.classList.add('cart-open');
+  const closeCart = () => document.body.classList.remove('cart-open');
+
+  const renderCart = () => {
+    const count = totalItems();
+    const total = totalPrice();
+
+    countEls.forEach(el => {
+      el.textContent = count;
+    });
+
+    totalEl.textContent = money(total);
+    checkoutBtn.disabled = cart.length === 0;
+
+    if (!cart.length) {
+      itemsEl.innerHTML = '<li class="cart-empty">Your cart is empty.<br>Add something delicious from the menu.</li>';
+      return;
+    }
+
+    itemsEl.innerHTML = cart.map((item, index) => `
+      <li class="cart-line">
+        <div>
+          <h3>${item.name}</h3>
+          <p>${money(item.price)} each</p>
+        </div>
+        <div class="cart-line-actions">
+          <div class="quantity-control">
+            <button type="button" data-cart-minus="${index}" aria-label="Decrease ${item.name}">−</button>
+            <span>${item.qty}</span>
+            <button type="button" data-cart-plus="${index}" aria-label="Increase ${item.name}">+</button>
+          </div>
+          <b>${money(item.price * item.qty)}</b>
+        </div>
+      </li>
+    `).join('');
+  };
+
+  const addToCart = name => {
+    const product = siteData.products.find(p => p.name === name);
+    if (!product) return;
+
+    const existing = cart.find(item => item.name === name);
+
+    if (existing) {
+      existing.qty += 1;
+    } else {
+      cart.push({
+        name: product.name,
+        price: Number(String(product.price).replace(/[^\d.]/g, '')),
+        qty: 1
+      });
+    }
+
+    save();
+    renderCart();
+    openCart();
+  };
+
+  const checkoutForm = document.querySelector('[data-checkout-form]');
+  const addressField = document.querySelector('[data-address-field]');
+  const orderTypeField = checkoutForm?.querySelector('[name="orderType"]');
+
+  orderTypeField?.addEventListener('change', () => {
+    const delivery = orderTypeField.value === 'DELIVERY';
+    if (addressField) {
+      addressField.hidden = !delivery;
+      addressField.querySelector('textarea')?.toggleAttribute('required', delivery);
+    }
+  });
+
+  checkoutForm?.addEventListener('submit', event => {
+    event.preventDefault();
+
+    const formData = new FormData(checkoutForm);
+    const orderType = formData.get('orderType');
+    const address = String(formData.get('address') || '').trim();
+
+    if (orderType === 'DELIVERY' && !address) {
+      addressField?.querySelector('textarea')?.focus();
+      return;
+    }
+
+    const reviewPanel = document.querySelector('[data-checkout-panel]');
+    if (!reviewPanel) return;
+
+    const customerName = String(formData.get('name') || '').trim();
+    const phone = String(formData.get('phone') || '').trim();
+    const deliveryAddress = String(formData.get('address') || '').trim();
+    const typeLabel = orderType === 'DELIVERY' ? 'Delivery' : 'Pickup';
+
+    reviewPanel.innerHTML = `
+      <div class="cart-header">
+        <div>
+          <p class="eyebrow"><span></span> REVIEW ORDER</p>
+          <h2>YOUR ORDER</h2>
+        </div>
+        <button class="cart-close" type="button" data-review-close aria-label="Close review">×</button>
+      </div>
+
+      <div class="checkout-form">
+        <div class="checkout-order">
+          <p>Customer</p>
+          <ul>
+            <li><span>Name</span><b>${customerName}</b></li>
+            <li><span>Phone</span><b>${phone}</b></li>
+            <li><span>Order Type</span><b>${typeLabel}</b></li>
+            ${orderType === 'DELIVERY' ? `<li><span>Address</span><b>${deliveryAddress}</b></li>` : ''}
+          </ul>
+        </div>
+
+        <div class="checkout-order">
+          <p>Order Summary</p>
+          <ul>
+            ${cart.map(item => `<li><span>${item.name} × ${Number(item.qty)}</span><b>${money(item.price * item.qty)}</b></li>`).join('')}
+          </ul>
+          <div>
+            <span>Total</span>
+            <strong>${money(totalPrice())}</strong>
+          </div>
+        </div>
+
+        <button class="pill pill-yellow" type="button" data-place-order>
+          Place Order <span>→</span>
+        </button>
+
+        <button class="checkout-back" type="button" data-review-back>
+          ← Edit Details
+        </button>
+
+        <p class="checkout-status" data-checkout-status></p>
+      </div>
+    `;
+  });
+
+  document.addEventListener('click', event => {
+    const addButton = event.target.closest('[data-add-to-cart]');
+    if (addButton) {
+      addToCart(addButton.dataset.addToCart);
+      return;
+    }
+
+    const plus = event.target.closest('[data-cart-plus]');
+    if (plus) {
+      cart[Number(plus.dataset.cartPlus)].qty += 1;
+      save();
+      renderCart();
+      return;
+    }
+
+    const minus = event.target.closest('[data-cart-minus]');
+    if (minus) {
+      const index = Number(minus.dataset.cartMinus);
+      cart[index].qty -= 1;
+
+      if (cart[index].qty <= 0) {
+        cart.splice(index, 1);
+      }
+
+      save();
+      renderCart();
+      return;
+    }
+
+    if (event.target.closest('[data-checkout-open]')) {
+      if (!cart.length) return;
+      document.body.classList.add('checkout-open');
+      document.querySelector('[data-checkout-panel]')?.setAttribute('aria-hidden', 'false');
+      return;
+    }
+
+    if (event.target.closest('[data-place-order]')) {
+      const status = document.querySelector('[data-checkout-status]');
+      if (status) status.textContent = 'Order ready — connecting to OHHO...';
+      return;
+    }
+
+    if (event.target.closest('[data-review-back]')) {
+      const panel = document.querySelector('[data-checkout-panel]');
+      if (panel) panel.innerHTML = '';
+      document.body.classList.remove('checkout-open');
+      document.querySelector('[data-checkout-panel]')?.setAttribute('aria-hidden', 'true');
+      return;
+    }
+
+    if (event.target.closest('[data-checkout-close]')) {
+      document.body.classList.remove('checkout-open');
+      document.querySelector('[data-checkout-panel]')?.setAttribute('aria-hidden', 'true');
+      return;
+    }
+
+    if (event.target.closest('[data-cart-toggle]')) {
+      renderCart();
+      openCart();
+      return;
+    }
+
+    if (event.target.closest('[data-cart-close]') || event.target.closest('[data-cart-backdrop]')) {
+      closeCart();
+    }
+  });
+
+  renderCart();
+})();
