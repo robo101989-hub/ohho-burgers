@@ -39,7 +39,7 @@ export default async function handler(req, res) {
 
     const { data: menuItems, error: menuError } = await supabase
       .from("menu_items")
-      .select("id,name,price,is_available")
+      .select("id,name,slug,price,is_available")
       .in("slug", requestedSlugs);
 
     if (menuError) {
