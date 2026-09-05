@@ -11,9 +11,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { name, phone, orderType, outletId, address, items } = req.body || {};
+    const { name, phone, orderType, outlet, address, items } = req.body || {};
 
-    if (!name || !phone || !orderType || !outletId || !Array.isArray(items) || !items.length) {
+    if (!name || !phone || !orderType || !outlet || !Array.isArray(items) || !items.length) {
       return res.status(400).json({ error: "Missing required order details" });
     }
 
@@ -25,34 +25,34 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Delivery address is required" });
     }
 
-    const { data: outlet, error: outletError } = await supabase
+    const { data: outletRecord, error: outletError } = await supabase
       .from("outlets")
       .select("id,name")
-      .eq("id", outletId)
+      .eq("slug", outlet)
       .single();
 
-    if (outletError || !outlet) {
+    if (outletError || !outletRecord) {
       return res.status(400).json({ error: "Invalid outlet" });
     }
 
-    const requestedIds = items.map(item => item.menuItemId);
+    const requestedSlugs = items.map(item => String(item.slug || "").trim()).filter(Boolean);
 
     const { data: menuItems, error: menuError } = await supabase
       .from("menu_items")
       .select("id,name,price,is_available")
-      .in("id", requestedIds);
+      .in("slug", requestedSlugs);
 
     if (menuError) {
       return res.status(500).json({ error: "Unable to validate menu items" });
     }
 
-    const menuMap = new Map(menuItems.map(item => [item.id, item]));
+    const menuMap = new Map(menuItems.map(item => [item.slug, item]));
 
     const orderItems = [];
     let subtotal = 0;
 
     for (const item of items) {
-      const menuItem = menuMap.get(item.menuItemId);
+      const menuItem = menuMap.get(String(item.slug || "").trim());
       const quantity = Number(item.quantity);
 
       if (!menuItem || !menuItem.is_available || !Number.isInteger(quantity) || quantity < 1) {
@@ -89,7 +89,7 @@ export default async function handler(req, res) {
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
-        outlet_id: outlet.id,
+        outlet_id: outletRecord.id,
         customer_id: customer.id,
         order_type: orderType,
         subtotal,

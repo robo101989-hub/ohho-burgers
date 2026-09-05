@@ -7,23 +7,23 @@ const siteData = {
     { icon: "🍗", name: "CRISPY CHICKEN", copy: "Crunch outside. Juicy inside.", image: "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=700&q=82" }
   ],
   products: [
-    { category: "BURGERS", name: "Crispy Chicken Burger", desc: "Crispy, juicy and loaded with OHHO flavour.", price: "₹120", veg: false, image: "images/crispy-chicken-burger.jpeg" },
-    { category: "BURGERS", name: "OHHO Signature Chicken Burger", desc: "Our signature chicken burger with big OHHO flavour.", price: "₹120", veg: false, image: "images/crispy-chicken-burger.jpeg" },
-    { category: "BURGERS", name: "OHHO Special Chicken Burger", desc: "Our loaded special chicken burger for serious cravings.", price: "₹170", veg: false, image: "images/crispy-chicken-burger.jpeg" },
-    { category: "PIZZAS", name: "Fire Chicken Pizza", desc: "A fiery chicken pizza made for bold cravings. 🔥", price: "₹89", veg: false, image: "images/ohho-special-chicken-pizza.jpeg" },
-    { category: "PIZZAS", name: "Veg Supreme Pizza", desc: "Loaded with flavourful veggies and melty cheese.", price: "₹99", veg: true, image: "images/ohho-special-chicken-pizza.jpeg" },
-    { category: "PIZZAS", name: "Classic Chicken Pizza", desc: "Classic chicken, cheese and a satisfying crust.", price: "₹120", veg: false, image: "images/ohho-special-chicken-pizza.jpeg" },
-    { category: "PIZZAS", name: "OHHO Special Chicken Pizza", desc: "Cheesy, loaded and made for serious cravings.", price: "₹150", veg: false, image: "images/ohho-special-chicken-pizza.jpeg" },
-    { category: "PIZZAS", name: "Chicken Supreme Pizza", desc: "A loaded supreme pizza for the biggest appetite.", price: "₹250", veg: false, image: "images/ohho-special-chicken-pizza.jpeg" },
-    { category: "SANDWICHES", name: "Classic Chicken Sandwich", desc: "Classic chicken loaded between perfect slices.", price: "₹99", veg: false, image: "images/ohho-special-chicken-sandwich.jpeg" },
-    { category: "SANDWICHES", name: "OHHO Special Sandwich", desc: "Loaded between perfect slices with big flavour.", price: "₹120", veg: false, image: "images/ohho-special-chicken-sandwich.jpeg" },
-    { category: "OHHO SPECIAL BUCKETS", name: "Crispy Chicken Bucket (Half)", desc: "Crunchy, juicy crispy chicken for sharing.", price: "₹150", veg: false, image: "images/crispy-chicken-bucket.jpeg" },
-    { category: "OHHO SPECIAL BUCKETS", name: "Crispy Chicken Bucket (Full)", desc: "A full bucket of crunchy, juicy crispy chicken.", price: "₹250", veg: false, image: "images/crispy-chicken-bucket.jpeg" },
-    { category: "FRIES", name: "French Fries", desc: "Crispy golden fries made for every craving.", price: "₹59", veg: true, image: "images/ohho-special-chicken-sandwich.jpeg" },
-    { category: "SIPS & ADDONS", name: "Cold Coffee", desc: "A chilled, creamy coffee to go with your meal.", price: "₹80", veg: true, image: "images/ohho-special-chicken-sandwich.jpeg" },
-    { category: "SIPS & ADDONS", name: "Extra Patty", desc: "Add an extra patty to make it bigger.", price: "₹70", veg: false, image: "images/crispy-chicken-burger.jpeg" },
-    { category: "SIPS & ADDONS", name: "Extra Cheese", desc: "Make it extra cheesy.", price: "₹30", veg: true, image: "images/ohho-special-chicken-pizza.jpeg" },
-    { category: "SIPS & ADDONS", name: "Extra Dips", desc: "Add extra dips for more flavour.", price: "₹10", veg: true, image: "images/crispy-chicken-bucket.jpeg" }
+    { slug: "crispy-chicken-burger", category: "BURGERS", name: "Crispy Chicken Burger", desc: "Crispy, juicy and loaded with OHHO flavour.", price: "₹120", veg: false, image: "images/crispy-chicken-burger.jpeg" },
+    { slug: "ohho-signature-chicken-burger", category: "BURGERS", name: "OHHO Signature Chicken Burger", desc: "Our signature chicken burger with big OHHO flavour.", price: "₹120", veg: false, image: "images/crispy-chicken-burger.jpeg" },
+    { slug: "ohho-special-chicken-burger", category: "BURGERS", name: "OHHO Special Chicken Burger", desc: "Our loaded special chicken burger for serious cravings.", price: "₹170", veg: false, image: "images/crispy-chicken-burger.jpeg" },
+    { slug: "fire-chicken-pizza", category: "PIZZAS", name: "Fire Chicken Pizza", desc: "A fiery chicken pizza made for bold cravings. 🔥", price: "₹89", veg: false, image: "images/ohho-special-chicken-pizza.jpeg" },
+    { slug: "veg-supreme-pizza", category: "PIZZAS", name: "Veg Supreme Pizza", desc: "Loaded with flavourful veggies and melty cheese.", price: "₹99", veg: true, image: "images/ohho-special-chicken-pizza.jpeg" },
+    { slug: "classic-chicken-pizza", category: "PIZZAS", name: "Classic Chicken Pizza", desc: "Classic chicken, cheese and a satisfying crust.", price: "₹120", veg: false, image: "images/ohho-special-chicken-pizza.jpeg" },
+    { slug: "ohho-special-chicken-pizza", category: "PIZZAS", name: "OHHO Special Chicken Pizza", desc: "Cheesy, loaded and made for serious cravings.", price: "₹150", veg: false, image: "images/ohho-special-chicken-pizza.jpeg" },
+    { slug: "chicken-supreme-pizza", category: "PIZZAS", name: "Chicken Supreme Pizza", desc: "A loaded supreme pizza for the biggest appetite.", price: "₹250", veg: false, image: "images/ohho-special-chicken-pizza.jpeg" },
+    { slug: "classic-chicken-sandwich", category: "SANDWICHES", name: "Classic Chicken Sandwich", desc: "Classic chicken loaded between perfect slices.", price: "₹99", veg: false, image: "images/ohho-special-chicken-sandwich.jpeg" },
+    { slug: "ohho-special-sandwich", category: "SANDWICHES", name: "OHHO Special Sandwich", desc: "Loaded between perfect slices with big flavour.", price: "₹120", veg: false, image: "images/ohho-special-chicken-sandwich.jpeg" },
+    { slug: "crispy-chicken-bucket-half", category: "OHHO SPECIAL BUCKETS", name: "Crispy Chicken Bucket (Half)", desc: "Crunchy, juicy crispy chicken for sharing.", price: "₹150", veg: false, image: "images/crispy-chicken-bucket.jpeg" },
+    { slug: "crispy-chicken-bucket-full", category: "OHHO SPECIAL BUCKETS", name: "Crispy Chicken Bucket (Full)", desc: "A full bucket of crunchy, juicy crispy chicken.", price: "₹250", veg: false, image: "images/crispy-chicken-bucket.jpeg" },
+    { slug: "french-fries", category: "FRIES", name: "French Fries", desc: "Crispy golden fries made for every craving.", price: "₹59", veg: true, image: "images/ohho-special-chicken-sandwich.jpeg" },
+    { slug: "cold-coffee", category: "SIPS & ADDONS", name: "Cold Coffee", desc: "A chilled, creamy coffee to go with your meal.", price: "₹80", veg: true, image: "images/ohho-special-chicken-sandwich.jpeg" },
+    { slug: "extra-patty", category: "SIPS & ADDONS", name: "Extra Patty", desc: "Add an extra patty to make it bigger.", price: "₹70", veg: false, image: "images/crispy-chicken-burger.jpeg" },
+    { slug: "extra-cheese", category: "SIPS & ADDONS", name: "Extra Cheese", desc: "Make it extra cheesy.", price: "₹30", veg: true, image: "images/ohho-special-chicken-pizza.jpeg" },
+    { slug: "extra-dips", category: "SIPS & ADDONS", name: "Extra Dips", desc: "Add extra dips for more flavour.", price: "₹10", veg: true, image: "images/crispy-chicken-bucket.jpeg" }
   ],
   why: [["01", "GOOD FOOD", "Made to taste great."], ["02", "GOOD PRICE", "Everyday food without crazy prices."], ["03", "FRESH", "Quality-focused processes, every day."], ["04", "CONSISTENT", "The same happy bite, every time."], ["05", "PROVEN MODEL", "We operate before we franchise."]],
   journey: [["01", "THE IDEA", "A simple vision: good food at a good price."], ["02", "FIRST OUTLET", "We took the idea to real customers."], ["03", "LEARNING", "Everyday operations taught us what matters."], ["04", "BUILDING THE SYSTEM", "Products, process, supply chain and experience."], ["05", "PROVING THE MODEL", "Operate first. Improve continuously."], ["06", "EXPANSION", "Build with selected partners."]],
@@ -154,12 +154,13 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
     const product = siteData.products.find(p => p.name === name);
     if (!product) return;
 
-    const existing = cart.find(item => item.name === name);
+    const existing = cart.find(item => item.slug === product.slug);
 
     if (existing) {
       existing.qty += 1;
     } else {
       cart.push({
+        slug: product.slug,
         name: product.name,
         price: Number(String(product.price).replace(/[^\d.]/g, '')),
         qty: 1
@@ -174,6 +175,8 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
   const checkoutForm = document.querySelector('[data-checkout-form]');
   const addressField = document.querySelector('[data-address-field]');
   const orderTypeField = checkoutForm?.querySelector('[name="orderType"]');
+
+  let checkoutData = null;
 
   orderTypeField?.addEventListener('change', () => {
     const delivery = orderTypeField.value === 'DELIVERY';
@@ -200,8 +203,17 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
 
     const customerName = String(formData.get('name') || '').trim();
     const phone = String(formData.get('phone') || '').trim();
+    const outlet = String(formData.get('outlet') || '').trim();
     const deliveryAddress = String(formData.get('address') || '').trim();
     const typeLabel = orderType === 'DELIVERY' ? 'Delivery' : 'Pickup';
+
+    checkoutData = {
+      name: customerName,
+      phone,
+      outlet,
+      orderType,
+      address: deliveryAddress
+    };
 
     reviewPanel.innerHTML = `
       <div class="cart-header">
@@ -247,7 +259,7 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
     `;
   });
 
-  document.addEventListener('click', event => {
+  document.addEventListener('click', async event => {
     const addButton = event.target.closest('[data-add-to-cart]');
     if (addButton) {
       addToCart(addButton.dataset.addToCart);
@@ -285,7 +297,53 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
 
     if (event.target.closest('[data-place-order]')) {
       const status = document.querySelector('[data-checkout-status]');
-      if (status) status.textContent = 'Order ready — connecting to OHHO...';
+      const button = event.target.closest('[data-place-order]');
+
+      if (!checkoutData || !cart.length) {
+        if (status) status.textContent = 'Please review your order details.';
+        return;
+      }
+
+      button.disabled = true;
+      if (status) status.textContent = 'Placing your order...';
+
+      try {
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: checkoutData.name,
+            phone: checkoutData.phone,
+            outlet: checkoutData.outlet,
+            orderType: checkoutData.orderType,
+            address: checkoutData.address,
+            items: cart.map(item => ({
+              slug: item.slug,
+              quantity: Number(item.qty)
+            }))
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Unable to place order');
+        }
+
+        if (status) {
+          status.textContent = `Order #${result.order.order_number} placed successfully!`;
+        }
+
+        cart = [];
+        save();
+        renderCart();
+      } catch (error) {
+        button.disabled = false;
+        if (status) {
+          status.textContent = error.message || 'Unable to place order. Please try again.';
+        }
+      }
+
       return;
     }
 
