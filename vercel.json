@@ -23,6 +23,10 @@
     {
       "source": "/menu",
       "destination": "/menu.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/dashboard.html"
     }
   ]
 }
