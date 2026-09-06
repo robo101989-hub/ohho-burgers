@@ -2,6 +2,15 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
 export default defineConfig({
+  plugins: [{
+    name: 'ohho-dashboard-module',
+    transformIndexHtml(html, ctx) {
+      if (ctx.path.endsWith('/dashboard.html')) {
+        return html.replace('</body>', '<script type="module" src="/src/dashboard.js"></script></body>');
+      }
+      return html;
+    }
+  }],
   build: {
     rollupOptions: {
       input: {

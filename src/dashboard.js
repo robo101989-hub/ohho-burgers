@@ -163,11 +163,120 @@ async function apiRequest(method, body = null) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error('Your session has expired. Please sign in again.');
+
+  if (import.meta.env.DEV) {
+    if (method === 'GET') {
+      const { data: outlets, error } = await supabase
+        .from('outlets')
+        .select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at')
+        .order('created_at', { ascending: true });
+      if (error) throw new Error(error.message || 'Unable to load outlets.');
+      return { outlets: outlets || [] };
+    }
+
+    if (method === 'POST') {
+      const name = String(body?.name || '').trim();
+      const slug = String(body?.slug || name).trim().toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      const address = String(body?.address || '').trim();
+
+      if (!name || !slug || !address) {
+        throw new Error('Name, slug and address are required.');
+      }
+
+      const { data: outlet, error: outletError } = await supabase
+        .from('outlets')
+        .insert({
+          name,
+          slug,
+          address,
+          phone: String(body?.phone || '').trim() || null,
+          opening_time: String(body?.openingTime || '17:00'),
+          closing_time: String(body?.closingTime || '01:00'),
+          maps_url: String(body?.mapsUrl || '').trim() || null,
+          zomato_url: String(body?.zomatoUrl || '').trim() || null,
+          swiggy_url: String(body?.swiggyUrl || '').trim() || null,
+          status: body?.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE'
+        })
+        .select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at')
+        .single();
+
+      if (outletError) throw new Error(outletError.code === '23505'
+        ? 'An outlet with this name or slug already exists.'
+        : outletError.message || 'Unable to create outlet.');
+
+      const { data: menuItems, error: menuError } = await supabase
+        .from('menu_items')
+        .select('id')
+        .order('display_order', { ascending: true });
+
+      if (menuError) {
+        await supabase.from('outlets').delete().eq('id', outlet.id);
+        throw new Error('Unable to prepare outlet menu.');
+      }
+
+      if (menuItems?.length) {
+        const rows = menuItems.map(item => ({
+          outlet_id: outlet.id,
+          menu_item_id: item.id,
+          is_available: true
+        }));
+
+        const { error: menuLinkError } = await supabase
+          .from('outlet_menu_items')
+          .insert(rows);
+
+        if (menuLinkError) {
+          await supabase.from('outlets').delete().eq('id', outlet.id);
+          throw new Error('Unable to configure outlet menu.');
+        }
+      }
+
+      return {
+        success: true,
+        outlet,
+        menuItemsConfigured: menuItems?.length || 0,
+        createdBy: state.session.user.id
+      };
+    }
+
+    if (method === 'PATCH') {
+      const id = String(body?.id || '').trim();
+      if (!id) throw new Error('Outlet id is required.');
+
+      const updates = {};
+      if (body.name !== undefined) updates.name = String(body.name).trim();
+      if (body.address !== undefined) updates.address = String(body.address).trim();
+      if (body.phone !== undefined) updates.phone = String(body.phone).trim() || null;
+      if (body.openingTime !== undefined) updates.opening_time = String(body.openingTime);
+      if (body.closingTime !== undefined) updates.closing_time = String(body.closingTime);
+      if (body.mapsUrl !== undefined) updates.maps_url = String(body.mapsUrl).trim() || null;
+      if (body.zomatoUrl !== undefined) updates.zomato_url = String(body.zomatoUrl).trim() || null;
+      if (body.swiggyUrl !== undefined) updates.swiggy_url = String(body.swiggyUrl).trim() || null;
+      if (body.status !== undefined) updates.status = body.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      updates.updated_at = new Date().toISOString();
+
+      const { data: outlet, error } = await supabase
+        .from('outlets')
+        .update(updates)
+        .eq('id', id)
+        .select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at')
+        .single();
+
+      if (error || !outlet) throw new Error(error?.message || 'Outlet not found.');
+      return { success: true, outlet };
+    }
+  }
+
   const response = await fetch('/api/outlets', {
     method,
-    headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(body ? { 'Content-Type': 'application/json' } : {})
+    },
     body: body ? JSON.stringify(body) : undefined
   });
+
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || `Outlet request failed (${response.status}).`);
   return payload;
