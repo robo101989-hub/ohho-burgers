@@ -427,7 +427,13 @@ async function createOutlet(event) {
 
 function wireDashboardActions() {
   $$('[data-section="outlets"], .action-outlet').forEach(button => button.addEventListener('click', openOutletSection));
-  $$('button').filter(button => /ADD NEW OUTLET/i.test(button.textContent)).forEach(button => button.addEventListener('click', event => { event.preventDefault(); openOutletModal(); }));
+  const addOutletButton = $('#addNewOutletBtn');
+  if (addOutletButton) {
+    addOutletButton.addEventListener('click', event => {
+      event.preventDefault();
+      openOutletModal();
+    });
+  }
   const user = $('.user');
   if (user) {
     user.classList.add('session-user');
@@ -470,13 +476,40 @@ async function init() {
   buildAuthGate();
   buildOutletModal();
   buildToast();
+
+  // Keep the dashboard hidden until authentication is confirmed.
+  document.body.classList.add('dashboard-auth-pending');
+
+  const gate = $('#authGate');
+  gate?.classList.remove('hidden');
+
+  // Wire actions after the dashboard DOM and modal exist.
   wireDashboardActions();
-  const { data } = await supabase.auth.getSession();
-  if (data.session) await startApp(data.session);
-  else $('#authGate')?.classList.remove('hidden');
+
+  const { data, error } = await supabase.auth.getSession();
+
+  if (error) {
+    console.error('Unable to restore session:', error);
+    setAuthError('Unable to restore your session. Please sign in again.');
+    return;
+  }
+
+  if (data.session) {
+    await startApp(data.session);
+  } else {
+    gate?.classList.remove('hidden');
+  }
+
   supabase.auth.onAuthStateChange(async (_event, session) => {
-    if (session) await startApp(session);
-    else $('#authGate')?.classList.remove('hidden');
+    if (session) {
+      await startApp(session);
+    } else {
+      state.session = null;
+      state.profile = null;
+      closeOutletModal();
+      gate?.classList.remove('hidden');
+      document.body.classList.add('dashboard-auth-pending');
+    }
   });
 }
 
