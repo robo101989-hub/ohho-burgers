@@ -3,3 +3,14 @@
 node_modules
 .env.local
 .env*
+
+# Build output
+dist/
+
+# Supabase local temp files
+supabase/.temp/
+
+# Local dashboard backups
+dashboard-before-v2-redesign.html
+dashboard-v3-backup.html
+src/dashboard-before-auth-fix.js

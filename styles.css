@@ -16,3 +16,268 @@
 .cart-trigger{display:inline-flex;align-items:center;gap:8px;border:1px solid #616161;border-radius:999px;padding:12px 14px;background:transparent;color:#fff;font:800 10px var(--sans);letter-spacing:.7px;text-transform:uppercase;cursor:pointer}.cart-trigger b{display:grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border-radius:50%;background:var(--yellow);color:var(--ink);font:800 10px var(--mono)}.menu-item{grid-template-columns:1fr auto auto}.menu-add{border:1px solid #555;border-radius:999px;background:transparent;color:#fff;padding:8px 13px;font:800 10px var(--sans);letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:.2s}.menu-add:hover{background:var(--yellow);border-color:var(--yellow);color:var(--ink)}.cart-backdrop{position:fixed;inset:0;z-index:29;background:#0009;opacity:0;pointer-events:none;transition:opacity .25s}.cart-drawer{position:fixed;z-index:30;top:0;right:0;width:min(440px,100%);height:100dvh;padding:30px;background:#171717;border-left:1px solid #383838;display:flex;flex-direction:column;transform:translateX(101%);transition:transform .3s ease;box-shadow:-20px 0 60px #0006}.cart-open{overflow:hidden}.cart-open .cart-backdrop{opacity:1;pointer-events:auto}.cart-open .cart-drawer{transform:none}.cart-header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;padding-bottom:22px;border-bottom:1px solid #383838}.cart-header .eyebrow{margin-bottom:12px}.cart-header h2{font-size:42px;margin:0}.cart-close{width:37px;height:37px;border:1px solid #555;border-radius:50%;background:transparent;color:#fff;font-size:28px;line-height:1;cursor:pointer}.cart-items{list-style:none;margin:0;padding:7px 0;overflow:auto;flex:1}.cart-line{display:flex;justify-content:space-between;gap:14px;padding:19px 0;border-bottom:1px solid #303030}.cart-line h3{font:800 16px var(--sans);margin:0 0 6px}.cart-line p{font:500 11px var(--mono);color:#999;margin:0}.cart-line-actions{text-align:right}.cart-line-actions>b{display:block;margin-top:9px;color:var(--yellow);font:800 13px var(--mono)}.quantity-control{display:inline-flex;align-items:center;border:1px solid #444;border-radius:999px;overflow:hidden}.quantity-control button{width:27px;height:27px;border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer}.quantity-control span{min-width:24px;text-align:center;font:700 11px var(--mono)}.cart-empty{padding:35px 0;color:#999;font-size:13px;line-height:1.6}.cart-summary{border-top:1px solid #383838;padding-top:20px}.cart-summary>div{display:flex;justify-content:space-between;align-items:end;margin-bottom:16px}.cart-summary span{font:500 11px var(--mono);color:#aaa;text-transform:uppercase}.cart-summary strong{font:900 28px var(--display);color:var(--yellow)}.cart-summary .pill{width:100%;opacity:.55;cursor:not-allowed}.cart-summary p{margin:13px 0 0;color:#888;font-size:10px;line-height:1.5;text-align:center}.cart-summary .pill:enabled{opacity:1;cursor:pointer}.checkout-panel{height:100%;display:flex;flex-direction:column}.checkout-back{align-self:flex-start;border:0;background:transparent;color:var(--yellow);padding:17px 0 12px;font:800 10px var(--sans);letter-spacing:.5px;text-transform:uppercase;cursor:pointer}.checkout-form{overflow:auto;display:grid;gap:14px;padding-right:2px}.checkout-form label{font:700 10px var(--sans);letter-spacing:.5px;text-transform:uppercase}.checkout-form label small{color:#888;font-weight:500;text-transform:none;letter-spacing:0}.checkout-form input,.checkout-form select,.checkout-form textarea{display:block;width:100%;margin-top:7px;border:1px solid #454545;border-radius:4px;background:#202020;color:#fff;padding:12px;font:500 13px var(--sans);outline:none}.checkout-form textarea{min-height:74px;resize:vertical}.checkout-form input:focus,.checkout-form select:focus,.checkout-form textarea:focus{border-color:var(--yellow)}.checkout-order{border-top:1px solid #383838;border-bottom:1px solid #383838;padding:15px 0}.checkout-order>p{margin:0 0 10px;color:#aaa;font:700 10px var(--sans);letter-spacing:.5px;text-transform:uppercase}.checkout-order ul{list-style:none;margin:0;padding:0}.checkout-order li{display:flex;justify-content:space-between;gap:14px;padding:6px 0;color:#ddd;font-size:12px}.checkout-order li b{color:var(--yellow);font:700 11px var(--mono);white-space:nowrap}.checkout-order>div{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #383838;margin-top:9px;padding-top:12px}.checkout-order>div span{font:700 10px var(--sans);letter-spacing:.5px;text-transform:uppercase}.checkout-order>div strong{font:900 24px var(--display);color:var(--yellow)}.checkout-form .pill{width:100%}.checkout-status{min-height:15px;margin:0;color:var(--yellow);font-size:11px;text-align:center}@media(max-width:860px){.cart-trigger{position:fixed;right:68px;bottom:14px;z-index:12;background:#171717;border-color:#555;box-shadow:0 8px 22px #0007}.menu-item{grid-template-columns:1fr auto}.menu-add{grid-column:1 / -1;justify-self:start;margin-top:-5px}.cart-drawer{padding:22px 18px 100px}}
 
 .checkout-panel{position:fixed;z-index:31;top:0;right:0;width:min(440px,100%);height:100dvh;padding:30px;background:#171717;border-left:1px solid #383838;display:flex;flex-direction:column;transform:translateX(101%);transition:transform .3s ease;box-shadow:-20px 0 60px #0006}.checkout-open .cart-drawer{transform:translateX(-101%)}.checkout-open .checkout-panel{transform:none}
+
+/* Premium OHHO outlet cards */
+.location-grid{
+  gap:16px;
+}
+
+.location-card{
+  position:relative;
+  background:#151515;
+  border:1px solid #303030;
+  border-radius:18px;
+  padding:28px;
+  min-height:310px;
+  overflow:hidden;
+  transition:transform .25s ease,border-color .25s ease,background .25s ease;
+}
+
+.location-card:before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  background:var(--yellow);
+}
+
+.location-card:hover{
+  transform:translateY(-5px);
+  border-color:#555;
+  background:#191919;
+}
+
+.location-card-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin:0;
+}
+
+.location-status{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  color:var(--yellow);
+  font:800 9px var(--mono);
+  letter-spacing:1.4px;
+  text-transform:uppercase;
+}
+
+.location-status:before{
+  content:"";
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--yellow);
+  box-shadow:0 0 0 4px rgba(255,212,0,.1);
+}
+
+.location-arrow{
+  color:#666;
+  font-size:22px;
+  transition:.25s ease;
+}
+
+.location-card:hover .location-arrow{
+  color:var(--yellow);
+  transform:translate(3px,-3px);
+}
+
+.location-card h2{
+  font:900 clamp(38px,4vw,58px)/.9 var(--display);
+  letter-spacing:-1px;
+  text-transform:uppercase;
+  margin:48px 0 14px;
+}
+
+.location-address{
+  color:#aaa;
+  font-size:12px;
+  line-height:1.65;
+  max-width:440px;
+  min-height:40px;
+  margin:0;
+}
+
+.location-meta{
+  display:grid !important;
+  grid-template-columns:1fr 1fr;
+  gap:12px !important;
+  margin-top:25px !important;
+  padding-top:18px;
+  border-top:1px solid #303030;
+}
+
+.location-meta span{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  color:#fff;
+  font:600 11px var(--sans);
+}
+
+.location-meta span:first-child:before{
+  content:"HOURS";
+  color:#777;
+  font:500 8px var(--mono);
+  letter-spacing:1px;
+}
+
+.location-meta span:last-child:before{
+  content:"CALL";
+  color:#777;
+  font:500 8px var(--mono);
+  letter-spacing:1px;
+}
+
+.location-links{
+  display:flex !important;
+  flex-wrap:wrap;
+  gap:8px !important;
+  margin-top:18px !important;
+}
+
+.location-links a{
+  border:1px solid #454545 !important;
+  border-radius:5px;
+  padding:10px 13px !important;
+  color:#fff !important;
+  font:800 9px var(--sans) !important;
+  letter-spacing:.7px;
+  transition:.2s ease;
+}
+
+.location-links a:hover{
+  background:var(--yellow) !important;
+  border-color:var(--yellow) !important;
+  color:var(--ink) !important;
+  transform:translateY(-2px);
+}
+
+@media(max-width:600px){
+  .location-card{
+    padding:24px;
+    min-height:0;
+  }
+
+  .location-card h2{
+    margin-top:38px;
+    font-size:45px;
+  }
+
+  .location-meta{
+    grid-template-columns:1fr !important;
+  }
+
+  .location-links a{
+    flex:1;
+    text-align:center;
+  }
+}
+
+/* Compact outlet cards for a scalable OHHO network */
+.location-card{
+  min-height:250px;
+  padding:23px 25px;
+}
+
+.location-card h2{
+  font-size:clamp(34px,3.2vw,48px);
+  margin:34px 0 10px;
+}
+
+.location-address{
+  max-width:500px;
+  min-height:0;
+}
+
+.location-meta{
+  margin-top:18px !important;
+  padding-top:14px;
+}
+
+.location-links{
+  margin-top:14px !important;
+}
+
+.location-links a{
+  padding:8px 12px !important;
+}
+
+@media(max-width:600px){
+  .location-card{
+    min-height:0;
+    padding:21px;
+  }
+
+  .location-card h2{
+    margin-top:30px;
+    font-size:40px;
+  }
+}
+
+/* Scalable outlet network grid */
+.location-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+}
+
+.location-card{
+  min-height:225px;
+  padding:21px 22px;
+}
+
+.location-card h2{
+  font-size:clamp(32px,2.8vw,44px);
+  margin:30px 0 9px;
+}
+
+.location-address{
+  font-size:11px;
+  line-height:1.55;
+}
+
+.location-meta{
+  grid-template-columns:1fr 1fr;
+  gap:8px !important;
+  margin-top:15px !important;
+  padding-top:12px;
+}
+
+.location-meta span{
+  font-size:10px;
+}
+
+.location-links{
+  margin-top:12px !important;
+}
+
+.location-links a{
+  padding:7px 10px !important;
+  font-size:8px !important;
+}
+
+@media(max-width:1000px){
+  .location-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:600px){
+  .location-grid{
+    grid-template-columns:1fr;
+  }
+
+  .location-card{
+    min-height:0;
+    padding:21px;
+  }
+
+  .location-card h2{
+    font-size:40px;
+    margin-top:30px;
+  }
+}

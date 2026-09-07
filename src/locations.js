@@ -23,6 +23,17 @@ async function loadLocations() {
   }
 
   grid.innerHTML = data.map(outlet => {
+    const formatTime = (value) => {
+      if (!value) return "";
+      const [hour, minute] = value.split(":").map(Number);
+      const suffix = hour >= 12 ? "PM" : "AM";
+      const displayHour = hour % 12 || 12;
+      return `${displayHour}:${String(minute).padStart(2, "0")} ${suffix}`;
+    };
+
+    const openingTime = formatTime(outlet.opening_time);
+    const closingTime = formatTime(outlet.closing_time);
+
     const links = [
       outlet.maps_url ? `<a href="${outlet.maps_url}" target="_blank" rel="noopener">Maps ↗</a>` : "",
       outlet.zomato_url ? `<a href="${outlet.zomato_url}" target="_blank" rel="noopener">Zomato ↗</a>` : "",
@@ -38,8 +49,8 @@ async function loadLocations() {
         <h2>${outlet.name}</h2>
         <p class="location-address">${outlet.address}</p>
         <div class="location-meta">
-          <span>${outlet.opening_time} – ${outlet.closing_time}</span>
-          ${outlet.phone ? `<span>${outlet.phone}</span>` : ""}
+          <span>${openingTime} – ${closingTime}</span>
+          ${outlet.phone ? `<span>☎ ${outlet.phone}</span>` : ""}
         </div>
         ${links ? `<div class="location-links">${links}</div>` : ""}
       </article>

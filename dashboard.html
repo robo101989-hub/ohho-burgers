@@ -142,5 +142,5 @@ const sections=[...document.querySelectorAll('.section')];
 function showSection(id){sections.forEach(s=>s.classList.toggle('active',s.id===id));document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.section===id));window.scrollTo({top:0,behavior:'smooth'});}
 buttons.forEach(btn=>btn.addEventListener('click',()=>{if(btn.dataset.section)showSection(btn.dataset.section)}));
 </script>
-</body>
+<script type="module" src="/src/dashboard.js"></script></body>
 </html>
