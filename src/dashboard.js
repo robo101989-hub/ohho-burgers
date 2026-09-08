@@ -40,6 +40,48 @@ function injectStyles() {
     .auth-form{display:grid;gap:10px}.auth-form input{width:100%;background:#090909;border:1px solid #303030;color:#fff;border-radius:10px;padding:13px 14px;outline:0;font-size:13px}.auth-form input:focus{border-color:#ffd21c}
     .auth-submit{border:0;background:#ffd21c;color:#080808;border-radius:10px;padding:13px 15px;font-size:11px;font-weight:950;letter-spacing:.6px;margin-top:3px}.auth-submit:disabled{opacity:.55;cursor:wait}
     .auth-error{display:none;color:#ff8c8c;background:#241111;border:1px solid #4a2020;border-radius:9px;padding:10px;font-size:11px;line-height:1.45}.auth-error.show{display:block}
+
+    .orders-page-head{align-items:flex-end}
+    .orders-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .orders-actions .search{min-width:190px}
+    .orders-filter{height:38px;background:#0d0d0d;border:1px solid #303030;color:#eee;border-radius:9px;padding:0 11px;font-size:10px;font-weight:900;outline:0}
+    .orders-filter:focus{border-color:#ffd21c}
+    .orders-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 16px}
+    .orders-summary>div{background:#0d0d0d;border:1px solid #242424;border-radius:12px;padding:15px 17px}
+    .orders-summary span{display:block;color:#666;font:800 8px var(--mono);letter-spacing:1.5px;margin-bottom:7px}
+    .orders-summary strong{font:900 24px var(--mono);color:#f5f5f0}
+    .orders-board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .order-card{position:relative;background:#0d0d0d;border:1px solid #242424;border-radius:14px;padding:17px;overflow:hidden}
+    .order-card:before{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,#ffd21c,transparent 62%)}
+    .order-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .order-number{font:900 9px var(--mono);color:#ffd21c;letter-spacing:1.2px}
+    .order-card h2{margin:5px 0 0;font-size:18px;letter-spacing:-.6px}
+    .order-status{display:inline-flex;align-items:center;padding:6px 8px;border-radius:6px;background:#19150a;border:1px solid #4a3d13;color:#ffd21c;font:900 8px var(--mono);letter-spacing:.7px;white-space:nowrap}
+    .order-status.completed{color:#72d56b;background:#0d170d;border-color:#253b25}
+    .order-status.cancelled{color:#ff8c8c;background:#1c0d0d;border-color:#482121}
+    .order-meta{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 13px}
+    .order-meta span{border:1px solid #292929;background:#101010;color:#999;border-radius:6px;padding:6px 8px;font:800 8px var(--mono);letter-spacing:.3px}
+    .order-items{border-top:1px solid #222;border-bottom:1px solid #222}
+    .order-item-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;color:#bbb;font-size:11px}
+    .order-item-row strong{color:#ffd21c;font-family:var(--mono)}
+    .order-item-row+ .order-item-row{border-top:1px solid #1b1b1b}
+    .order-card-bottom{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-top:14px}
+    .order-time,.order-count{display:block;color:#666;font:800 8px var(--mono);letter-spacing:.4px}
+    .order-count{margin-top:4px;color:#888}
+    .order-total{font:900 20px var(--mono);color:#f5f5f0;white-space:nowrap}
+
+    .order-action-btn{width:100%;margin-top:15px;border:1px solid #ffd21c;background:#ffd21c;color:#080808;border-radius:9px;padding:11px 13px;font:950 9px var(--mono);letter-spacing:.8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:transform .15s ease,background .15s ease}
+    .order-action-btn span{font-size:14px;line-height:1}
+    .order-action-btn:hover{transform:translateY(-1px);background:#ffe04a}
+    .order-action-btn:active{transform:translateY(0)}
+    .order-action-done{margin-top:15px;padding:10px 12px;text-align:center;border:1px solid #242424;border-radius:9px;color:#555;font:800 8px var(--mono);letter-spacing:1px}
+
+    .orders-loading,.orders-empty{min-height:220px;grid-column:1/-1;display:grid;place-items:center;text-align:center;border:1px dashed #303030;border-radius:14px;color:#666;padding:30px}
+    .orders-empty strong{display:block;color:#eee;font-size:15px}
+    .orders-empty span{display:block;font-size:11px;margin-top:6px}
+    @media(max-width:1050px){.orders-board{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:760px){.orders-page-head{align-items:flex-start}.orders-actions{width:100%}.orders-actions .search{flex:1;min-width:0}.orders-filter{flex:1}.orders-summary{grid-template-columns:1fr}.orders-board{grid-template-columns:1fr}}
+
     .outlet-grid{grid-template-columns:repeat(3,minmax(0,1fr));display:grid;gap:12px}
     .outlet-card{position:relative;min-height:205px;padding:18px;background:#0d0d0d;border:1px solid #242424;border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.2);overflow:hidden}.outlet-card:before{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,#ffd21c,transparent 58%)}
     .outlet-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.outlet-card h2{font-size:21px;letter-spacing:-.8px;margin:0}.outlet-status{font-size:8px;font-weight:950;letter-spacing:1px;padding:5px 7px;border-radius:6px;border:1px solid #253b25;color:#72d56b;background:#0d170d}.outlet-status.off{color:#ff8c8c;background:#1c0d0d;border-color:#482121}
@@ -712,6 +754,7 @@ function renderOutletSelector() {
     updateDashboardContext();
     try {
       await loadPosMenu();
+      await loadOrders();
     } catch (error) {
       console.error('Unable to refresh POS menu:', error);
       toast(error.message || 'Unable to load POS menu.', 'bad');
@@ -789,6 +832,84 @@ async function createOutlet(event) {
   }
 }
 
+
+
+function renderOrderAction(order) {
+  const actions = {
+    NEW: ['ACCEPTED', 'ACCEPT ORDER'],
+    ACCEPTED: ['PREPARING', 'START PREPARING'],
+    PREPARING: ['READY', 'MARK READY'],
+    READY: ['COMPLETED', 'COMPLETE ORDER']
+  };
+
+  const action = actions[order.order_status];
+
+  if (!action) {
+    return '<div class="order-action-done">NO FURTHER ACTION</div>';
+  }
+
+  return `
+    <button
+      type="button"
+      class="order-action-btn"
+      data-order-id="${escapeHtml(order.id)}"
+      data-next-status="${action[0]}"
+    >
+      ${escapeHtml(action[1])}
+      <span>→</span>
+    </button>
+  `;
+}
+
+
+async function updateOrderStatus(orderId, nextStatus) {
+  const allowed = ['NEW', 'ACCEPTED', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED'];
+
+  if (!allowed.includes(nextStatus)) {
+    toast('Invalid order status.', 'bad');
+    return;
+  }
+
+  const button = $(`.order-action-btn[data-order-id="${orderId}"]`);
+  if (button) {
+    button.disabled = true;
+    button.innerHTML = 'UPDATING…';
+  }
+
+  const { error } = await supabase
+    .from('orders')
+    .update({ status: nextStatus })
+    .eq('id', orderId);
+
+  if (error) {
+    console.error('Unable to update order status:', error);
+    toast(error.message || 'Unable to update order status.', 'bad');
+    renderOrders();
+    return;
+  }
+
+  await loadOrders();
+  toast(`Order updated to ${nextStatus.replaceAll('_', ' ')}.`, 'ok');
+}
+
+function wireOrdersActions() {
+  const search = $('#ordersSearch');
+  const status = $('#ordersStatusFilter');
+
+  search?.addEventListener('input', renderOrders);
+  status?.addEventListener('change', renderOrders);
+
+  $('#ordersBoard')?.addEventListener('click', event => {
+    const button = event.target.closest('.order-action-btn');
+    if (!button) return;
+
+    updateOrderStatus(
+      button.dataset.orderId,
+      button.dataset.nextStatus
+    );
+  });
+}
+
 function wireDashboardActions() {
   $$('[data-section="outlets"], .action-outlet').forEach(button => button.addEventListener('click', openOutletSection));
   const addOutletButton = $('#addNewOutletBtn');
@@ -806,6 +927,199 @@ function wireDashboardActions() {
   }
 
   wirePosActions();
+  wireOrdersActions();
+}
+
+
+async function loadOrders() {
+  const board = $('#ordersBoard');
+  if (board) {
+    board.innerHTML = '<div class="orders-loading">Loading orders…</div>';
+  }
+
+  let query = supabase
+    .from('orders')
+    .select('id, order_number, order_type, status, payment_method, payment_status, order_source, table_number, subtotal, total, created_at, outlet_id')
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (state.selectedOutlet !== 'ALL') {
+    const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
+    if (outlet?.id) query = query.eq('outlet_id', outlet.id);
+  }
+
+  const { data: orders, error } = await query;
+
+  if (error) {
+    console.error('Unable to load orders:', error);
+    if (board) {
+      board.innerHTML = '<div class="orders-empty"><strong>Unable to load orders</strong><span>Please refresh and try again.</span></div>';
+    }
+    toast(error.message || 'Unable to load orders.', 'bad');
+    return;
+  }
+
+  const orderIds = (orders || []).map(order => order.id);
+
+  let items = [];
+
+  if (orderIds.length) {
+    const { data: orderItems, error: itemsError } = await supabase
+      .from('order_items')
+      .select('id, order_id, quantity, item_name, unit_price, line_total')
+      .in('order_id', orderIds);
+
+    if (itemsError) {
+      console.error('Unable to load order items:', itemsError);
+      toast(itemsError.message || 'Unable to load order items.', 'bad');
+    } else {
+      items = orderItems || [];
+    }
+  }
+
+  const itemsByOrder = new Map();
+
+  items.forEach(item => {
+    if (!itemsByOrder.has(item.order_id)) {
+      itemsByOrder.set(item.order_id, []);
+    }
+    itemsByOrder.get(item.order_id).push(item);
+  });
+
+  const outletsById = new Map(
+    state.outlets.map(outlet => [outlet.id, outlet])
+  );
+
+  state.orders = (orders || []).map(order => ({
+    ...order,
+    order_status: order.status,
+    total_amount: order.total,
+    outlets: outletsById.get(order.outlet_id) || null,
+    order_items: itemsByOrder.get(order.id) || []
+  }));
+
+  renderOrders();
+}
+
+
+function formatOrderTime(value) {
+  if (!value) return '—';
+  return new Date(value).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function formatOrderDate(value) {
+  if (!value) return '—';
+  return new Date(value).toLocaleDateString([], {
+    day: '2-digit',
+    month: 'short'
+  });
+}
+
+function renderOrders() {
+  const board = $('#ordersBoard');
+  if (!board) return;
+
+  const search = ($('#ordersSearch')?.value || '').trim().toLowerCase();
+  const status = $('#ordersStatusFilter')?.value || 'ALL';
+
+  const orders = (state.orders || []).filter(order => {
+    const matchesStatus = status === 'ALL' || order.order_status === status;
+    if (!matchesStatus) return false;
+
+    if (!search) return true;
+
+    const orderNumber = String(order.order_number || '').toLowerCase();
+    const outletName = String(order.outlets?.name || '').toLowerCase();
+    const source = String(order.order_source || '').toLowerCase();
+    const type = String(order.order_type || '').toLowerCase();
+
+    return (
+      orderNumber.includes(search) ||
+      outletName.includes(search) ||
+      source.includes(search) ||
+      type.includes(search)
+    );
+  });
+
+  const todayKey = new Date().toDateString();
+
+  const todayOrders = (state.orders || []).filter(order =>
+    new Date(order.created_at).toDateString() === todayKey
+  );
+
+  const liveOrders = (state.orders || []).filter(order =>
+    ['NEW', 'ACCEPTED', 'PREPARING', 'READY'].includes(order.order_status)
+  );
+
+  const todaySales = todayOrders.reduce(
+    (sum, order) => sum + Number(order.total_amount || 0),
+    0
+  );
+
+  const liveCount = $('#ordersLiveCount');
+  const todayCount = $('#ordersTodayCount');
+  const sales = $('#ordersTodaySales');
+
+  if (liveCount) liveCount.textContent = String(liveOrders.length);
+  if (todayCount) todayCount.textContent = String(todayOrders.length);
+  if (sales) sales.textContent = `₹${todaySales.toLocaleString('en-IN')}`;
+
+  if (!orders.length) {
+    board.innerHTML = `
+      <div class="orders-empty">
+        <strong>No orders found</strong>
+        <span>Try changing the filters or create a new POS order.</span>
+      </div>
+    `;
+    return;
+  }
+
+  board.innerHTML = orders.map(order => {
+    const items = order.order_items || [];
+    const itemCount = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+    const statusClass = String(order.order_status || '').toLowerCase().replaceAll('_', '-');
+
+    return `
+      <article class="order-card">
+        <div class="order-card-top">
+          <div>
+            <div class="order-number">ORDER #${escapeHtml(order.order_number)}</div>
+            <h2>${escapeHtml(order.outlets?.name || 'OHHO Outlet')}</h2>
+          </div>
+          <span class="order-status ${statusClass}">${escapeHtml(order.order_status || 'NEW')}</span>
+        </div>
+
+        <div class="order-meta">
+          <span>${escapeHtml(order.order_type || 'TAKEAWAY')}</span>
+          <span>${escapeHtml(order.order_source || 'POS')}</span>
+          <span>${escapeHtml(order.payment_method || 'CASH')}</span>
+          ${order.table_number ? `<span>TABLE ${escapeHtml(order.table_number)}</span>` : ''}
+        </div>
+
+        <div class="order-items">
+          ${items.map(item => `
+            <div class="order-item-row">
+              <span><strong>${escapeHtml(item.quantity)}</strong> × ${escapeHtml(item.menu_items?.name || 'Menu Item')}</span>
+              <span>₹${Number(item.line_total || 0).toLocaleString('en-IN')}</span>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="order-card-bottom">
+          <div>
+            <span class="order-time">${formatOrderDate(order.created_at)} · ${formatOrderTime(order.created_at)}</span>
+            <span class="order-count">${itemCount} item${itemCount === 1 ? '' : 's'}</span>
+          </div>
+          <strong class="order-total">₹${Number(order.total_amount || 0).toLocaleString('en-IN')}</strong>
+        </div>
+
+        ${renderOrderAction(order)}
+      </article>
+    `;
+  }).join('');
 }
 
 function openOutletSection() {
@@ -831,6 +1145,7 @@ async function startApp(session) {
     $('#authGate')?.classList.add('hidden');
     await loadOutlets();
     await loadPosMenu();
+    await loadOrders();
   } catch (error) {
     await supabase.auth.signOut();
     setAuthError(error.message || 'Unable to authorize this account.');
