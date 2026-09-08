@@ -75,7 +75,79 @@ body{font-size:14px}
 .panel-title{font-size:13px}
 .panel-sub{font-size:9px}
 }
-</style></head>
+</style>
+<style>
+/* OHHO POS workspace */
+.pos-page-head{align-items:flex-end}
+.pos-head-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+.pos-outlet-label{color:#777;font:700 9px var(--mono);letter-spacing:1px;text-transform:uppercase}
+.pos-outlet-label strong{color:#eee}
+.pos-workspace{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+.pos-catalog,.pos-cart-panel{background:#0d0d0d;border:1px solid #252525;border-radius:16px}
+.pos-catalog{padding:18px}
+.pos-mode-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.pos-order-type{display:grid;grid-template-columns:1fr 1fr;background:#111;border:1px solid #292929;border-radius:9px;padding:3px}
+.pos-type-btn,.pos-payment-btn{border:0;background:transparent;color:#777;font:900 10px var(--mono);letter-spacing:.8px;border-radius:6px;padding:11px 15px;cursor:pointer}
+.pos-type-btn.active,.pos-payment-btn.active{background:var(--yellow);color:#111}
+.pos-table-wrap{display:flex;align-items:center;gap:8px}
+.pos-table-wrap label{color:#777;font:800 8px var(--mono);letter-spacing:1px}
+.pos-table-wrap input{width:70px;background:#111;border:1px solid #333;color:#fff;border-radius:7px;padding:10px 9px;font:800 12px var(--mono);outline:none}
+.pos-table-wrap input:focus{border-color:var(--yellow)}
+.pos-category-tabs{display:flex;gap:7px;overflow-x:auto;padding-bottom:13px;border-bottom:1px solid #222;scrollbar-width:none}
+.pos-category-tabs::-webkit-scrollbar{display:none}
+.pos-category-btn{flex:0 0 auto;border:1px solid #292929;background:#111;color:#888;border-radius:7px;padding:9px 12px;font:800 9px var(--mono);letter-spacing:.7px;cursor:pointer;white-space:nowrap}
+.pos-category-btn.active{background:#ffd21c;border-color:#ffd21c;color:#111}
+.pos-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding-top:14px}
+.pos-menu-card{position:relative;min-height:128px;padding:15px;background:#111;border:1px solid #282828;border-radius:11px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;transition:.18s ease}
+.pos-menu-card:hover{border-color:#555;transform:translateY(-2px)}
+.pos-menu-card.off{opacity:.4;cursor:not-allowed}
+.pos-menu-card.off:hover{transform:none;border-color:#282828}
+.pos-menu-card-top{display:flex;justify-content:space-between;gap:8px}
+.pos-menu-category{color:#666;font:800 7px var(--mono);letter-spacing:1px;text-transform:uppercase}
+.pos-menu-fav{color:var(--yellow);font-size:12px}
+.pos-menu-card h3{font-size:14px;line-height:1.2;margin:12px 0 6px;letter-spacing:-.2px}
+.pos-menu-price{color:var(--yellow);font:900 13px var(--mono)}
+.pos-menu-add{position:absolute;right:11px;bottom:10px;width:29px;height:29px;border:1px solid #3a3a3a;background:#181818;color:#ffd21c;border-radius:7px;font-size:18px;line-height:1;cursor:pointer}
+.pos-menu-card:hover .pos-menu-add{background:var(--yellow);color:#111;border-color:var(--yellow)}
+.pos-menu-card.off .pos-menu-add{display:none}
+.pos-unavailable{position:absolute;right:10px;bottom:10px;color:#777;font:800 7px var(--mono);letter-spacing:.7px}
+.pos-loading,.pos-menu-empty{grid-column:1/-1;padding:50px 20px;text-align:center;color:#666;font-size:13px}
+.pos-cart-panel{position:sticky;top:16px;min-height:540px;display:flex;flex-direction:column}
+.pos-cart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:18px;border-bottom:1px solid #252525}
+.pos-cart-head h2{font-size:20px;margin:3px 0 0}
+.pos-cart-head h2 span{color:#777;font:800 11px var(--mono)}
+.pos-clear-btn{border:1px solid #303030;background:#111;color:#777;border-radius:6px;padding:7px 9px;font:800 8px var(--mono);cursor:pointer}
+.pos-clear-btn:hover{color:#fff;border-color:#555}
+.pos-cart-items{flex:1;max-height:430px;overflow-y:auto}
+.pos-empty-cart{min-height:250px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;color:#555}
+.pos-empty-cart strong{color:#aaa;font-size:14px;margin-bottom:5px}
+.pos-empty-cart span{font-size:11px}
+.pos-cart-item{display:grid;grid-template-columns:1fr auto;gap:8px;padding:13px 18px;border-bottom:1px solid #1d1d1d}
+.pos-cart-item-name{font-size:12px;font-weight:800;color:#eee}
+.pos-cart-item-price{color:#777;font:800 9px var(--mono);margin-top:4px}
+.pos-cart-item-right{text-align:right}
+.pos-line-total{color:#fff;font:900 11px var(--mono)}
+.pos-qty{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:7px}
+.pos-qty button{width:23px;height:23px;border:1px solid #303030;background:#151515;color:#ddd;border-radius:5px;cursor:pointer;font-weight:900}
+.pos-qty span{min-width:16px;text-align:center;color:#fff;font:800 10px var(--mono)}
+.pos-cart-footer{padding:16px 18px;border-top:1px solid #252525}
+.pos-total-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;color:#aaa;font-size:11px}
+.pos-total-row strong{color:#eee;font:900 12px var(--mono)}
+.pos-total-row.muted{color:#555}
+.pos-total-row.grand{margin-top:7px;padding:13px 0;border-top:1px solid #292929;color:#fff;font-weight:900}
+.pos-total-row.grand strong{color:var(--yellow);font-size:20px}
+.pos-payment-title{color:#666;font:800 8px var(--mono);letter-spacing:1.2px;margin:12px 0 7px}
+.pos-payment-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.pos-payment-btn{border:1px solid #292929;background:#111;padding:9px 5px;font-size:8px}
+.pos-place-btn{width:100%;margin-top:10px;border:0;background:var(--yellow);color:#111;border-radius:8px;padding:13px;font:950 10px var(--mono);letter-spacing:1px;cursor:pointer}
+.pos-place-btn span{float:right;font-size:15px;line-height:9px}
+.pos-place-btn:disabled{opacity:.35;cursor:not-allowed}
+.hidden{display:none!important}
+@media(max-width:1100px){.pos-workspace{grid-template-columns:minmax(0,1fr) 330px}.pos-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:820px){.pos-workspace{grid-template-columns:1fr}.pos-cart-panel{position:relative;top:auto}.pos-cart-items{max-height:320px}}
+@media(max-width:560px){.pos-catalog{padding:12px}.pos-mode-row{align-items:stretch;flex-direction:column}.pos-order-type{width:100%}.pos-table-wrap{justify-content:flex-end}.pos-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pos-menu-card{min-height:120px;padding:12px}.pos-menu-card h3{font-size:12px}.pos-head-actions{width:100%;justify-content:space-between}.pos-workspace{gap:10px}}
+</style>
+</head>
 <body>
 <div class="app">
 <aside class="sidebar">
@@ -126,7 +198,74 @@ body{font-size:14px}
     </div></article>
   </div>
 </section>
-<section id="pos" class="section"><div class="page-head"><div><div class="eyebrow">Point of sale</div><h1>POS</h1><p>Fast, touch-first order taking for dine-in and takeaway.</p></div><button class="primary">＋ NEW ORDER</button></div><div class="placeholder"><div><strong>POS workspace</strong><span>The live order-taking interface is the next operational layer.</span></div></div></section>
+<section id="pos" class="section">
+  <div class="page-head pos-page-head">
+    <div>
+      <div class="eyebrow">Point of sale</div>
+      <h1>POS</h1>
+      <p>Fast, touch-first order taking for dine-in and takeaway.</p>
+    </div>
+    <div class="pos-head-actions">
+      <span class="pos-outlet-label">Current outlet · <strong id="posOutletName">All Outlets</strong></span>
+      <button id="posNewOrderBtn" class="secondary" type="button">NEW ORDER</button>
+    </div>
+  </div>
+
+  <div class="pos-workspace">
+    <div class="pos-catalog">
+      <div class="pos-mode-row">
+        <div class="pos-order-type" role="group" aria-label="Order type">
+          <button type="button" class="pos-type-btn active" data-order-type="TAKEAWAY">TAKEAWAY</button>
+          <button type="button" class="pos-type-btn" data-order-type="DINE_IN">DINE-IN</button>
+        </div>
+        <div id="posTableWrap" class="pos-table-wrap hidden">
+          <label for="posTableNumber">TABLE</label>
+          <input id="posTableNumber" type="number" min="1" max="999" inputmode="numeric" placeholder="No.">
+        </div>
+      </div>
+
+      <div id="posCategories" class="pos-category-tabs" role="tablist" aria-label="Menu categories">
+        <button type="button" class="pos-category-btn active" data-category="ALL">ALL</button>
+      </div>
+
+      <div id="posMenuGrid" class="pos-menu-grid">
+        <div class="pos-loading">Loading menu…</div>
+      </div>
+    </div>
+
+    <aside class="pos-cart-panel">
+      <div class="pos-cart-head">
+        <div>
+          <div class="card-kicker">Current order</div>
+          <h2>Order <span id="posOrderLabel">#NEW</span></h2>
+        </div>
+        <button id="posClearBtn" class="pos-clear-btn" type="button">CLEAR</button>
+      </div>
+
+      <div id="posCartItems" class="pos-cart-items">
+        <div class="pos-empty-cart">
+          <strong>Start an order</strong>
+          <span>Select items from the menu.</span>
+        </div>
+      </div>
+
+      <div class="pos-cart-footer">
+        <div class="pos-total-row"><span>Subtotal</span><strong id="posSubtotal">₹0</strong></div>
+        <div class="pos-total-row muted"><span>Discount</span><span>₹0</span></div>
+        <div class="pos-total-row grand"><span>TOTAL</span><strong id="posTotal">₹0</strong></div>
+
+        <div class="pos-payment-title">PAYMENT</div>
+        <div class="pos-payment-grid" role="group" aria-label="Payment method">
+          <button type="button" class="pos-payment-btn active" data-payment="CASH">CASH</button>
+          <button type="button" class="pos-payment-btn" data-payment="UPI">UPI</button>
+          <button type="button" class="pos-payment-btn" data-payment="CARD">CARD</button>
+        </div>
+
+        <button id="posPlaceOrderBtn" class="pos-place-btn" type="button" disabled>PLACE ORDER <span>→</span></button>
+      </div>
+    </aside>
+  </div>
+</section>
 <section id="orders" class="section"><div class="page-head"><div><div class="eyebrow">Operations</div><h1>Orders</h1><p>Every order, every outlet, one operational timeline.</p></div><div class="page-actions"><input class="search" placeholder="Search order or customer"><button class="secondary">Export</button></div></div><div class="placeholder"><div><strong>No orders yet</strong><span>Orders will appear here once the POS starts taking them.</span></div></div></section>
 <section id="menu" class="section"><div class="page-head"><div><div class="eyebrow">Catalog</div><h1>Menu</h1><p>Control products, prices, images and outlet availability.</p></div><button class="primary">＋ ADD ITEM</button></div><div class="cards"><article class="card"><div class="card-kicker">Central catalog</div><h2>17 active products</h2><p>Burgers, pizzas, sandwiches, buckets, fries, sips and add-ons. The central menu is ready for outlet-level controls.</p></article><article class="card"><div class="card-kicker">Outlet controls</div><h2>Availability by outlet</h2><p>Turn individual products ON or OFF for Shamli and Kairana without changing the central menu.</p></article></div></section>
 <section id="outlets" class="section"><div class="page-head"><div><div class="eyebrow">Network</div><h1>Outlets</h1><p>Build the OHHO network with one operating system.</p></div><button id="addNewOutletBtn" class="primary" type="button">＋ ADD NEW OUTLET</button></div><div class="cards"><article class="card"><div class="card-kicker">Active outlet</div><h2>Shamli</h2><p>ACTIVE · 5:00 PM – 1:00 AM · 17 menu items configured</p></article><article class="card"><div class="card-kicker">Active outlet</div><h2>Kairana</h2><p>ACTIVE · 5:00 PM – 1:00 AM · 17 menu items configured</p></article></div></section>

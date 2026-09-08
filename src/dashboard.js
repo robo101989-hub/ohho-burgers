@@ -4,7 +4,16 @@ const state = {
   session: null,
   profile: null,
   outlets: [],
-  selectedOutlet: 'ALL'
+  selectedOutlet: 'ALL',
+  pos: {
+    items: [],
+    categories: [],
+    activeCategory: 'ALL',
+    orderType: 'TAKEAWAY',
+    tableNumber: '',
+    paymentMethod: 'CASH',
+    cart: []
+  }
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -298,6 +307,355 @@ async function loadOutlets() {
   renderOverviewOutlets();
 }
 
+
+async function loadPosMenu() {
+  const menuGrid = $('#posMenuGrid');
+  if (!menuGrid) return;
+
+  menuGrid.innerHTML = '<div class="pos-loading">Loading menu…</div>';
+
+  const [{ data: categories, error: categoryError }, { data: items, error: itemError }] = await Promise.all([
+    supabase
+      .from('menu_categories')
+      .select('id,name,slug,display_order,active')
+      .eq('active', true)
+      .order('display_order', { ascending: true }),
+    supabase
+      .from('menu_items')
+      .select('id,category_id,name,slug,description,price,image_url,is_veg,is_available,is_favourite,display_order')
+      .eq('is_available', true)
+      .order('display_order', { ascending: true })
+  ]);
+
+  if (categoryError) throw categoryError;
+  if (itemError) throw itemError;
+
+  state.pos.categories = categories || [];
+
+  let availability = [];
+  if (state.selectedOutlet !== 'ALL') {
+    const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
+    if (outlet) {
+      const { data, error } = await supabase
+        .from('outlet_menu_items')
+        .select('menu_item_id,is_available')
+        .eq('outlet_id', outlet.id);
+
+      if (error) throw error;
+      availability = data || [];
+    }
+  }
+
+  const availabilityMap = new Map(
+    availability.map(row => [row.menu_item_id, row.is_available])
+  );
+
+  state.pos.items = (items || []).map(item => ({
+    ...item,
+    outletAvailable: state.selectedOutlet === 'ALL'
+      ? true
+      : availabilityMap.get(item.id) === true
+  }));
+
+  state.pos.activeCategory = 'ALL';
+  renderPosCategories();
+  renderPosMenu();
+  updatePosOutletName();
+  renderPosCart();
+}
+
+function renderPosCategories() {
+  const container = $('#posCategories');
+  if (!container) return;
+
+  const counts = new Map();
+  state.pos.items.forEach(item => {
+    counts.set(item.category_id, (counts.get(item.category_id) || 0) + 1);
+  });
+
+  container.innerHTML = `
+    <button type="button" class="pos-category-btn active" data-category="ALL">
+      ALL <span>${state.pos.items.length}</span>
+    </button>
+    ${state.pos.categories
+      .filter(category => counts.has(category.id))
+      .map(category => `
+        <button type="button" class="pos-category-btn" data-category="${escapeHtml(category.id)}">
+          ${escapeHtml(category.name)}
+        </button>
+      `).join('')}
+  `;
+
+  $$('.pos-category-btn', container).forEach(button => {
+    button.addEventListener('click', () => {
+      state.pos.activeCategory = button.dataset.category;
+      $$('.pos-category-btn', container).forEach(btn =>
+        btn.classList.toggle('active', btn === button)
+      );
+      renderPosMenu();
+    });
+  });
+}
+
+function renderPosMenu() {
+  const grid = $('#posMenuGrid');
+  if (!grid) return;
+
+  const category = state.pos.activeCategory;
+  const items = state.pos.items.filter(item =>
+    category === 'ALL' || item.category_id === category
+  );
+
+  if (!items.length) {
+    grid.innerHTML = '<div class="pos-menu-empty">No menu items in this category.</div>';
+    return;
+  }
+
+  const categoryMap = new Map(
+    state.pos.categories.map(item => [item.id, item.name])
+  );
+
+  grid.innerHTML = items.map(item => `
+    <article class="pos-menu-card ${item.outletAvailable ? '' : 'off'}"
+      data-menu-id="${escapeHtml(item.id)}"
+      title="${item.outletAvailable ? 'Add to order' : 'Not available at this outlet'}">
+      <div>
+        <div class="pos-menu-card-top">
+          <span class="pos-menu-category">${escapeHtml(categoryMap.get(item.category_id) || 'Menu')}</span>
+          ${item.is_favourite ? '<span class="pos-menu-fav">★</span>' : ''}
+        </div>
+        <h3>${escapeHtml(item.name)}</h3>
+      </div>
+      <div>
+        <span class="pos-menu-price">₹${Number(item.price).toFixed(0)}</span>
+        ${item.outletAvailable
+          ? '<button type="button" class="pos-menu-add" aria-label="Add item">+</button>'
+          : '<span class="pos-unavailable">UNAVAILABLE</span>'}
+      </div>
+    </article>
+  `).join('');
+
+  $$('.pos-menu-card', grid).forEach(card => {
+    if (card.classList.contains('off')) return;
+    card.addEventListener('click', () => addPosItem(card.dataset.menuId));
+  });
+}
+
+function updatePosOutletName() {
+  const node = $('#posOutletName');
+  if (!node) return;
+
+  const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
+  node.textContent = outlet ? outlet.name : 'All Outlets';
+}
+
+function addPosItem(menuItemId) {
+  const item = state.pos.items.find(entry => entry.id === menuItemId);
+  if (!item || !item.outletAvailable) return;
+
+  const existing = state.pos.cart.find(entry => entry.id === menuItemId);
+  if (existing) {
+    existing.quantity += 1;
+  } else {
+    state.pos.cart.push({
+      id: item.id,
+      name: item.name,
+      price: Number(item.price),
+      quantity: 1
+    });
+  }
+
+  renderPosCart();
+}
+
+function changePosQuantity(menuItemId, delta) {
+  const item = state.pos.cart.find(entry => entry.id === menuItemId);
+  if (!item) return;
+
+  item.quantity += delta;
+  if (item.quantity <= 0) {
+    state.pos.cart = state.pos.cart.filter(entry => entry.id !== menuItemId);
+  }
+
+  renderPosCart();
+}
+
+function renderPosCart() {
+  const container = $('#posCartItems');
+  const subtotalNode = $('#posSubtotal');
+  const totalNode = $('#posTotal');
+  const placeButton = $('#posPlaceOrderBtn');
+
+  if (!container) return;
+
+  if (!state.pos.cart.length) {
+    container.innerHTML = `
+      <div class="pos-empty-cart">
+        <strong>Start an order</strong>
+        <span>Select items from the menu.</span>
+      </div>`;
+  } else {
+    container.innerHTML = state.pos.cart.map(item => `
+      <div class="pos-cart-item">
+        <div>
+          <div class="pos-cart-item-name">${escapeHtml(item.name)}</div>
+          <div class="pos-cart-item-price">₹${item.price.toFixed(0)} each</div>
+        </div>
+        <div class="pos-cart-item-right">
+          <div class="pos-line-total">₹${(item.price * item.quantity).toFixed(0)}</div>
+          <div class="pos-qty">
+            <button type="button" data-pos-minus="${escapeHtml(item.id)}">−</button>
+            <span>${item.quantity}</span>
+            <button type="button" data-pos-plus="${escapeHtml(item.id)}">+</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    $$('[data-pos-minus]', container).forEach(button =>
+      button.addEventListener('click', () =>
+        changePosQuantity(button.dataset.posMinus, -1)
+      )
+    );
+
+    $$('[data-pos-plus]', container).forEach(button =>
+      button.addEventListener('click', () =>
+        changePosQuantity(button.dataset.posPlus, 1)
+      )
+    );
+  }
+
+  const subtotal = state.pos.cart.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  if (subtotalNode) subtotalNode.textContent = `₹${subtotal.toFixed(0)}`;
+  if (totalNode) totalNode.textContent = `₹${subtotal.toFixed(0)}`;
+  if (placeButton) placeButton.disabled = state.pos.cart.length === 0;
+}
+
+function resetPosOrder() {
+  state.pos.cart = [];
+  state.pos.orderType = 'TAKEAWAY';
+  state.pos.tableNumber = '';
+  state.pos.paymentMethod = 'CASH';
+
+  $$('.pos-type-btn').forEach(button =>
+    button.classList.toggle('active', button.dataset.orderType === 'TAKEAWAY')
+  );
+  $$('.pos-payment-btn').forEach(button =>
+    button.classList.toggle('active', button.dataset.payment === 'CASH')
+  );
+
+  const tableWrap = $('#posTableWrap');
+  const tableInput = $('#posTableNumber');
+  if (tableWrap) tableWrap.classList.add('hidden');
+  if (tableInput) tableInput.value = '';
+
+  renderPosCart();
+}
+
+function wirePosActions() {
+  $$('.pos-type-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      state.pos.orderType = button.dataset.orderType;
+      $$('.pos-type-btn').forEach(btn =>
+        btn.classList.toggle('active', btn === button)
+      );
+
+      const tableWrap = $('#posTableWrap');
+      if (tableWrap) {
+        tableWrap.classList.toggle('hidden', state.pos.orderType !== 'DINE_IN');
+      }
+    });
+  });
+
+  $$('.pos-payment-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      state.pos.paymentMethod = button.dataset.payment;
+      $$('.pos-payment-btn').forEach(btn =>
+        btn.classList.toggle('active', btn === button)
+      );
+    });
+  });
+
+  $('#posTableNumber')?.addEventListener('input', event => {
+    state.pos.tableNumber = event.target.value;
+  });
+
+  $('#posClearBtn')?.addEventListener('click', resetPosOrder);
+  $('#posNewOrderBtn')?.addEventListener('click', resetPosOrder);
+
+  $('#posPlaceOrderBtn')?.addEventListener('click', async () => {
+    if (state.selectedOutlet === 'ALL') {
+      toast('Select a specific outlet before placing a POS order.', 'bad');
+      return;
+    }
+
+    if (!state.pos.cart.length) {
+      toast('Add at least one item to the order.', 'bad');
+      return;
+    }
+
+    const button = $('#posPlaceOrderBtn');
+    if (!button || button.disabled) return;
+
+    button.disabled = true;
+    const originalText = button.innerHTML;
+    button.innerHTML = 'PLACING ORDER…';
+
+    try {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (sessionError || !sessionData?.session?.access_token) {
+        throw new Error('Your session has expired. Please log in again.');
+      }
+
+      const response = await fetch('/api/pos/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionData.session.access_token}`
+        },
+        body: JSON.stringify({
+          outletId: state.selectedOutlet,
+          orderType: state.pos.orderType,
+          tableNumber:
+            state.pos.orderType === 'DINE_IN'
+              ? Number(state.pos.tableNumber)
+              : null,
+          paymentMethod: state.pos.paymentMethod,
+          items: state.pos.cart.map(item => ({
+            menuItemId: item.id,
+            quantity: item.quantity
+          }))
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Unable to create POS order.');
+      }
+
+      resetPosOrder();
+
+      toast(
+        `Order #${result.order.order_number} created for ${result.outlet.name}.`,
+        'ok'
+      );
+    } catch (error) {
+      console.error('Unable to create POS order:', error);
+      toast(error.message || 'Unable to create POS order.', 'bad');
+    } finally {
+      button.disabled = false;
+      button.innerHTML = originalText;
+    }
+  });
+}
+
 function formatTime(value) {
   if (!value) return '—';
   const [hour, minute] = String(value).slice(0, 5).split(':').map(Number);
@@ -348,10 +706,16 @@ function renderOutletSelector() {
   selector.innerHTML = `<option value="ALL">ALL OUTLETS</option>${state.outlets.map(o => `<option value="${escapeHtml(o.slug)}">${escapeHtml(o.name).toUpperCase()}</option>`).join('')}`;
   selector.value = state.outlets.some(o => o.slug === current) ? current : 'ALL';
   state.selectedOutlet = selector.value;
-  selector.onchange = () => {
+  selector.onchange = async () => {
     state.selectedOutlet = selector.value;
     renderOverviewOutlets();
     updateDashboardContext();
+    try {
+      await loadPosMenu();
+    } catch (error) {
+      console.error('Unable to refresh POS menu:', error);
+      toast(error.message || 'Unable to load POS menu.', 'bad');
+    }
   };
 }
 
@@ -440,6 +804,8 @@ function wireDashboardActions() {
     user.title = 'Sign out';
     user.addEventListener('click', signOut);
   }
+
+  wirePosActions();
 }
 
 function openOutletSection() {
@@ -464,6 +830,7 @@ async function startApp(session) {
     updateUserCard();
     $('#authGate')?.classList.add('hidden');
     await loadOutlets();
+    await loadPosMenu();
   } catch (error) {
     await supabase.auth.signOut();
     setAuthError(error.message || 'Unable to authorize this account.');
