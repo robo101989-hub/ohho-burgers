@@ -620,7 +620,7 @@ function wirePosActions() {
           Authorization: `Bearer ${sessionData.session.access_token}`
         },
         body: JSON.stringify({
-          outletId: state.selectedOutlet,
+          outletId: state.outlets.find(o => o.slug === state.selectedOutlet)?.id,
           orderType: state.pos.orderType,
           tableNumber:
             state.pos.orderType === 'DINE_IN'
