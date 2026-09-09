@@ -267,7 +267,149 @@ body{font-size:14px}
   </div>
 </section>
 <section id="orders" class="section"><div class="page-head orders-page-head"><div><div class="eyebrow">Operations</div><h1>Orders</h1><p>Every order, every outlet, one operational timeline.</p></div><div class="orders-actions"><input id="ordersSearch" class="search" type="search" placeholder="Search order..."><select id="ordersStatusFilter" class="orders-filter"><option value="ALL">ALL STATUS</option><option value="NEW">NEW</option><option value="ACCEPTED">ACCEPTED</option><option value="PREPARING">PREPARING</option><option value="READY">READY</option><option value="COMPLETED">COMPLETED</option><option value="CANCELLED">CANCELLED</option></select></div></div><div class="orders-summary"><div><span>LIVE</span><strong id="ordersLiveCount">0</strong></div><div><span>TODAY</span><strong id="ordersTodayCount">0</strong></div><div><span>SALES</span><strong id="ordersTodaySales">₹0</strong></div></div><div id="ordersBoard" class="orders-board"><div class="orders-loading">Loading orders…</div></div></section>
-<section id="menu" class="section"><div class="page-head"><div><div class="eyebrow">Catalog</div><h1>Menu</h1><p>Control products, prices, images and outlet availability.</p></div><button class="primary">＋ ADD ITEM</button></div><div class="cards"><article class="card"><div class="card-kicker">Central catalog</div><h2>17 active products</h2><p>Burgers, pizzas, sandwiches, buckets, fries, sips and add-ons. The central menu is ready for outlet-level controls.</p></article><article class="card"><div class="card-kicker">Outlet controls</div><h2>Availability by outlet</h2><p>Turn individual products ON or OFF for Shamli and Kairana without changing the central menu.</p></article></div></section>
+<section id="menu" class="section">
+  <div class="page-head menu-page-head">
+    <div>
+      <div class="eyebrow">Catalog</div>
+      <h1>Menu</h1>
+      <p>One central menu. Outlet-level control.</p>
+    </div>
+    <button id="menuAddItemBtn" class="primary" type="button">＋ ADD NEW ITEM</button>
+  </div>
+
+  <div class="menu-management-summary">
+    <div class="menu-stat-card">
+      <span>ACTIVE ITEMS</span>
+      <strong id="menuActiveCount">17</strong>
+    </div>
+    <div class="menu-stat-card">
+      <span>CATEGORIES</span>
+      <strong id="menuCategoryCount">6</strong>
+    </div>
+    <div class="menu-stat-card">
+      <span>FAVOURITES</span>
+      <strong id="menuFavouriteCount">0</strong>
+    </div>
+    <div class="menu-stat-card">
+      <span>OUTLETS</span>
+      <strong id="menuOutletCount">2</strong>
+    </div>
+  </div>
+
+  <div class="menu-management-toolbar">
+    <div class="menu-search-wrap">
+      <span>⌕</span>
+      <input id="menuManagementSearch" type="search" placeholder="Search menu item...">
+    </div>
+
+    <select id="menuCategoryFilter" class="menu-management-filter">
+      <option value="ALL">ALL CATEGORIES</option>
+    </select>
+
+    <select id="menuAvailabilityFilter" class="menu-management-filter">
+      <option value="ALL">ALL AVAILABILITY</option>
+      <option value="AVAILABLE">AVAILABLE</option>
+      <option value="UNAVAILABLE">UNAVAILABLE</option>
+      <option value="ARCHIVED">ARCHIVED</option>
+    </select>
+
+    <select id="menuFavouriteFilter" class="menu-management-filter">
+      <option value="ALL">ALL ITEMS</option>
+      <option value="FAVOURITE">FAVOURITES</option>
+      <option value="STANDARD">STANDARD</option>
+    </select>
+  </div>
+
+  <div class="menu-management-table-wrap">
+    <div class="menu-management-table-head">
+      <div>ITEM</div>
+      <div>CATEGORY</div>
+      <div>PRICE</div>
+      <div>STATUS</div>
+      <div>SHAMLI</div>
+      <div>KAIRANA</div>
+      <div></div>
+    </div>
+    <div id="menuManagementList" class="menu-management-list">
+      <div class="menu-management-loading">Loading menu…</div>
+    </div>
+  </div>
+
+  <div id="menuItemModal" class="menu-item-modal hidden" aria-hidden="true">
+    <div class="menu-item-modal-backdrop" data-menu-modal-close></div>
+    <div class="menu-item-modal-panel" role="dialog" aria-modal="true" aria-labelledby="menuItemModalTitle">
+      <div class="menu-item-modal-head">
+        <div>
+          <div class="eyebrow">Catalog editor</div>
+          <h2 id="menuItemModalTitle">Add New Item</h2>
+        </div>
+        <button type="button" class="menu-modal-close" data-menu-modal-close aria-label="Close">×</button>
+      </div>
+
+      <form id="menuItemForm" class="menu-item-form">
+        <div class="menu-form-grid">
+          <label class="menu-field">
+            <span>ITEM NAME</span>
+            <input id="menuItemName" name="name" type="text" required placeholder="e.g. OHHO Special Burger">
+          </label>
+
+          <label class="menu-field">
+            <span>CATEGORY</span>
+            <select id="menuItemCategory" name="category_id" required></select>
+          </label>
+
+          <label class="menu-field">
+            <span>PRICE</span>
+            <input id="menuItemPrice" name="price" type="number" min="0" step="1" required placeholder="120">
+          </label>
+
+          <label class="menu-field">
+            <span>DISPLAY ORDER</span>
+            <input id="menuItemOrder" name="display_order" type="number" min="0" step="1" value="0">
+          </label>
+
+          <label class="menu-field menu-field-full">
+            <span>DESCRIPTION</span>
+            <textarea id="menuItemDescription" name="description" rows="4" placeholder="Short description for the menu item"></textarea>
+          </label>
+        </div>
+
+        <div class="menu-form-options">
+          <label class="menu-toggle-field">
+            <input id="menuItemVeg" name="is_veg" type="checkbox">
+            <span class="menu-toggle-ui"></span>
+            <span>VEGETARIAN</span>
+          </label>
+
+          <label class="menu-toggle-field">
+            <input id="menuItemFavourite" name="is_favourite" type="checkbox">
+            <span class="menu-toggle-ui"></span>
+            <span>FAVOURITE</span>
+          </label>
+
+          <label class="menu-toggle-field">
+            <input id="menuItemAvailable" name="is_available" type="checkbox" checked>
+            <span class="menu-toggle-ui"></span>
+            <span>AVAILABLE</span>
+          </label>
+        </div>
+
+        <div class="menu-form-image">
+          <div>
+            <span class="menu-form-label">ITEM IMAGE</span>
+            <p>Image upload will be connected to Supabase Storage next.</p>
+          </div>
+          <button type="button" class="secondary" disabled>UPLOAD IMAGE</button>
+        </div>
+
+        <div class="menu-item-modal-actions">
+          <button type="button" class="secondary" data-menu-modal-close>CANCEL</button>
+          <button type="submit" class="primary">SAVE ITEM</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
 <section id="outlets" class="section"><div class="page-head"><div><div class="eyebrow">Network</div><h1>Outlets</h1><p>Build the OHHO network with one operating system.</p></div><button id="addNewOutletBtn" class="primary" type="button">＋ ADD NEW OUTLET</button></div><div class="cards"><article class="card"><div class="card-kicker">Active outlet</div><h2>Shamli</h2><p>ACTIVE · 5:00 PM – 1:00 AM · 17 menu items configured</p></article><article class="card"><div class="card-kicker">Active outlet</div><h2>Kairana</h2><p>ACTIVE · 5:00 PM – 1:00 AM · 17 menu items configured</p></article></div></section>
 <section id="staff" class="section"><div class="page-head"><div><div class="eyebrow">Access</div><h1>Staff</h1><p>Assign the right people to the right outlet.</p></div><button class="primary">＋ ADD STAFF</button></div><div class="placeholder"><div><strong>Staff management</strong><span>Admin, owner, manager and staff access will be managed here.</span></div></div></section>
 <section id="reports" class="section"><div class="page-head"><div><div class="eyebrow">Insights</div><h1>Reports</h1><p>Understand sales, order mix and outlet performance.</p></div><button class="secondary">Export report</button></div><div class="placeholder"><div><strong>Reports workspace</strong><span>Analytics will populate as POS orders are recorded.</span></div></div></section>

@@ -82,6 +82,73 @@ function injectStyles() {
     @media(max-width:1050px){.orders-board{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:760px){.orders-page-head{align-items:flex-start}.orders-actions{width:100%}.orders-actions .search{flex:1;min-width:0}.orders-filter{flex:1}.orders-summary{grid-template-columns:1fr}.orders-board{grid-template-columns:1fr}}
 
+    .menu-page-head{align-items:flex-end}
+    .menu-management-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 16px}
+    .menu-stat-card{background:#0d0d0d;border:1px solid #242424;border-radius:12px;padding:15px 17px}
+    .menu-stat-card span{display:block;color:#666;font:800 8px var(--mono);letter-spacing:1.5px;margin-bottom:7px}
+    .menu-stat-card strong{font:900 25px var(--mono);color:#f5f5f0}
+
+    .menu-management-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) repeat(3,minmax(150px,180px));gap:8px;margin-bottom:12px}
+    .menu-search-wrap{height:40px;display:flex;align-items:center;gap:8px;background:#0d0d0d;border:1px solid #303030;border-radius:9px;padding:0 11px}
+    .menu-search-wrap:focus-within{border-color:#ffd21c}
+    .menu-search-wrap span{color:#666;font-size:18px;line-height:1}
+    .menu-search-wrap input{width:100%;border:0;outline:0;background:transparent;color:#eee;font-size:11px}
+    .menu-search-wrap input::placeholder{color:#555}
+    .menu-management-filter{height:40px;background:#0d0d0d;border:1px solid #303030;color:#eee;border-radius:9px;padding:0 11px;font-size:9px;font-weight:900;outline:0}
+    .menu-management-filter:focus{border-color:#ffd21c}
+
+    .menu-management-table-wrap{background:#0d0d0d;border:1px solid #242424;border-radius:14px;overflow:hidden}
+    .menu-management-table-head{display:grid;grid-template-columns:minmax(220px,1.7fr) minmax(130px,1fr) 90px 110px 90px 90px 62px;gap:10px;align-items:center;padding:11px 15px;border-bottom:1px solid #242424;background:#0a0a0a;color:#555;font:900 8px var(--mono);letter-spacing:1.1px}
+    .menu-management-list{display:block}
+    .menu-management-row{display:grid;grid-template-columns:minmax(220px,1.7fr) minmax(130px,1fr) 90px 110px 90px 90px 62px;gap:10px;align-items:center;padding:13px 15px;border-bottom:1px solid #1c1c1c;min-height:68px}
+    .menu-management-row:last-child{border-bottom:0}
+    .menu-management-row:hover{background:#111}
+    .menu-item-main{display:flex;align-items:center;gap:11px;min-width:0}
+    .menu-item-thumb{width:38px;height:38px;flex:0 0 38px;border-radius:8px;background:#151515;border:1px solid #292929;display:grid;place-items:center;color:#555;font:900 9px var(--mono);overflow:hidden}
+    .menu-item-thumb img{width:100%;height:100%;object-fit:cover}
+    .menu-item-copy{min-width:0}
+    .menu-item-copy strong{display:block;color:#eee;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .menu-item-copy span{display:block;margin-top:4px;color:#666;font:700 8px var(--mono);letter-spacing:.4px}
+    .menu-category-name{color:#aaa;font-size:10px}
+    .menu-price-value{font:900 12px var(--mono);color:#ffd21c}
+    .menu-status-pill,.menu-outlet-pill{display:inline-flex;align-items:center;justify-content:center;width:max-content;border-radius:6px;padding:5px 7px;font:900 7px var(--mono);letter-spacing:.6px}
+    .menu-status-pill.on,.menu-outlet-pill.on{color:#72d56b;background:#0d170d;border:1px solid #253b25}
+    .menu-status-pill.off,.menu-outlet-pill.off{color:#ff8c8c;background:#1c0d0d;border:1px solid #482121}
+    .menu-outlet-pill{cursor:pointer;min-width:43px}
+    .menu-outlet-pill:hover{border-color:#ffd21c;color:#ffd21c}
+    .menu-favourite-star{color:#ffd21c;font-size:12px;margin-left:4px}
+    .menu-edit-btn{width:100%;border:1px solid #303030;background:#111;color:#ddd;border-radius:7px;padding:8px 7px;font:900 7px var(--mono);letter-spacing:.6px;cursor:pointer}
+    .menu-edit-btn:hover{border-color:#ffd21c;color:#ffd21c}
+    .menu-management-loading,.menu-management-empty{padding:50px 20px;text-align:center;color:#666;font-size:11px}
+    .menu-management-empty strong{display:block;color:#eee;font-size:14px;margin-bottom:6px}
+
+    .menu-item-modal{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:20px}
+    .menu-item-modal.hidden{display:none}
+    .menu-item-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.78)}
+    .menu-item-modal-panel{position:relative;width:min(620px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#0d0d0d;border:1px solid #303030;border-radius:15px;box-shadow:0 30px 90px rgba(0,0,0,.65)}
+    .menu-item-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;padding:20px;border-bottom:1px solid #242424}
+    .menu-item-modal-head h2{margin:5px 0 0;font-size:23px;letter-spacing:-.8px}
+    .menu-modal-close{border:1px solid #303030;background:#111;color:#aaa;width:32px;height:32px;border-radius:8px;font-size:20px;cursor:pointer}
+    .menu-modal-close:hover{border-color:#ffd21c;color:#ffd21c}
+    .menu-item-form{padding:20px}
+    .menu-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .menu-field{display:grid;gap:7px}
+    .menu-field-full{grid-column:1/-1}
+    .menu-field>span,.menu-form-label{color:#666;font:900 8px var(--mono);letter-spacing:1px}
+    .menu-field input,.menu-field select,.menu-field textarea{width:100%;background:#090909;border:1px solid #303030;color:#eee;border-radius:9px;padding:11px 12px;outline:0;font-size:12px;font-family:inherit}
+    .menu-field textarea{resize:vertical;min-height:90px;line-height:1.5}
+    .menu-field input:focus,.menu-field select:focus,.menu-field textarea:focus{border-color:#ffd21c}
+    .menu-form-options{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid #242424}
+    .menu-toggle-field{display:flex;align-items:center;gap:7px;border:1px solid #292929;background:#101010;border-radius:8px;padding:8px 10px;color:#aaa;font:900 8px var(--mono);cursor:pointer}
+    .menu-toggle-field input{position:absolute;opacity:0;pointer-events:none}
+    .menu-toggle-ui{width:27px;height:15px;border-radius:99px;background:#292929;position:relative}
+    .menu-toggle-ui:after{content:"";position:absolute;width:11px;height:11px;left:2px;top:2px;border-radius:50%;background:#777;transition:.15s}
+    .menu-toggle-field input:checked + .menu-toggle-ui{background:#ffd21c}
+    .menu-toggle-field input:checked + .menu-toggle-ui:after{left:14px;background:#080808}
+    .menu-form-image{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:16px;padding:13px;border:1px dashed #303030;border-radius:10px}
+    .menu-form-image p{margin:5px 0 0;color:#666;font-size:9px}
+    .menu-item-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid #242424}
+
     .outlet-grid{grid-template-columns:repeat(3,minmax(0,1fr));display:grid;gap:12px}
     .outlet-card{position:relative;min-height:205px;padding:18px;background:#0d0d0d;border:1px solid #242424;border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.2);overflow:hidden}.outlet-card:before{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,#ffd21c,transparent 58%)}
     .outlet-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.outlet-card h2{font-size:21px;letter-spacing:-.8px;margin:0}.outlet-status{font-size:8px;font-weight:950;letter-spacing:1px;padding:5px 7px;border-radius:6px;border:1px solid #253b25;color:#72d56b;background:#0d170d}.outlet-status.off{color:#ff8c8c;background:#1c0d0d;border-color:#482121}
@@ -94,6 +161,78 @@ function injectStyles() {
     .outlet-form{padding:22px 24px;display:grid;gap:16px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:grid;gap:6px}.field.full{grid-column:1/-1}.field label{color:#aaa;font-size:10px;font-weight:900;letter-spacing:.8px;text-transform:uppercase}.field input,.field select{width:100%;background:#090909;border:1px solid #303030;color:#f5f5f0;border-radius:9px;padding:11px 12px;font-size:12px;outline:0}.field input:focus,.field select:focus{border-color:#ffd21c}.form-help{color:#666;font-size:10px;line-height:1.5;margin-top:-5px}.form-error{display:none;color:#ff9898;background:#211010;border:1px solid #482121;border-radius:9px;padding:10px;font-size:11px}.form-error.show{display:block}.form-footer{display:flex;justify-content:flex-end;gap:8px;padding-top:4px}.form-footer button{padding:11px 15px;border-radius:9px;font-size:10px;font-weight:950}.form-cancel{background:#111;color:#ddd;border:1px solid #303030}.form-submit{background:#ffd21c;color:#080808;border:0}.form-submit:disabled{opacity:.55;cursor:wait}
     .toast{position:fixed;right:20px;bottom:20px;z-index:11000;display:none;max-width:380px;background:#111;border:1px solid #303030;color:#f5f5f0;border-radius:11px;padding:12px 14px;box-shadow:0 18px 50px rgba(0,0,0,.4);font-size:11px;font-weight:800}.toast.show{display:block}.toast.ok{border-color:#355535}.toast.bad{border-color:#542b2b}
     .session-user{cursor:pointer}.session-user:hover strong{color:#ffd21c}
+    @media(max-width:1050px){
+      .menu-management-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .menu-management-toolbar{grid-template-columns:1fr 1fr}
+      .menu-search-wrap{grid-column:1/-1}
+      .menu-management-table-head{display:none}
+      .menu-management-row{grid-template-columns:minmax(0,1fr) auto auto;gap:8px;padding:15px}
+      .menu-item-main{grid-column:1/-1}
+      .menu-category-name{grid-column:1}
+      .menu-price-value{grid-column:2}
+      .menu-management-row>div:nth-child(4){grid-column:3}
+      .menu-management-row>div:nth-child(5){grid-column:1}
+      .menu-management-row>div:nth-child(6){grid-column:2}
+      .menu-management-row>div:nth-child(7){grid-column:3}
+    }
+
+    @media(max-width:760px){
+      .menu-management-summary{grid-template-columns:1fr 1fr}
+      .menu-management-toolbar{grid-template-columns:1fr}
+      .menu-search-wrap{grid-column:auto}
+      .menu-management-row{grid-template-columns:1fr 1fr;gap:9px}
+      .menu-item-main{grid-column:1/-1}
+      .menu-category-name{grid-column:1}
+      .menu-price-value{grid-column:2;text-align:right}
+      .menu-management-row>div:nth-child(4){grid-column:1}
+      .menu-management-row>div:nth-child(5){grid-column:1}
+      .menu-management-row>div:nth-child(6){grid-column:2}
+      .menu-management-row>div:nth-child(7){grid-column:1/-1}
+      .menu-edit-btn{padding:10px}
+      .menu-item-modal{padding:10px}
+      .menu-item-modal-panel{max-height:calc(100vh - 20px)}
+      .menu-form-grid{grid-template-columns:1fr}
+      .menu-field-full{grid-column:auto}
+      .menu-form-options{display:grid;grid-template-columns:1fr}
+      .menu-form-image{align-items:flex-start;flex-direction:column}
+      .menu-item-modal-actions{display:grid;grid-template-columns:1fr 1fr}
+    }
+    @media(max-width:1050px){
+      .menu-management-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .menu-management-toolbar{grid-template-columns:1fr 1fr}
+      .menu-search-wrap{grid-column:1/-1}
+      .menu-management-table-head{display:none}
+      .menu-management-row{grid-template-columns:minmax(0,1fr) auto auto;gap:8px;padding:15px}
+      .menu-item-main{grid-column:1/-1}
+      .menu-category-name{grid-column:1}
+      .menu-price-value{grid-column:2}
+      .menu-management-row>div:nth-child(4){grid-column:3}
+      .menu-management-row>div:nth-child(5){grid-column:1}
+      .menu-management-row>div:nth-child(6){grid-column:2}
+      .menu-management-row>div:nth-child(7){grid-column:3}
+    }
+
+    @media(max-width:760px){
+      .menu-management-summary{grid-template-columns:1fr 1fr}
+      .menu-management-toolbar{grid-template-columns:1fr}
+      .menu-search-wrap{grid-column:auto}
+      .menu-management-row{grid-template-columns:1fr 1fr;gap:9px}
+      .menu-item-main{grid-column:1/-1}
+      .menu-category-name{grid-column:1}
+      .menu-price-value{grid-column:2;text-align:right}
+      .menu-management-row>div:nth-child(4){grid-column:1}
+      .menu-management-row>div:nth-child(5){grid-column:1}
+      .menu-management-row>div:nth-child(6){grid-column:2}
+      .menu-management-row>div:nth-child(7){grid-column:1/-1}
+      .menu-edit-btn{padding:10px}
+      .menu-item-modal{padding:10px}
+      .menu-item-modal-panel{max-height:calc(100vh - 20px)}
+      .menu-form-grid{grid-template-columns:1fr}
+      .menu-field-full{grid-column:auto}
+      .menu-form-options{display:grid;grid-template-columns:1fr}
+      .menu-form-image{align-items:flex-start;flex-direction:column}
+      .menu-item-modal-actions{display:grid;grid-template-columns:1fr 1fr}
+    }
     @media(max-width:1050px){.outlet-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.outlet-grid,.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.modal-head,.outlet-form{padding:18px}.outlet-card{min-height:0}.outlet-links{flex-wrap:wrap}}
   `;
   document.head.appendChild(style);
@@ -910,6 +1049,526 @@ function wireOrdersActions() {
   });
 }
 
+
+const menuManagementState = {
+  items: [],
+  categories: [],
+  outletAvailability: new Map(),
+  editingId: null
+};
+
+async function loadMenuManagement() {
+  const list = $('#menuManagementList');
+  if (list) {
+    list.innerHTML = '<div class="menu-management-loading">Loading menu…</div>';
+  }
+
+  const [
+    { data: categories, error: categoryError },
+    { data: items, error: itemError },
+    { data: outletRows, error: outletError }
+  ] = await Promise.all([
+    supabase
+      .from('menu_categories')
+      .select('id,name,slug,display_order,active')
+      .order('display_order', { ascending: true }),
+    supabase
+      .from('menu_items')
+      .select('id,category_id,name,slug,description,price,image_url,is_veg,is_available,is_favourite,is_archived,display_order,created_at,updated_at')
+      .order('display_order', { ascending: true }),
+    supabase
+      .from('outlet_menu_items')
+      .select('outlet_id,menu_item_id,is_available')
+  ]);
+
+  if (categoryError) throw categoryError;
+  if (itemError) throw itemError;
+  if (outletError) throw outletError;
+
+  menuManagementState.categories = categories || [];
+  menuManagementState.items = items || [];
+
+  menuManagementState.outletAvailability = new Map(
+    (outletRows || []).map(row => [
+      `${row.outlet_id}:${row.menu_item_id}`,
+      row.is_available === true
+    ])
+  );
+
+  renderMenuManagement();
+  populateMenuCategoryControls();
+}
+
+function renderMenuManagement() {
+  const list = $('#menuManagementList');
+  if (!list) return;
+
+  const search = ($('#menuManagementSearch')?.value || '').trim().toLowerCase();
+  const category = $('#menuCategoryFilter')?.value || 'ALL';
+  const availability = $('#menuAvailabilityFilter')?.value || 'ALL';
+  const favourite = $('#menuFavouriteFilter')?.value || 'ALL';
+
+  const categoryMap = new Map(
+    menuManagementState.categories.map(item => [item.id, item.name])
+  );
+
+  const categoryOrder = new Map(
+    menuManagementState.categories.map(category => [category.id, category.display_order])
+  );
+
+  const filtered = menuManagementState.items.filter(item => {
+    const isArchived = item.is_archived === true;
+
+    const matchesArchive =
+      availability === 'ARCHIVED'
+        ? isArchived
+        : !isArchived;
+
+    const matchesSearch =
+      !search ||
+      item.name.toLowerCase().includes(search) ||
+      (item.description || '').toLowerCase().includes(search);
+
+    const matchesCategory =
+      category === 'ALL' || item.category_id === category;
+
+    const matchesAvailability =
+      availability === 'ALL' ||
+      availability === 'ARCHIVED' ||
+      (availability === 'AVAILABLE' && item.is_available) ||
+      (availability === 'UNAVAILABLE' && !item.is_available);
+
+    const matchesFavourite =
+      favourite === 'ALL' ||
+      (favourite === 'FAVOURITE' && item.is_favourite) ||
+      (favourite === 'STANDARD' && !item.is_favourite);
+
+    return matchesSearch && matchesCategory && matchesArchive && matchesAvailability && matchesFavourite;
+  });
+
+  const outletMap = new Map(
+    state.outlets.map(outlet => [outlet.slug.toUpperCase(), outlet])
+  );
+
+  filtered.sort((a, b) => {
+    const categoryDiff = (categoryOrder.get(a.category_id) ?? 999) - (categoryOrder.get(b.category_id) ?? 999);
+    if (categoryDiff !== 0) return categoryDiff;
+    return (a.display_order ?? 0) - (b.display_order ?? 0);
+  });
+
+  if (!filtered.length) {
+    list.innerHTML = `
+      <div class="menu-management-empty">
+        <strong>No menu items found</strong>
+        <span>Try changing your search or filters.</span>
+      </div>`;
+    updateMenuStats();
+    return;
+  }
+
+  list.innerHTML = filtered.map(item => {
+    const shamli = outletMap.get('SHAMLI');
+    const kairana = outletMap.get('KAIRANA');
+
+    const shamliAvailable = shamli
+      ? menuManagementState.outletAvailability.get(`${shamli.id}:${item.id}`) === true
+      : false;
+
+    const kairanaAvailable = kairana
+      ? menuManagementState.outletAvailability.get(`${kairana.id}:${item.id}`) === true
+      : false;
+
+    return `
+      <article class="menu-management-row">
+        <div class="menu-item-main">
+          <div class="menu-item-thumb">
+            ${item.image_url
+              ? `<img src="${escapeHtml(item.image_url)}" alt="">`
+              : 'OHHO'}
+          </div>
+          <div class="menu-item-copy">
+            <strong>${escapeHtml(item.name)} ${item.is_favourite ? '<span class="menu-favourite-star">★</span>' : ''}</strong>
+            <span>${item.is_veg ? 'VEG' : 'NON-VEG'} · #${item.display_order}</span>
+          </div>
+        </div>
+
+        <div class="menu-category-name">
+          ${escapeHtml(categoryMap.get(item.category_id) || 'Uncategorised')}
+        </div>
+
+        <div class="menu-price-value">
+          ₹${Number(item.price).toLocaleString('en-IN')}
+        </div>
+
+        <div>
+          <span class="menu-status-pill ${item.is_available ? 'on' : 'off'}">
+            ${item.is_available ? 'ACTIVE' : 'OFF'}
+          </span>
+        </div>
+
+        <div>
+          ${shamli
+            ? `<button type="button" class="menu-outlet-pill ${shamliAvailable ? 'on' : 'off'}" data-menu-outlet="${escapeHtml(shamli.id)}" data-menu-item="${escapeHtml(item.id)}" data-menu-outlet-name="SHAMLI">${shamliAvailable ? 'ON' : 'OFF'}</button>`
+            : '<span class="menu-outlet-pill off">—</span>'}
+        </div>
+
+        <div>
+          ${kairana
+            ? `<button type="button" class="menu-outlet-pill ${kairanaAvailable ? 'on' : 'off'}" data-menu-outlet="${escapeHtml(kairana.id)}" data-menu-item="${escapeHtml(item.id)}" data-menu-outlet-name="KAIRANA">${kairanaAvailable ? 'ON' : 'OFF'}</button>`
+            : '<span class="menu-outlet-pill off">—</span>'}
+        </div>
+
+        <div class="menu-row-actions">
+          <button type="button" class="menu-edit-btn" data-menu-edit="${escapeHtml(item.id)}">EDIT</button>
+          <button type="button" class="menu-archive-btn" data-menu-archive="${escapeHtml(item.id)}">${item.is_archived ? 'RESTORE' : 'ARCHIVE'}</button>
+        </div>
+      </article>`;
+  }).join('');
+
+  updateMenuStats();
+}
+
+function updateMenuStats() {
+  const active = menuManagementState.items.filter(item => item.is_available).length;
+  const favourites = menuManagementState.items.filter(item => item.is_favourite).length;
+
+  const activeNode = $('#menuActiveCount');
+  const categoryNode = $('#menuCategoryCount');
+  const favouriteNode = $('#menuFavouriteCount');
+  const outletNode = $('#menuOutletCount');
+
+  if (activeNode) activeNode.textContent = active;
+  if (categoryNode) categoryNode.textContent = menuManagementState.categories.filter(item => item.active).length;
+  if (favouriteNode) favouriteNode.textContent = favourites;
+  if (outletNode) outletNode.textContent = state.outlets.filter(item => item.status === 'ACTIVE').length;
+}
+
+function populateMenuCategoryControls() {
+  const filter = $('#menuCategoryFilter');
+  const formCategory = $('#menuItemCategory');
+
+  if (filter) {
+    filter.innerHTML = `
+      <option value="ALL">ALL CATEGORIES</option>
+      ${menuManagementState.categories
+        .filter(category => category.active)
+        .map(category => `<option value="${escapeHtml(category.id)}">${escapeHtml(category.name)}</option>`)
+        .join('')}`;
+  }
+
+  if (formCategory) {
+    formCategory.innerHTML = menuManagementState.categories
+      .filter(category => category.active)
+      .map(category => `<option value="${escapeHtml(category.id)}">${escapeHtml(category.name)}</option>`)
+      .join('');
+  }
+}
+
+function openMenuItemModal(itemId = null) {
+  const modal = $('#menuItemModal');
+  const form = $('#menuItemForm');
+  if (!modal || !form) return;
+
+  menuManagementState.editingId = itemId;
+
+  const item = itemId
+    ? menuManagementState.items.find(entry => entry.id === itemId)
+    : null;
+
+  $('#menuItemModalTitle').textContent = item ? 'Edit Menu Item' : 'Add New Item';
+  $('#menuItemName').value = item?.name || '';
+  $('#menuItemCategory').value = item?.category_id || menuManagementState.categories[0]?.id || '';
+  $('#menuItemPrice').value = item?.price ?? '';
+  $('#menuItemOrder').value = item?.display_order ?? 0;
+  $('#menuItemDescription').value = item?.description || '';
+  $('#menuItemVeg').checked = item?.is_veg === true;
+  $('#menuItemFavourite').checked = item?.is_favourite === true;
+  $('#menuItemAvailable').checked = item?.is_available !== false;
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  $('#menuItemName')?.focus();
+}
+
+function closeMenuItemModal() {
+  const modal = $('#menuItemModal');
+  if (!modal) return;
+
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  menuManagementState.editingId = null;
+}
+
+function wireMenuManagementActions() {
+  $('#menuManagementSearch')?.addEventListener('input', renderMenuManagement);
+  $('#menuCategoryFilter')?.addEventListener('change', renderMenuManagement);
+  $('#menuAvailabilityFilter')?.addEventListener('change', renderMenuManagement);
+  $('#menuFavouriteFilter')?.addEventListener('change', renderMenuManagement);
+
+  $('#menuAddItemBtn')?.addEventListener('click', () => openMenuItemModal());
+
+  $('#menuManagementList')?.addEventListener('click', async event => {
+    const editButton = event.target.closest('[data-menu-edit]');
+    if (editButton) {
+      openMenuItemModal(editButton.dataset.menuEdit);
+      return;
+    }
+
+    const archiveButton = event.target.closest('[data-menu-archive]');
+    if (archiveButton) {
+      await toggleMenuItemArchive(archiveButton.dataset.menuArchive);
+      return;
+    }
+
+    const outletButton = event.target.closest('[data-menu-outlet]');
+    if (!outletButton) return;
+
+    await toggleMenuOutletAvailability(
+      outletButton.dataset.menuOutlet,
+      outletButton.dataset.menuItem,
+      outletButton.dataset.menuOutletName
+    );
+  });
+
+  $$('[data-menu-modal-close]').forEach(button => {
+    button.addEventListener('click', closeMenuItemModal);
+  });
+
+  $('#menuItemForm')?.addEventListener('submit', saveMenuItem);
+}
+
+async function saveMenuItem(event) {
+  event.preventDefault();
+
+  const form = $('#menuItemForm');
+  const submitButton = form?.querySelector('button[type="submit"]');
+  if (!form || !submitButton) return;
+
+  const name = $('#menuItemName')?.value.trim();
+  const categoryId = $('#menuItemCategory')?.value;
+  const price = Number($('#menuItemPrice')?.value);
+  const displayOrder = Number($('#menuItemOrder')?.value || 0);
+  const description = $('#menuItemDescription')?.value.trim() || null;
+  const isVeg = $('#menuItemVeg')?.checked === true;
+  const isFavourite = $('#menuItemFavourite')?.checked === true;
+  const isAvailable = $('#menuItemAvailable')?.checked === true;
+
+  if (!name) {
+    toast('Item name is required.', 'bad');
+    return;
+  }
+
+  if (!categoryId) {
+    toast('Please select a category.', 'bad');
+    return;
+  }
+
+  if (!Number.isFinite(price) || price < 0) {
+    toast('Enter a valid price.', 'bad');
+    return;
+  }
+
+  if (!Number.isInteger(displayOrder) || displayOrder < 0) {
+    toast('Display order must be a whole number.', 'bad');
+    return;
+  }
+
+  const editingId = menuManagementState.editingId;
+  const existingItem = editingId
+    ? menuManagementState.items.find(item => item.id === editingId)
+    : null;
+
+  submitButton.disabled = true;
+  submitButton.textContent = editingId ? 'SAVING…' : 'CREATING…';
+
+  try {
+    if (editingId && !existingItem) {
+      throw new Error('Menu item could not be found. Please refresh and try again.');
+    }
+
+    if (editingId) {
+      const { error } = await supabase
+        .from('menu_items')
+        .update({
+          category_id: categoryId,
+          name,
+          description,
+          price,
+          is_veg: isVeg,
+          is_available: isAvailable,
+          is_favourite: isFavourite,
+          display_order: displayOrder
+        })
+        .eq('id', editingId);
+
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('Another menu item already uses this name/slug.');
+        }
+        throw error;
+      }
+
+      closeMenuItemModal();
+      await loadMenuManagement();
+      await loadPosMenu();
+      toast(`${name} updated successfully.`, 'ok');
+      return;
+    }
+
+    let slug = slugify(name);
+
+    if (!slug) {
+      throw new Error('Item name must contain letters or numbers.');
+    }
+
+    const { data: slugMatches, error: slugError } = await supabase
+      .from('menu_items')
+      .select('id, slug')
+      .ilike('slug', `${slug}%`);
+
+    if (slugError) throw slugError;
+
+    const usedSlugs = new Set((slugMatches || []).map(item => item.slug));
+    const baseSlug = slug;
+    let suffix = 2;
+
+    while (usedSlugs.has(slug)) {
+      slug = `${baseSlug}-${suffix}`;
+      suffix += 1;
+    }
+
+    const { data: newItem, error: insertError } = await supabase
+      .from('menu_items')
+      .insert({
+        category_id: categoryId,
+        name,
+        slug,
+        description,
+        price,
+        is_veg: isVeg,
+        is_available: isAvailable,
+        is_favourite: isFavourite,
+        display_order: displayOrder
+      })
+      .select('id,category_id,name,slug,description,price,image_url,is_veg,is_available,is_favourite,display_order')
+      .single();
+
+    if (insertError) {
+      if (insertError.code === '23505') {
+        throw new Error('A menu item with this slug already exists. Please try again.');
+      }
+      throw insertError;
+    }
+
+    const activeOutlets = state.outlets.filter(outlet => outlet.status === 'ACTIVE');
+
+    if (activeOutlets.length) {
+      const outletRows = activeOutlets.map(outlet => ({
+        outlet_id: outlet.id,
+        menu_item_id: newItem.id,
+        is_available: isAvailable
+      }));
+
+      const { error: outletError } = await supabase
+        .from('outlet_menu_items')
+        .insert(outletRows);
+
+      if (outletError) {
+        await supabase.from('menu_items').delete().eq('id', newItem.id);
+        throw outletError;
+      }
+    }
+
+    closeMenuItemModal();
+    await loadMenuManagement();
+    await loadPosMenu();
+    toast(`${name} added successfully.`, 'ok');
+  } catch (error) {
+    console.error('Unable to save menu item:', error);
+    toast(error.message || 'Unable to save menu item.', 'bad');
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = menuManagementState.editingId ? 'SAVE CHANGES' : 'SAVE ITEM';
+  }
+}
+
+async function toggleMenuItemArchive(itemId) {
+  const item = menuManagementState.items.find(entry => entry.id === itemId);
+  if (!item) {
+    toast('Menu item not found. Please refresh and try again.', 'bad');
+    return;
+  }
+
+  const nextArchived = !item.is_archived;
+  const action = nextArchived ? 'archive' : 'restore';
+
+  const confirmed = window.confirm(
+    nextArchived
+      ? `Archive "${item.name}"? It will be removed from the active menu and POS.`
+      : `Restore "${item.name}"? It will become available in the menu again.`
+  );
+
+  if (!confirmed) return;
+
+  const { error } = await supabase
+    .from('menu_items')
+    .update({
+      is_archived: nextArchived,
+      is_available: nextArchived ? false : true
+    })
+    .eq('id', itemId);
+
+  if (error) {
+    console.error(`Unable to ${action} menu item:`, error);
+    toast(error.message || `Unable to ${action} menu item.`, 'bad');
+    return;
+  }
+
+  const { error: outletError } = await supabase
+    .from('outlet_menu_items')
+    .update({ is_available: false })
+    .eq('menu_item_id', itemId);
+
+  if (outletError) {
+    console.error('Unable to disable archived item at outlets:', outletError);
+    toast(outletError.message || 'Item was updated but outlet availability could not be updated.', 'bad');
+    return;
+  }
+
+  await loadMenuManagement();
+  await loadPosMenu();
+
+  toast(
+    nextArchived
+      ? `${item.name} archived.`
+      : `${item.name} restored and enabled.`,
+    'ok'
+  );
+}
+
+async function toggleMenuOutletAvailability(outletId, menuItemId, outletName) {
+  const key = `${outletId}:${menuItemId}`;
+  const current = menuManagementState.outletAvailability.get(key) === true;
+  const next = !current;
+
+  const { error } = await supabase
+    .from('outlet_menu_items')
+    .update({ is_available: next })
+    .eq('outlet_id', outletId)
+    .eq('menu_item_id', menuItemId);
+
+  if (error) {
+    toast(error.message || `Unable to update ${outletName}.`, 'bad');
+    return;
+  }
+
+  menuManagementState.outletAvailability.set(key, next);
+  renderMenuManagement();
+  await loadPosMenu();
+  toast(`${outletName} · ${next ? 'item enabled' : 'item disabled'}.`, 'ok');
+}
+
+
 function wireDashboardActions() {
   $$('[data-section="outlets"], .action-outlet').forEach(button => button.addEventListener('click', openOutletSection));
   const addOutletButton = $('#addNewOutletBtn');
@@ -928,6 +1587,7 @@ function wireDashboardActions() {
 
   wirePosActions();
   wireOrdersActions();
+  wireMenuManagementActions();
 }
 
 
@@ -1144,6 +1804,7 @@ async function startApp(session) {
     updateUserCard();
     $('#authGate')?.classList.add('hidden');
     await loadOutlets();
+    await loadMenuManagement();
     await loadPosMenu();
     await loadOrders();
   } catch (error) {
