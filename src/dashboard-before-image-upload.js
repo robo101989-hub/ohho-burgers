@@ -147,12 +147,6 @@ function injectStyles() {
     .menu-toggle-field input:checked + .menu-toggle-ui:after{left:14px;background:#080808}
     .menu-form-image{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:16px;padding:13px;border:1px dashed #303030;border-radius:10px}
     .menu-form-image p{margin:5px 0 0;color:#666;font-size:9px}
-    .menu-image-preview-wrap{display:flex;align-items:center;gap:12px;min-width:0}
-    .menu-image-preview{width:64px;height:64px;flex:0 0 64px;border:1px solid #303030;border-radius:8px;background:#090909;color:#555;display:grid;place-items:center;text-align:center;font:800 7px var(--mono);letter-spacing:.5px;overflow:hidden}
-    .menu-image-preview.has-image{border-color:#3a3a3a}
-    .menu-image-preview img{display:block;width:100%;height:100%;object-fit:contain}
-    .menu-image-actions{display:flex;align-items:center;gap:7px;flex:0 0 auto}
-    .menu-image-actions button{white-space:nowrap}
     .menu-item-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid #242424}
 
     .outlet-grid{grid-template-columns:repeat(3,minmax(0,1fr));display:grid;gap:12px}
@@ -598,9 +592,6 @@ function renderPosMenu() {
     <article class="pos-menu-card ${item.outletAvailable ? '' : 'off'}"
       data-menu-id="${escapeHtml(item.id)}"
       title="${item.outletAvailable ? 'Add to order' : 'Not available at this outlet'}">
-      ${item.image_url
-        ? `<div class="pos-menu-card-image"><img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}"></div>`
-        : ''}
       <div>
         <div class="pos-menu-card-top">
           <span class="pos-menu-category">${escapeHtml(categoryMap.get(item.category_id) || 'Menu')}</span>
@@ -1055,8 +1046,7 @@ const menuManagementState = {
   items: [],
   categories: [],
   outletAvailability: new Map(),
-  editingId: null,
-  imageRemoved: false
+  editingId: null
 };
 
 async function loadMenuManagement() {
@@ -1272,7 +1262,6 @@ function openMenuItemModal(itemId = null) {
   if (!modal || !form) return;
 
   menuManagementState.editingId = itemId;
-  menuManagementState.imageRemoved = false;
 
   const item = itemId
     ? menuManagementState.items.find(entry => entry.id === itemId)
@@ -1288,27 +1277,6 @@ function openMenuItemModal(itemId = null) {
   $('#menuItemFavourite').checked = item?.is_favourite === true;
   $('#menuItemAvailable').checked = item?.is_available !== false;
 
-  const imageInput = $('#menuItemImage');
-  const imagePreview = $('#menuItemImagePreview');
-  const imageRemove = $('#menuItemImageRemove');
-  const imageStatus = $('#menuItemImageStatus');
-
-  if (imageInput && imagePreview && imageRemove && imageStatus) {
-    imageInput.value = '';
-
-    if (item?.image_url) {
-      imagePreview.innerHTML = `<img src="${item.image_url}" alt="${item.name || 'Menu item'}">`;
-      imagePreview.classList.add('has-image');
-      imageRemove.classList.remove('hidden');
-      imageStatus.textContent = 'Current image · Choose a new file to replace it';
-    } else {
-      imagePreview.textContent = 'NO IMAGE';
-      imagePreview.classList.remove('has-image');
-      imageRemove.classList.add('hidden');
-      imageStatus.textContent = 'JPG, PNG or WEBP · Max 5MB';
-    }
-  }
-
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
   $('#menuItemName')?.focus();
@@ -1321,81 +1289,6 @@ function closeMenuItemModal() {
   modal.classList.add('hidden');
   modal.setAttribute('aria-hidden', 'true');
   menuManagementState.editingId = null;
-}
-
-function wireMenuImagePicker() {
-  const input = $('#menuItemImage');
-  const button = $('#menuItemImageBtn');
-  const removeButton = $('#menuItemImageRemove');
-  const preview = $('#menuItemImagePreview');
-  const status = $('#menuItemImageStatus');
-
-  if (!input || !button || !removeButton || !preview || !status) return;
-
-  button.addEventListener('click', () => input.click());
-
-  input.addEventListener('change', () => {
-    const file = input.files?.[0];
-    if (!file) return;
-
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      input.value = '';
-      toast('Please choose a JPG, PNG or WEBP image.', 'bad');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      input.value = '';
-      toast('Image must be 5MB or smaller.', 'bad');
-      return;
-    }
-
-    const url = URL.createObjectURL(file);
-    preview.innerHTML = `<img src="${url}" alt="Selected menu image">`;
-    preview.classList.add('has-image');
-    removeButton.classList.remove('hidden');
-    status.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB`;
-  });
-
-  removeButton.addEventListener('click', () => {
-    input.value = '';
-    menuManagementState.imageRemoved = true;
-    preview.textContent = 'NO IMAGE';
-    preview.classList.remove('has-image');
-    removeButton.classList.add('hidden');
-    status.textContent = 'JPG, PNG or WEBP · Max 5MB';
-  });
-}
-
-
-async function uploadMenuItemImage(file, itemKey) {
-  if (!file) return null;
-
-  const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  const safeKey = String(itemKey || 'menu-item').replace(/[^a-z0-9-]/gi, '-').toLowerCase();
-  const path = `${safeKey}/${Date.now()}.${extension}`;
-
-  const { error: uploadError } = await supabase
-    .storage
-    .from('menu-images')
-    .upload(path, file, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType: file.type
-    });
-
-  if (uploadError) throw uploadError;
-
-  const { data } = supabase
-    .storage
-    .from('menu-images')
-    .getPublicUrl(path);
-
-  if (!data?.publicUrl) {
-    throw new Error('Image uploaded but public URL could not be generated.');
-  }
-
-  return data.publicUrl;
 }
 
 function wireMenuManagementActions() {
@@ -1434,7 +1327,6 @@ function wireMenuManagementActions() {
   });
 
   $('#menuItemForm')?.addEventListener('submit', saveMenuItem);
-  wireMenuImagePicker();
 }
 
 async function saveMenuItem(event) {
@@ -1486,21 +1378,6 @@ async function saveMenuItem(event) {
       throw new Error('Menu item could not be found. Please refresh and try again.');
     }
 
-    const imageFile = $('#menuItemImage')?.files?.[0] || null;
-    let imageUrl = existingItem?.image_url || null;
-
-    if (menuManagementState.imageRemoved) {
-      imageUrl = null;
-    }
-
-    if (imageFile) {
-      submitButton.textContent = editingId ? 'UPLOADING…' : 'UPLOADING…';
-      imageUrl = await uploadMenuItemImage(
-        imageFile,
-        existingItem?.slug || slugify(name)
-      );
-    }
-
     if (editingId) {
       const { error } = await supabase
         .from('menu_items')
@@ -1512,8 +1389,7 @@ async function saveMenuItem(event) {
           is_veg: isVeg,
           is_available: isAvailable,
           is_favourite: isFavourite,
-          display_order: displayOrder,
-          image_url: imageUrl
+          display_order: displayOrder
         })
         .eq('id', editingId);
 
@@ -1564,8 +1440,7 @@ async function saveMenuItem(event) {
         is_veg: isVeg,
         is_available: isAvailable,
         is_favourite: isFavourite,
-        display_order: displayOrder,
-        image_url: imageUrl
+        display_order: displayOrder
       })
       .select('id,category_id,name,slug,description,price,image_url,is_veg,is_available,is_favourite,display_order')
       .single();
