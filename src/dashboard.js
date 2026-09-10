@@ -257,6 +257,300 @@ function buildAuthGate() {
   $('#authForm').addEventListener('submit', signIn);
 }
 
+function buildStaffModal() {
+  if ($('#staffModal')) return;
+
+  const modal = document.createElement('div');
+  modal.id = 'staffModal';
+  modal.className = 'menu-item-modal hidden';
+  modal.setAttribute('aria-hidden', 'true');
+
+  modal.innerHTML = `
+    <div class="menu-item-modal-backdrop" data-staff-modal-close></div>
+
+    <div class="menu-item-modal-panel staff-modal-panel"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="staffModalTitle">
+
+      <div class="menu-item-modal-head">
+        <div>
+          <div class="eyebrow">Team access</div>
+          <h2 id="staffModalTitle">Add Staff</h2>
+        </div>
+
+        <button type="button"
+                class="menu-modal-close"
+                data-staff-modal-close
+                aria-label="Close">×</button>
+      </div>
+
+      <form id="staffForm" class="menu-item-form">
+
+        <div class="menu-form-grid">
+
+          <label class="menu-field">
+            <span>FULL NAME</span>
+            <input id="staffName"
+                   type="text"
+                   required
+                   autocomplete="name"
+                   placeholder="e.g. Rahul Kumar">
+          </label>
+
+          <label class="menu-field">
+            <span>PHONE</span>
+            <input id="staffPhone"
+                   type="tel"
+                   autocomplete="tel"
+                   placeholder="e.g. 9876543210">
+          </label>
+
+          <label class="menu-field menu-field-full">
+            <span>LOGIN EMAIL</span>
+            <input id="staffEmail"
+                   type="email"
+                   required
+                   autocomplete="email"
+                   placeholder="staff@ohhoburgers.in">
+          </label>
+
+          <label class="menu-field">
+            <span>ROLE</span>
+            <select id="staffRole" required>
+              <option value="STAFF">STAFF</option>
+              <option value="MANAGER">MANAGER</option>
+              <option value="OWNER">OWNER</option>
+              <option value="ADMIN">ADMIN</option>
+            </select>
+          </label>
+
+          <label class="menu-field">
+            <span>TEMPORARY PASSWORD</span>
+            <input id="staffPassword"
+                   type="password"
+                   minlength="8"
+                   autocomplete="new-password"
+                   placeholder="Minimum 8 characters">
+          </label>
+
+          <div class="menu-field menu-field-full">
+            <span>OUTLET ACCESS</span>
+
+            <div id="staffOutletOptions" class="staff-outlet-options">
+              <div class="staff-outlet-loading">Loading outlets…</div>
+            </div>
+          </div>
+
+          <label class="menu-field" id="staffStatusField">
+            <span>ACCOUNT STATUS</span>
+            <select id="staffIsActive">
+              <option value="true">ACTIVE</option>
+              <option value="false">INACTIVE</option>
+            </select>
+          </label>
+
+        </div>
+
+        <div class="staff-form-note">
+          <strong>Secure account creation</strong>
+          <span>
+            The staff member will receive dashboard access using this email and
+            temporary password. Access is limited to the selected outlet(s).
+          </span>
+        </div>
+
+        <div class="menu-item-modal-actions">
+          <button type="button"
+                  class="secondary"
+                  data-staff-modal-close>
+            CANCEL
+          </button>
+
+          <button id="staffSaveBtn"
+                  type="submit"
+                  class="primary">
+            CREATE STAFF
+          </button>
+        </div>
+
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  $$('[data-staff-modal-close]').forEach(button => {
+    button.addEventListener('click', closeStaffModal);
+  });
+
+  $('#staffForm')?.addEventListener('submit', handleStaffSubmit);
+}
+
+function renderStaffOutletOptions(selectedIds = []) {
+  const container = $('#staffOutletOptions');
+  if (!container) return;
+
+  const outlets = state.outlets.filter(outlet => outlet.status === 'ACTIVE');
+
+  if (!outlets.length) {
+    container.innerHTML = `
+      <div class="staff-outlet-loading">
+        No active outlets available.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = outlets.map(outlet => `
+    <label class="staff-outlet-option">
+      <input
+        type="checkbox"
+        value="${escapeHtml(outlet.id)}"
+        ${selectedIds.includes(outlet.id) ? 'checked' : ''}
+      >
+      <span class="staff-outlet-check"></span>
+      <span class="staff-outlet-option-copy">
+        <strong>${escapeHtml(outlet.name)}</strong>
+        <small>${escapeHtml(outlet.address || 'Active outlet')}</small>
+      </span>
+    </label>
+  `).join('');
+}
+
+function openStaffModal(member = null) {
+  const modal = $('#staffModal');
+  if (!modal) return;
+
+  const form = $('#staffForm');
+  const title = $('#staffModalTitle');
+  const saveButton = $('#staffSaveBtn');
+
+  if (!form || !title || !saveButton) return;
+
+  form.dataset.staffId = member?.id || '';
+
+  title.textContent = member ? 'Edit Staff' : 'Add Staff';
+  saveButton.textContent = member ? 'SAVE CHANGES' : 'CREATE STAFF';
+
+  $('#staffName').value = member?.name || '';
+  $('#staffPhone').value = member?.phone || '';
+  $('#staffEmail').value = member?.email || '';
+  $('#staffRole').value = member?.role || 'STAFF';
+  $('#staffPassword').value = '';
+  $('#staffIsActive').value = member?.is_active === false ? 'false' : 'true';
+
+  $('#staffEmail').disabled = Boolean(member);
+
+  renderStaffOutletOptions(member?.outlet_ids || []);
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+
+  setTimeout(() => $('#staffName')?.focus(), 50);
+}
+
+function closeStaffModal() {
+  const modal = $('#staffModal');
+  if (!modal) return;
+
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+
+  const form = $('#staffForm');
+  if (form) {
+    form.reset();
+    delete form.dataset.staffId;
+  }
+
+  const email = $('#staffEmail');
+  if (email) email.disabled = false;
+}
+
+async function handleStaffSubmit(event) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+  const staffId = form.dataset.staffId || '';
+
+  const selectedOutletIds = [
+    ...form.querySelectorAll('#staffOutletOptions input[type="checkbox"]:checked')
+  ].map(input => input.value);
+
+  const payload = {
+    name: $('#staffName')?.value.trim(),
+    phone: $('#staffPhone')?.value.trim() || null,
+    email: $('#staffEmail')?.value.trim(),
+    role: $('#staffRole')?.value,
+    password: $('#staffPassword')?.value || null,
+    is_active: $('#staffIsActive')?.value !== 'false',
+    outlet_ids: selectedOutletIds
+  };
+
+  if (!payload.name || !payload.email || !payload.role) {
+    toast('Please complete all required staff fields.', 'bad');
+    return;
+  }
+
+  if (!staffId && (!payload.password || payload.password.length < 8)) {
+    toast('Temporary password must be at least 8 characters.', 'bad');
+    return;
+  }
+
+  if (!payload.outlet_ids.length) {
+    toast('Assign at least one outlet.', 'bad');
+    return;
+  }
+
+  const saveButton = $('#staffSaveBtn');
+
+  if (saveButton) {
+    saveButton.disabled = true;
+    saveButton.textContent = staffId ? 'SAVING…' : 'CREATING…';
+  }
+
+  try {
+    const requestBody = {
+      ...payload,
+      ...(staffId ? { id: staffId, is_active: payload.is_active } : {})
+    };
+
+    if (staffId) {
+      delete requestBody.email;
+      delete requestBody.password;
+    }
+
+    const result = await staffApiRequest(
+      staffId ? 'PATCH' : 'POST',
+      requestBody
+    );
+
+    const savedStaff = result.staff;
+
+    if (staffId) {
+      state.staff = state.staff.map(member =>
+        member.id === savedStaff.id
+          ? { ...member, ...savedStaff }
+          : member
+      );
+      toast('Staff member updated successfully.', 'ok');
+    } else {
+      state.staff = [savedStaff, ...state.staff];
+      toast('Staff account created successfully.', 'ok');
+    }
+
+    renderStaffList();
+    closeStaffModal();
+  } catch (error) {
+    console.error('Staff save error:', error);
+    toast(error?.message || 'Unable to save staff member.', 'bad');
+  } finally {
+    if (saveButton) {
+      saveButton.disabled = false;
+      saveButton.textContent = staffId ? 'SAVE CHANGES' : 'CREATE STAFF';
+    }
+  }
+}
 function buildOutletModal() {
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
@@ -340,11 +634,43 @@ async function signOut() {
 
 async function loadProfile() {
   if (!state.session?.user?.id) return null;
-  const { data, error } = await supabase.from('profiles').select('id,name,role').eq('id', state.session.user.id).single();
-  if (error) throw new Error('Unable to load admin profile.');
-  if (data.role !== 'ADMIN') throw new Error('Admin access required.');
-  state.profile = data;
-  return data;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id,name,phone,role,is_active')
+    .eq('id', state.session.user.id)
+    .single();
+
+  if (error) throw new Error('Unable to load your OHHO profile.');
+  if (!data) throw new Error('OHHO profile not found.');
+
+  if (data.is_active === false) {
+    throw new Error('Your OHHO account is inactive. Please contact an administrator.');
+  }
+
+  const { data: assignments, error: assignmentError } = await supabase
+    .from('outlet_users')
+    .select('outlet_id')
+    .eq('user_id', state.session.user.id);
+
+  if (assignmentError) {
+    throw new Error('Unable to load your outlet access.');
+  }
+
+  const allowedRoles = ['ADMIN', 'OWNER', 'MANAGER', 'STAFF'];
+
+  if (!allowedRoles.includes(data.role)) {
+    throw new Error('Your OHHO account does not have dashboard access.');
+  }
+
+  state.profile = {
+    ...data,
+    outlet_ids: data.role === 'ADMIN'
+      ? []
+      : (assignments || []).map(row => row.outlet_id)
+  };
+
+  return state.profile;
 }
 
 async function apiRequest(method, body = null) {
@@ -473,7 +799,21 @@ async function apiRequest(method, body = null) {
 async function loadOutlets() {
   try {
     const payload = await apiRequest('GET');
-    state.outlets = payload.outlets || [];
+    const allOutlets = payload.outlets || [];
+    state.outlets = state.profile?.role === 'ADMIN'
+      ? allOutlets
+      : allOutlets.filter(outlet =>
+          (state.profile?.outlet_ids || []).includes(outlet.id)
+        );
+
+    if (state.profile?.role !== 'ADMIN') {
+      if (state.outlets.length === 0) {
+        throw new Error('No outlet has been assigned to your account.');
+      }
+      state.selectedOutlet = state.outlets.length === 1
+        ? state.outlets[0].slug
+        : state.selectedOutlet;
+    }
   } catch (apiError) {
     // Local Vite does not execute Vercel serverless functions, so use the authenticated
     // Supabase read path as a local-development fallback. Creation remains Preview/API based.
@@ -486,6 +826,268 @@ async function loadOutlets() {
   renderOverviewOutlets();
 }
 
+
+async function staffApiRequest(method, body = null) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+
+  if (!token) {
+    throw new Error('Your session has expired. Please sign in again.');
+  }
+
+  const response = await fetch('/api/staff', {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(body ? { 'Content-Type': 'application/json' } : {})
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      payload.error || `Staff request failed (${response.status}).`
+    );
+  }
+
+  return payload;
+}
+
+async function loadStaff() {
+  const list = $('#staffList');
+  if (!list) return;
+
+  list.innerHTML = `
+    <div class="staff-empty">
+      <strong>Loading staff…</strong>
+      <span>Fetching team access and outlet assignments.</span>
+    </div>
+  `;
+
+  try {
+    const sessionResult = await supabase.auth.getSession();
+    const token = sessionResult?.data?.session?.access_token;
+
+    if (!token) throw new Error('No active session.');
+
+    const response = await fetch('/api/staff', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(payload.error || `Staff request failed (${response.status}).`);
+    }
+
+    state.staff = payload.staff || [];
+  } catch (apiError) {
+    // Local Vite does not execute Vercel serverless functions.
+    // Use the authenticated Supabase read path for local development.
+    const [
+      { data: profiles, error: profilesError },
+      { data: assignments, error: assignmentsError }
+    ] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id,name,phone,role,created_at,updated_at')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('outlet_users')
+        .select('user_id,outlet_id')
+    ]);
+
+    if (profilesError || assignmentsError) {
+      throw apiError;
+    }
+
+    const assignmentRows = assignments || [];
+
+    state.staff = (profiles || []).map(profile => ({
+      ...profile,
+      outlet_ids: assignmentRows
+        .filter(row => row.user_id === profile.id)
+        .map(row => row.outlet_id)
+    }));
+  }
+
+  renderStaffFilters();
+  renderStaffList();
+}
+
+function renderStaffFilters() {
+  const outletFilter = $('#staffOutletFilter');
+  if (!outletFilter) return;
+
+  const current = outletFilter.value || 'ALL';
+
+  outletFilter.innerHTML = `
+    <option value="ALL">ALL OUTLETS</option>
+    ${state.outlets
+      .filter(outlet => outlet.status === 'ACTIVE')
+      .map(outlet => `
+        <option value="${escapeHtml(outlet.id)}">${escapeHtml(outlet.name).toUpperCase()}</option>
+      `)
+      .join('')}
+  `;
+
+  outletFilter.value =
+    [...outletFilter.options].some(option => option.value === current)
+      ? current
+      : 'ALL';
+}
+
+function getStaffOutletNames(staffMember) {
+  const ids = Array.isArray(staffMember.outlet_ids)
+    ? staffMember.outlet_ids
+    : [];
+
+  return ids
+    .map(id => state.outlets.find(outlet => outlet.id === id))
+    .filter(Boolean);
+}
+
+function staffInitials(name) {
+  const parts = String(name || 'Staff')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length) return 'ST';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+function renderStaffList() {
+  const list = $('#staffList');
+  const resultCount = $('#staffResultCount');
+  const totalCount = $('#staffTotalCount');
+  const activeCount = $('#staffActiveCount');
+  const managerCount = $('#staffManagerCount');
+  const outletCount = $('#staffOutletCount');
+
+  if (!list) return;
+
+  const search = String($('#staffSearch')?.value || '').trim().toLowerCase();
+  const role = $('#staffRoleFilter')?.value || 'ALL';
+  const outletId = $('#staffOutletFilter')?.value || 'ALL';
+
+  const staff = Array.isArray(state.staff) ? state.staff : [];
+
+  if (totalCount) totalCount.textContent = staff.length;
+  if (activeCount) activeCount.textContent = staff.filter(member => member.is_active !== false).length;
+  if (managerCount) {
+    managerCount.textContent = staff.filter(
+      member => member.role === 'MANAGER' || member.role === 'OWNER'
+    ).length;
+  }
+  if (outletCount) {
+    outletCount.textContent = state.outlets.filter(
+      outlet => outlet.status === 'ACTIVE'
+    ).length;
+  }
+
+  const filtered = staff.filter(member => {
+    const outletNames = getStaffOutletNames(member);
+    const searchable = [
+      member.name,
+      member.phone,
+      member.role,
+      ...outletNames.map(outlet => outlet.name)
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    const matchesSearch = !search || searchable.includes(search);
+    const matchesRole = role === 'ALL' || member.role === role;
+    const matchesOutlet =
+      outletId === 'ALL' ||
+      (Array.isArray(member.outlet_ids) &&
+        member.outlet_ids.includes(outletId));
+
+    return matchesSearch && matchesRole && matchesOutlet;
+  });
+
+  if (resultCount) {
+    resultCount.textContent = `${filtered.length} ${filtered.length === 1 ? 'PERSON' : 'PEOPLE'}`;
+  }
+
+  if (!filtered.length) {
+    list.innerHTML = `
+      <div class="staff-empty">
+        <strong>${staff.length ? 'No matching staff' : 'No staff found'}</strong>
+        <span>${staff.length
+          ? 'Try changing the search or filters.'
+          : 'Add your first team member to start managing access.'}</span>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = filtered.map(member => {
+    const outletNames = getStaffOutletNames(member);
+    const roleClass = String(member.role || 'STAFF').toLowerCase();
+
+    const outletMarkup = outletNames.length
+      ? outletNames.map(outlet => `
+          <span class="staff-outlet-chip">${escapeHtml(outlet.name)}</span>
+        `).join('')
+      : `<span class="staff-outlet-chip all">NO OUTLET ASSIGNED</span>`;
+
+    return `
+      <article class="staff-row">
+        <div class="staff-person">
+          <div class="staff-avatar">${escapeHtml(staffInitials(member.name))}</div>
+          <div class="staff-person-info">
+            <strong>${escapeHtml(member.name || 'Unnamed staff')}</strong>
+            <span>${escapeHtml(member.phone || 'No phone number')}</span>
+          </div>
+        </div>
+
+        <span class="staff-role ${escapeHtml(roleClass)}">
+          ${escapeHtml(member.role || 'STAFF')}
+        </span>
+
+        <div class="staff-outlets">
+          ${outletMarkup}
+        </div>
+
+        <div class="staff-status ${member.is_active !== false ? 'active' : 'inactive'}">
+          <span class="staff-status-dot"></span>
+          ${member.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
+        </div>
+
+        <div class="staff-row-actions">
+          <button
+            type="button"
+            class="staff-edit-btn"
+            data-staff-edit="${escapeHtml(member.id)}"
+          >
+            EDIT
+          </button>
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  list.querySelectorAll('[data-staff-edit]').forEach(button => {
+    button.addEventListener('click', () => {
+      const member = state.staff.find(
+        item => item.id === button.dataset.staffEdit
+      );
+
+      if (member) {
+        openStaffModal(member);
+      }
+    });
+  });
+}
 
 async function loadPosMenu() {
   const menuGrid = $('#posMenuGrid');
@@ -884,9 +1486,22 @@ function renderOutletCards() {
 function renderOutletSelector() {
   const selector = $('.select');
   if (!selector) return;
-  const current = selector.value || state.selectedOutlet || 'ALL';
-  selector.innerHTML = `<option value="ALL">ALL OUTLETS</option>${state.outlets.map(o => `<option value="${escapeHtml(o.slug)}">${escapeHtml(o.name).toUpperCase()}</option>`).join('')}`;
-  selector.value = state.outlets.some(o => o.slug === current) ? current : 'ALL';
+
+  const isAdmin = state.profile?.role === 'ADMIN';
+  const current = selector.value || state.selectedOutlet || (isAdmin ? 'ALL' : '');
+
+  selector.innerHTML = `
+    ${isAdmin ? '<option value="ALL">ALL OUTLETS</option>' : ''}
+    ${state.outlets
+      .map(o => `<option value="${escapeHtml(o.slug)}">${escapeHtml(o.name).toUpperCase()}</option>`)
+      .join('')}
+  `;
+
+  const validCurrent = state.outlets.some(o => o.slug === current);
+  selector.value = validCurrent
+    ? current
+    : (isAdmin ? 'ALL' : (state.outlets[0]?.slug || ''));
+
   state.selectedOutlet = selector.value;
   selector.onchange = async () => {
     state.selectedOutlet = selector.value;
@@ -1702,6 +2317,18 @@ function wireDashboardActions() {
     user.addEventListener('click', signOut);
   }
 
+  const staffAddButton = $('#staffAddBtn');
+  if (staffAddButton) {
+    staffAddButton.addEventListener('click', event => {
+      event.preventDefault();
+      openStaffModal();
+    });
+  }
+
+  $('#staffSearch')?.addEventListener('input', renderStaffList);
+  $('#staffRoleFilter')?.addEventListener('change', renderStaffList);
+  $('#staffOutletFilter')?.addEventListener('change', renderStaffList);
+
   wirePosActions();
   wireOrdersActions();
   wireMenuManagementActions();
@@ -1921,6 +2548,7 @@ async function startApp(session) {
     updateUserCard();
     $('#authGate')?.classList.add('hidden');
     await loadOutlets();
+    await loadStaff();
     await loadMenuManagement();
     await loadPosMenu();
     await loadOrders();
@@ -1935,6 +2563,7 @@ async function init() {
   injectStyles();
   buildAuthGate();
   buildOutletModal();
+  buildStaffModal();
   buildToast();
 
   // Keep the dashboard hidden until authentication is confirmed.
