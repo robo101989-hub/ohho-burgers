@@ -11,6 +11,7 @@ const ROLE_PERMISSIONS = {
 const state = {
   session: null,
   profile: null,
+  recoveryMode: false,
   outlets: [],
   selectedOutlet: 'ALL',
   pos: {
@@ -2681,6 +2682,7 @@ async function init() {
 
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === "PASSWORD_RECOVERY") {
+      state.recoveryMode = true;
       showPasswordReset();
       return;
     }
@@ -2704,7 +2706,7 @@ async function init() {
     return;
   }
 
-  if (data.session && !state.session) {
+  if (data.session && !state.session && !state.recoveryMode) {
     await startApp(data.session);
   } else if (!data.session) {
     gate?.classList.remove("hidden");
