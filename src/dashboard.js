@@ -59,7 +59,7 @@ function injectStyles() {
     .auth-title{margin:0;font-size:25px;letter-spacing:-1px}.auth-copy{color:#888;font-size:12px;line-height:1.6;margin:9px 0 22px}
     .auth-form{display:grid;gap:10px}.auth-form input{width:100%;background:#090909;border:1px solid #303030;color:#fff;border-radius:10px;padding:13px 14px;outline:0;font-size:13px}.auth-form input:focus{border-color:#ffd21c}
     .auth-submit{border:0;background:#ffd21c;color:#080808;border-radius:10px;padding:13px 15px;font-size:11px;font-weight:950;letter-spacing:.6px;margin-top:3px}.auth-submit:disabled{opacity:.55;cursor:wait}
-    .auth-error{display:none;color:#ff8c8c;background:#241111;border:1px solid #4a2020;border-radius:9px;padding:10px;font-size:11px;line-height:1.45}.auth-error.show{display:block}
+    .auth-error{display:none;color:#ff8c8c;background:#241111;border:1px solid #4a2020;border-radius:9px;padding:10px;font-size:11px;line-height:1.45}.auth-error.show{display:block}\n    .auth-reset-link{display:block;text-align:center;margin-top:4px;color:#ffd21c;font-size:10px;font-weight:800;text-decoration:none;cursor:pointer}.auth-reset-link:hover{text-decoration:underline}\n    .auth-reset-copy{color:#888;font-size:12px;line-height:1.6;margin:9px 0 22px}
 
     .orders-page-head{align-items:flex-end}
     .orders-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -267,12 +267,37 @@ function buildAuthGate() {
       <form class="auth-form" id="authForm">
         <input id="authEmail" type="email" autocomplete="email" placeholder="Admin email" required>
         <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password" required>
+        <a href="#" class="auth-reset-link" id="authResetLink">Forgot password?</a>
         <div class="auth-error" id="authError"></div>
         <button class="auth-submit" id="authSubmit" type="submit">SIGN IN TO OHHO</button>
       </form>
     </div>`;
   document.body.prepend(gate);
   $('#authForm').addEventListener('submit', signIn);
+  $('#authResetLink').addEventListener('click', requestPasswordReset);
+}
+
+function showPasswordReset() {
+  const gate = $("#authGate");
+  if (!gate) return;
+
+  gate.innerHTML = `
+    <div class="auth-card">
+      <div class="auth-brand">OHHO<span>BURGERS</span></div>
+      <div class="auth-kicker">Account Recovery</div>
+      <h1 class="auth-title">Set a new password</h1>
+      <p class="auth-reset-copy">Choose a new password for your OHHO operations account.</p>
+      <form class="auth-form" id="passwordResetForm">
+        <input id="newPassword" type="password" autocomplete="new-password" placeholder="New password" minlength="8" required>
+        <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="Confirm new password" minlength="8" required>
+        <div class="auth-error" id="authError"></div>
+        <button class="auth-submit" id="updatePasswordSubmit" type="submit">UPDATE PASSWORD</button>
+      </form>
+    </div>`;
+
+  gate.classList.remove("hidden");
+  document.body.classList.add("dashboard-auth-pending");
+  $("#passwordResetForm").addEventListener("submit", updatePassword);
 }
 
 function buildStaffModal() {
@@ -659,6 +684,26 @@ function setAuthError(message) {
   node.classList.toggle('show', Boolean(message));
 }
 
+async function requestPasswordReset(event) {
+  event.preventDefault();
+  const email = $("#authEmail").value.trim();
+  if (!email) {
+    setAuthError("Enter your email address first.");
+    return;
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/dashboard`
+  });
+
+  if (error) {
+    setAuthError(error.message || "Unable to send password reset email.");
+    return;
+  }
+
+  setAuthError("Password reset email sent. Check your inbox.");
+}
+
 async function signIn(event) {
   event.preventDefault();
   const button = $('#authSubmit');
@@ -669,6 +714,38 @@ async function signIn(event) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) setAuthError(error.message || 'Unable to sign in.');
   button.disabled = false;
+}
+
+async function updatePassword(event) {
+  event.preventDefault();
+  const password = $("#newPassword").value;
+  const confirmPassword = $("#confirmPassword").value;
+
+  if (password.length < 8) {
+    setAuthError("Password must be at least 8 characters.");
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    setAuthError("Passwords do not match.");
+    return;
+  }
+
+  const button = $("#updatePasswordSubmit");
+  button.disabled = true;
+  setAuthError("");
+
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    setAuthError(error.message || "Unable to update password.");
+    button.disabled = false;
+    return;
+  }
+
+  setAuthError("Password updated successfully. Please sign in with your new password.");
+  await supabase.auth.signOut();
+  window.location.reload();
 }
 
 async function signOut() {
@@ -2602,21 +2679,12 @@ async function init() {
   // Wire actions after the dashboard DOM and modal exist.
   wireDashboardActions();
 
-  const { data, error } = await supabase.auth.getSession();
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+      showPasswordReset();
+      return;
+    }
 
-  if (error) {
-    console.error('Unable to restore session:', error);
-    setAuthError('Unable to restore your session. Please sign in again.');
-    return;
-  }
-
-  if (data.session) {
-    await startApp(data.session);
-  } else {
-    gate?.classList.remove('hidden');
-  }
-
-  supabase.auth.onAuthStateChange(async (_event, session) => {
     if (session) {
       await startApp(session);
     } else {
@@ -2627,6 +2695,20 @@ async function init() {
       document.body.classList.add('dashboard-auth-pending');
     }
   });
+
+  const { data, error } = await supabase.auth.getSession();
+
+  if (error) {
+    console.error("Unable to restore session:", error);
+    setAuthError("Unable to restore your session. Please sign in again.");
+    return;
+  }
+
+  if (data.session && !state.session) {
+    await startApp(data.session);
+  } else if (!data.session) {
+    gate?.classList.remove("hidden");
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
