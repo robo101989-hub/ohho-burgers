@@ -1,5 +1,13 @@
 import { supabase } from './supabase.js';
 
+const ROLE_PERMISSIONS = {
+  ADMIN: ['overview', 'pos', 'orders', 'menu', 'outlets', 'staff', 'reports', 'settings'],
+  OWNER: ['overview', 'pos', 'orders', 'menu', 'reports'],
+  MANAGER: ['overview', 'pos', 'orders', 'menu', 'reports'],
+  STAFF: ['overview', 'pos', 'orders', 'menu']
+};
+
+
 const state = {
   session: null,
   profile: null,
@@ -15,6 +23,18 @@ const state = {
     cart: []
   }
 };
+
+function safeUrl(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (!["http:", "https:"].includes(url.protocol)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -98,9 +118,9 @@ function injectStyles() {
     .menu-management-filter:focus{border-color:#ffd21c}
 
     .menu-management-table-wrap{background:#0d0d0d;border:1px solid #242424;border-radius:14px;overflow:hidden}
-    .menu-management-table-head{display:grid;grid-template-columns:minmax(220px,1.7fr) minmax(130px,1fr) 90px 110px 90px 90px 62px;gap:10px;align-items:center;padding:11px 15px;border-bottom:1px solid #242424;background:#0a0a0a;color:#555;font:900 8px var(--mono);letter-spacing:1.1px}
+    .menu-management-table-head{display:grid;grid-template-columns:var(--menu-grid-columns,minmax(220px,1.7fr) minmax(130px,1fr) 90px 110px 90px 90px 62px);gap:10px;align-items:center;padding:11px 15px;border-bottom:1px solid #242424;background:#0a0a0a;color:#555;font:900 8px var(--mono);letter-spacing:1.1px}
     .menu-management-list{display:block}
-    .menu-management-row{display:grid;grid-template-columns:minmax(220px,1.7fr) minmax(130px,1fr) 90px 110px 90px 90px 62px;gap:10px;align-items:center;padding:13px 15px;border-bottom:1px solid #1c1c1c;min-height:68px}
+    .menu-management-row{display:grid;grid-template-columns:var(--menu-grid-columns,minmax(220px,1.7fr) minmax(130px,1fr) 90px 110px 90px 90px 62px);gap:10px;align-items:center;padding:13px 15px;border-bottom:1px solid #1c1c1c;min-height:68px}
     .menu-management-row:last-child{border-bottom:0}
     .menu-management-row:hover{background:#111}
     .menu-item-main{display:flex;align-items:center;gap:11px;min-width:0}
@@ -176,19 +196,18 @@ function injectStyles() {
       .menu-item-main{grid-column:1/-1}
       .menu-category-name{grid-column:1}
       .menu-price-value{grid-column:2}
-      .menu-management-row>div:nth-child(4){grid-column:3}
-      .menu-management-row>div:nth-child(5){grid-column:1}
-      .menu-management-row>div:nth-child(6){grid-column:2}
-      .menu-management-row>div:nth-child(7){grid-column:3}
+      .menu-status-cell{grid-column:3}
+      .menu-outlet-cell{grid-column:auto}
+      .menu-row-actions{grid-column:auto}
     }
 
     @media(max-width:760px){
-      .menu-management-row>div:nth-child(4),.menu-management-row>div:nth-child(5),.menu-management-row>div:nth-child(6),.menu-management-row>div:nth-child(7){min-width:0;width:100%}
-      .menu-management-row>div:nth-child(4),.menu-management-row>div:nth-child(5),.menu-management-row>div:nth-child(6){display:flex;align-items:center}
+      .menu-status-cell,.menu-outlet-cell,.menu-row-actions{min-width:0;width:100%}
+      .menu-status-cell,.menu-outlet-cell{display:flex;align-items:center}
       .menu-status-pill,.menu-outlet-pill{min-height:34px;padding:8px 10px;width:100%;justify-content:center}
       .menu-edit-btn{width:100%;min-height:36px;padding:9px 10px;border:1px solid #303030;background:#111;color:#ddd;border-radius:7px;font:900 8px var(--mono);letter-spacing:.6px}
-      .menu-management-row>div:nth-child(7) button{width:100%;min-height:36px;padding:9px 10px;border:1px solid #303030;background:#111;color:#aaa;border-radius:7px;font:900 8px var(--mono);letter-spacing:.6px;cursor:pointer}
-      .menu-management-row>div:nth-child(7) button:hover{border-color:#ffd21c;color:#ffd21c}
+      .menu-row-actions button{width:100%;min-height:36px;padding:9px 10px;border:1px solid #303030;background:#111;color:#aaa;border-radius:7px;font:900 8px var(--mono);letter-spacing:.6px;cursor:pointer}
+      .menu-row-actions button:hover{border-color:#ffd21c;color:#ffd21c}
 
       .menu-page-head{align-items:flex-start;width:100%;text-align:left}
       .menu-page-head>div:first-child{width:100%;margin-left:0}
@@ -200,10 +219,9 @@ function injectStyles() {
       .menu-item-main{grid-column:1/-1}
       .menu-category-name{grid-column:1}
       .menu-price-value{grid-column:2;text-align:right}
-      .menu-management-row>div:nth-child(4){grid-column:1}
-      .menu-management-row>div:nth-child(5){grid-column:1}
-      .menu-management-row>div:nth-child(6){grid-column:2}
-      .menu-management-row>div:nth-child(7){grid-column:1/-1}
+      .menu-status-cell{grid-column:1}
+      .menu-outlet-cell{grid-column:auto}
+      .menu-row-actions{grid-column:1/-1}
       .menu-edit-btn{padding:10px}
       .menu-item-modal{padding:10px}
       .menu-item-modal-panel{max-height:calc(100vh - 20px)}
@@ -356,7 +374,8 @@ function buildStaffModal() {
           <strong>Secure account creation</strong>
           <span>
             The staff member will receive dashboard access using this email and
-            temporary password. Access is limited to the selected outlet(s).
+            temporary password. ADMIN has access to all outlets; other roles are
+            limited to their assigned outlet(s).
           </span>
         </div>
 
@@ -385,6 +404,7 @@ function buildStaffModal() {
   });
 
   $('#staffForm')?.addEventListener('submit', handleStaffSubmit);
+  $('#staffRole')?.addEventListener('change', updateStaffOutletVisibility);
 }
 
 function renderStaffOutletOptions(selectedIds = []) {
@@ -418,7 +438,29 @@ function renderStaffOutletOptions(selectedIds = []) {
   `).join('');
 }
 
+function updateStaffOutletVisibility() {
+  const role = $('#staffRole')?.value;
+  const outletField = $('#staffOutletOptions')?.closest('.menu-field');
+  if (!outletField) return;
+
+  const isAdmin = role === 'ADMIN';
+  outletField.style.display = isAdmin ? 'none' : '';
+
+  if (isAdmin) {
+    $('#staffOutletOptions')
+      ?.querySelectorAll('input[type="checkbox"]')
+      .forEach(input => {
+        input.checked = false;
+      });
+  }
+}
+
 function openStaffModal(member = null) {
+  if (state.profile?.role !== 'ADMIN') {
+    toast('Admin access required.', 'bad');
+    return;
+  }
+
   const modal = $('#staffModal');
   if (!modal) return;
 
@@ -443,6 +485,7 @@ function openStaffModal(member = null) {
   $('#staffEmail').disabled = Boolean(member);
 
   renderStaffOutletOptions(member?.outlet_ids || []);
+  updateStaffOutletVisibility();
 
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
@@ -497,8 +540,8 @@ async function handleStaffSubmit(event) {
     return;
   }
 
-  if (!payload.outlet_ids.length) {
-    toast('Assign at least one outlet.', 'bad');
+  if (payload.role !== 'ADMIN' && !payload.outlet_ids.length) {
+    toast('Assign at least one outlet for this role.', 'bad');
     return;
   }
 
@@ -670,6 +713,7 @@ async function loadProfile() {
       : (assignments || []).map(row => row.outlet_id)
   };
 
+
   return state.profile;
 }
 
@@ -688,98 +732,6 @@ async function apiRequest(method, body = null) {
       return { outlets: outlets || [] };
     }
 
-    if (method === 'POST') {
-      const name = String(body?.name || '').trim();
-      const slug = String(body?.slug || name).trim().toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-      const address = String(body?.address || '').trim();
-
-      if (!name || !slug || !address) {
-        throw new Error('Name, slug and address are required.');
-      }
-
-      const { data: outlet, error: outletError } = await supabase
-        .from('outlets')
-        .insert({
-          name,
-          slug,
-          address,
-          phone: String(body?.phone || '').trim() || null,
-          opening_time: String(body?.openingTime || '17:00'),
-          closing_time: String(body?.closingTime || '01:00'),
-          maps_url: String(body?.mapsUrl || '').trim() || null,
-          zomato_url: String(body?.zomatoUrl || '').trim() || null,
-          swiggy_url: String(body?.swiggyUrl || '').trim() || null,
-          status: body?.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE'
-        })
-        .select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at')
-        .single();
-
-      if (outletError) throw new Error(outletError.code === '23505'
-        ? 'An outlet with this name or slug already exists.'
-        : outletError.message || 'Unable to create outlet.');
-
-      const { data: menuItems, error: menuError } = await supabase
-        .from('menu_items')
-        .select('id')
-        .order('display_order', { ascending: true });
-
-      if (menuError) {
-        await supabase.from('outlets').delete().eq('id', outlet.id);
-        throw new Error('Unable to prepare outlet menu.');
-      }
-
-      if (menuItems?.length) {
-        const rows = menuItems.map(item => ({
-          outlet_id: outlet.id,
-          menu_item_id: item.id,
-          is_available: true
-        }));
-
-        const { error: menuLinkError } = await supabase
-          .from('outlet_menu_items')
-          .insert(rows);
-
-        if (menuLinkError) {
-          await supabase.from('outlets').delete().eq('id', outlet.id);
-          throw new Error('Unable to configure outlet menu.');
-        }
-      }
-
-      return {
-        success: true,
-        outlet,
-        menuItemsConfigured: menuItems?.length || 0,
-        createdBy: state.session.user.id
-      };
-    }
-
-    if (method === 'PATCH') {
-      const id = String(body?.id || '').trim();
-      if (!id) throw new Error('Outlet id is required.');
-
-      const updates = {};
-      if (body.name !== undefined) updates.name = String(body.name).trim();
-      if (body.address !== undefined) updates.address = String(body.address).trim();
-      if (body.phone !== undefined) updates.phone = String(body.phone).trim() || null;
-      if (body.openingTime !== undefined) updates.opening_time = String(body.openingTime);
-      if (body.closingTime !== undefined) updates.closing_time = String(body.closingTime);
-      if (body.mapsUrl !== undefined) updates.maps_url = String(body.mapsUrl).trim() || null;
-      if (body.zomatoUrl !== undefined) updates.zomato_url = String(body.zomatoUrl).trim() || null;
-      if (body.swiggyUrl !== undefined) updates.swiggy_url = String(body.swiggyUrl).trim() || null;
-      if (body.status !== undefined) updates.status = body.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE';
-      updates.updated_at = new Date().toISOString();
-
-      const { data: outlet, error } = await supabase
-        .from('outlets')
-        .update(updates)
-        .eq('id', id)
-        .select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at')
-        .single();
-
-      if (error || !outlet) throw new Error(error?.message || 'Outlet not found.');
-      return { success: true, outlet };
-    }
   }
 
   const response = await fetch('/api/outlets', {
@@ -816,10 +768,25 @@ async function loadOutlets() {
     }
   } catch (apiError) {
     // Local Vite does not execute Vercel serverless functions, so use the authenticated
-    // Supabase read path as a local-development fallback. Creation remains Preview/API based.
+    // Supabase read path only during local development. Production API failures must surface.
+    if (!import.meta.env.DEV) throw apiError;
+
     const { data, error } = await supabase.from('outlets').select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at').order('created_at', { ascending: true });
     if (error) throw apiError;
-    state.outlets = data || [];
+    const allOutlets = data || [];
+    state.outlets = state.profile?.role === 'ADMIN'
+      ? allOutlets
+      : allOutlets.filter(outlet =>
+          (state.profile?.outlet_ids || []).includes(outlet.id)
+        );
+
+    if (state.profile?.role !== 'ADMIN' && state.outlets.length === 0) {
+      throw new Error('No outlet has been assigned to your account.');
+    }
+
+    if (state.profile?.role !== 'ADMIN' && state.outlets.length === 1) {
+      state.selectedOutlet = state.outlets[0].slug;
+    }
   }
   renderOutletCards();
   renderOutletSelector();
@@ -886,33 +853,7 @@ async function loadStaff() {
 
     state.staff = payload.staff || [];
   } catch (apiError) {
-    // Local Vite does not execute Vercel serverless functions.
-    // Use the authenticated Supabase read path for local development.
-    const [
-      { data: profiles, error: profilesError },
-      { data: assignments, error: assignmentsError }
-    ] = await Promise.all([
-      supabase
-        .from('profiles')
-        .select('id,name,phone,role,created_at,updated_at')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('outlet_users')
-        .select('user_id,outlet_id')
-    ]);
-
-    if (profilesError || assignmentsError) {
-      throw apiError;
-    }
-
-    const assignmentRows = assignments || [];
-
-    state.staff = (profiles || []).map(profile => ({
-      ...profile,
-      outlet_ids: assignmentRows
-        .filter(row => row.user_id === profile.id)
-        .map(row => row.outlet_id)
-    }));
+    throw apiError;
   }
 
   renderStaffFilters();
@@ -1239,6 +1180,10 @@ function addPosItem(menuItemId) {
 
   const existing = state.pos.cart.find(entry => entry.id === menuItemId);
   if (existing) {
+    if (existing.quantity >= 99) {
+      toast('Maximum quantity is 99 per item.', 'bad');
+      return;
+    }
     existing.quantity += 1;
   } else {
     state.pos.cart.push({
@@ -1475,9 +1420,9 @@ function renderOutletCards() {
         <span class="outlet-chip">Menu <strong>17</strong> configured</span>
       </div>
       <div class="outlet-links">
-        ${outlet.maps_url ? `<button type="button" data-url="${escapeHtml(outlet.maps_url)}">MAPS</button>` : ''}
-        ${outlet.zomato_url ? `<button type="button" data-url="${escapeHtml(outlet.zomato_url)}">ZOMATO</button>` : ''}
-        ${outlet.swiggy_url ? `<button type="button" data-url="${escapeHtml(outlet.swiggy_url)}">SWIGGY</button>` : ''}
+        ${safeUrl(outlet.maps_url) ? `<button type="button" data-url="${escapeHtml(safeUrl(outlet.maps_url))}">MAPS</button>` : ''}
+        ${safeUrl(outlet.zomato_url) ? `<button type="button" data-url="${escapeHtml(safeUrl(outlet.zomato_url))}">ZOMATO</button>` : ''}
+        ${safeUrl(outlet.swiggy_url) ? `<button type="button" data-url="${escapeHtml(safeUrl(outlet.swiggy_url))}">SWIGGY</button>` : ''}
       </div>
     </article>`).join('');
   $$('[data-url]', grid).forEach(button => button.addEventListener('click', () => window.open(button.dataset.url, '_blank', 'noopener,noreferrer')));
@@ -1527,7 +1472,7 @@ function renderOverviewOutlets() {
   outlets.forEach(outlet => {
     const node = document.createElement('div');
     node.className = 'outlet';
-    node.innerHTML = `<div class="outlet-top"><span class="outlet-name">${escapeHtml(outlet.name)}</span><span class="outlet-revenue">₹0</span></div><div class="outlet-meta">${formatTime(outlet.opening_time)} – ${formatTime(outlet.closing_time)} · ${escapeHtml(outlet.status)}</div><div class="progress"><span style="width:0%"></span></div><div class="outlet-foot"><span>0 orders today</span><span class="${outlet.status === 'ACTIVE' ? 'green' : ''}">${outlet.status}</span></div>`;
+    node.innerHTML = `<div class="outlet-top"><span class="outlet-name">${escapeHtml(outlet.name)}</span><span class="outlet-revenue">₹0</span></div><div class="outlet-meta">${formatTime(outlet.opening_time)} – ${formatTime(outlet.closing_time)} · ${escapeHtml(outlet.status)}</div><div class="progress"><span style="width:0%"></span></div><div class="outlet-foot"><span>0 orders today</span><span class="${outlet.status === 'ACTIVE' ? 'green' : ''}">${escapeHtml(outlet.status)}</span></div>`;
     performance.appendChild(node);
   });
   if (heading && !outlets.length) {
@@ -1546,6 +1491,11 @@ function updateDashboardContext() {
 }
 
 function openOutletModal() {
+  if (state.profile?.role !== 'ADMIN') {
+    toast('Admin access required.', 'bad');
+    return;
+  }
+
   const modal = $('#outletModal');
   if (!modal) return;
   $('#outletFormError', modal).classList.remove('show');
@@ -1716,9 +1666,34 @@ async function loadMenuManagement() {
   populateMenuCategoryControls();
 }
 
+function renderMenuManagementTableHead() {
+  const head = $('#menuManagementTableHead');
+  if (!head) return;
+
+  const role = state.profile?.role;
+  const menuOutlets = ['ADMIN', 'OWNER', 'MANAGER'].includes(role) ? state.outlets : [];
+  const canManageMenu = ['ADMIN', 'OWNER'].includes(role);
+
+  const outletColumns = menuOutlets.length;
+  const actionColumns = canManageMenu ? 1 : 0;
+  const gridTemplate = `minmax(220px,1.7fr) minmax(130px,1fr) 90px 110px repeat(${outletColumns}, 90px) ${actionColumns ? '62px' : ''}`.trim();
+
+  head.style.setProperty('--menu-grid-columns', gridTemplate);
+  head.innerHTML = `
+    <div>ITEM</div>
+    <div>CATEGORY</div>
+    <div>PRICE</div>
+    <div>STATUS</div>
+    ${menuOutlets.map(outlet => `<div>${escapeHtml(outlet.name || outlet.slug || 'OUTLET')}</div>`).join('')}
+    ${canManageMenu ? '<div></div>' : ''}
+  `;
+}
+
 function renderMenuManagement() {
   const list = $('#menuManagementList');
   if (!list) return;
+
+  renderMenuManagementTableHead();
 
   const search = ($('#menuManagementSearch')?.value || '').trim().toLowerCase();
   const category = $('#menuCategoryFilter')?.value || 'ALL';
@@ -1763,9 +1738,7 @@ function renderMenuManagement() {
     return matchesSearch && matchesCategory && matchesArchive && matchesAvailability && matchesFavourite;
   });
 
-  const outletMap = new Map(
-    state.outlets.map(outlet => [outlet.slug.toUpperCase(), outlet])
-  );
+  const canManageOutletAvailability = ['ADMIN', 'OWNER', 'MANAGER'].includes(state.profile?.role);
 
   filtered.sort((a, b) => {
     const categoryDiff = (categoryOrder.get(a.category_id) ?? 999) - (categoryOrder.get(b.category_id) ?? 999);
@@ -1784,16 +1757,7 @@ function renderMenuManagement() {
   }
 
   list.innerHTML = filtered.map(item => {
-    const shamli = outletMap.get('SHAMLI');
-    const kairana = outletMap.get('KAIRANA');
-
-    const shamliAvailable = shamli
-      ? menuManagementState.outletAvailability.get(`${shamli.id}:${item.id}`) === true
-      : false;
-
-    const kairanaAvailable = kairana
-      ? menuManagementState.outletAvailability.get(`${kairana.id}:${item.id}`) === true
-      : false;
+    const menuOutlets = canManageOutletAvailability ? state.outlets : [];
 
     return `
       <article class="menu-management-row">
@@ -1817,28 +1781,25 @@ function renderMenuManagement() {
           ₹${Number(item.price).toLocaleString('en-IN')}
         </div>
 
-        <div>
+        <div class="menu-status-cell">
           <span class="menu-status-pill ${item.is_available ? 'on' : 'off'}">
             ${item.is_available ? 'ACTIVE' : 'OFF'}
           </span>
         </div>
 
-        <div>
-          ${shamli
-            ? `<button type="button" class="menu-outlet-pill ${shamliAvailable ? 'on' : 'off'}" data-menu-outlet="${escapeHtml(shamli.id)}" data-menu-item="${escapeHtml(item.id)}" data-menu-outlet-name="SHAMLI">${shamliAvailable ? 'ON' : 'OFF'}</button>`
-            : '<span class="menu-outlet-pill off">—</span>'}
-        </div>
+        ${menuOutlets.map(outlet => {
+          const available = menuManagementState.outletAvailability.get(`${outlet.id}:${item.id}`) === true;
+          return `<div class="menu-outlet-cell">
+            <button type="button" class="menu-outlet-pill ${available ? 'on' : 'off'}" data-menu-outlet="${escapeHtml(outlet.id)}" data-menu-item="${escapeHtml(item.id)}" data-menu-outlet-name="${escapeHtml(outlet.name || outlet.slug || 'OUTLET')}">${available ? 'ON' : 'OFF'}</button>
+          </div>`;
+        }).join('')}
 
-        <div>
-          ${kairana
-            ? `<button type="button" class="menu-outlet-pill ${kairanaAvailable ? 'on' : 'off'}" data-menu-outlet="${escapeHtml(kairana.id)}" data-menu-item="${escapeHtml(item.id)}" data-menu-outlet-name="KAIRANA">${kairanaAvailable ? 'ON' : 'OFF'}</button>`
-            : '<span class="menu-outlet-pill off">—</span>'}
-        </div>
-
-        <div class="menu-row-actions">
-          <button type="button" class="menu-edit-btn" data-menu-edit="${escapeHtml(item.id)}">EDIT</button>
-          <button type="button" class="menu-archive-btn" data-menu-archive="${escapeHtml(item.id)}">${item.is_archived ? 'RESTORE' : 'ARCHIVE'}</button>
-        </div>
+        ${['ADMIN', 'OWNER'].includes(state.profile?.role)
+          ? `<div class="menu-row-actions">
+              <button type="button" class="menu-edit-btn" data-menu-edit="${escapeHtml(item.id)}">EDIT</button>
+              <button type="button" class="menu-archive-btn" data-menu-archive="${escapeHtml(item.id)}">${item.is_archived ? 'RESTORE' : 'ARCHIVE'}</button>
+            </div>`
+          : '<div class="menu-row-actions"></div>'}
       </article>`;
   }).join('');
 
@@ -1912,7 +1873,7 @@ function openMenuItemModal(itemId = null) {
     imageInput.value = '';
 
     if (item?.image_url) {
-      imagePreview.innerHTML = `<img src="${item.image_url}" alt="${item.name || 'Menu item'}">`;
+      imagePreview.innerHTML = `<img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name || 'Menu item')}">`;
       imagePreview.classList.add('has-image');
       imageRemove.classList.remove('hidden');
       imageStatus.textContent = 'Current image · Choose a new file to replace it';
@@ -2019,7 +1980,14 @@ function wireMenuManagementActions() {
   $('#menuAvailabilityFilter')?.addEventListener('change', renderMenuManagement);
   $('#menuFavouriteFilter')?.addEventListener('change', renderMenuManagement);
 
-  $('#menuAddItemBtn')?.addEventListener('click', () => openMenuItemModal());
+  const canManageMenu = ['ADMIN', 'OWNER'].includes(state.profile?.role);
+  const addMenuButton = $('#menuAddItemBtn');
+  if (addMenuButton) {
+    addMenuButton.style.display = canManageMenu ? '' : 'none';
+    if (canManageMenu) {
+      addMenuButton.addEventListener('click', () => openMenuItemModal());
+    }
+  }
 
   $('#menuManagementList')?.addEventListener('click', async event => {
     const editButton = event.target.closest('[data-menu-edit]');
@@ -2054,6 +2022,11 @@ function wireMenuManagementActions() {
 
 async function saveMenuItem(event) {
   event.preventDefault();
+
+  if (!['ADMIN', 'OWNER'].includes(state.profile?.role)) {
+    toast('You do not have permission to manage menu items.', 'bad');
+    return;
+  }
 
   const form = $('#menuItemForm');
   const submitButton = form?.querySelector('button[type="submit"]');
@@ -2225,6 +2198,11 @@ async function saveMenuItem(event) {
 }
 
 async function toggleMenuItemArchive(itemId) {
+  if (!['ADMIN', 'OWNER'].includes(state.profile?.role)) {
+    toast('You do not have permission to manage menu items.', 'bad');
+    return;
+  }
+
   const item = menuManagementState.items.find(entry => entry.id === itemId);
   if (!item) {
     toast('Menu item not found. Please refresh and try again.', 'bad');
@@ -2279,6 +2257,17 @@ async function toggleMenuItemArchive(itemId) {
 }
 
 async function toggleMenuOutletAvailability(outletId, menuItemId, outletName) {
+  const role = state.profile?.role;
+  if (!['ADMIN', 'OWNER', 'MANAGER'].includes(role)) {
+    toast('You do not have permission to change outlet menu availability.', 'bad');
+    return;
+  }
+
+  if (role !== 'ADMIN' && !state.profile?.outlet_ids?.includes(outletId)) {
+    toast('You are not assigned to this outlet.', 'bad');
+    return;
+  }
+
   const key = `${outletId}:${menuItemId}`;
   const current = menuManagementState.outletAvailability.get(key) === true;
   const next = !current;
@@ -2302,6 +2291,18 @@ async function toggleMenuOutletAvailability(outletId, menuItemId, outletName) {
 
 
 function wireDashboardActions() {
+  const sections = $$('.section');
+  $$('.nav-btn[data-section]').forEach(button => button.addEventListener('click', () => {
+    let id = button.dataset.section;
+    const role = state.profile?.role || '';
+    const permissions = ROLE_PERMISSIONS[role] || [];
+    if (!permissions.includes(id)) id = permissions[0] || 'overview';
+    sections.forEach(section => section.classList.toggle('active', section.id === id));
+    $$('.nav-btn').forEach(navButton => navButton.classList.toggle('active', navButton.dataset.section === id));
+    state.selectedSection = id;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }));
+
   $$('[data-section="outlets"], .action-outlet').forEach(button => button.addEventListener('click', openOutletSection));
   const addOutletButton = $('#addNewOutletBtn');
   if (addOutletButton) {
@@ -2310,11 +2311,20 @@ function wireDashboardActions() {
       openOutletModal();
     });
   }
-  const user = $('.user');
+  const user = $('#signOutBtn');
   if (user) {
     user.classList.add('session-user');
     user.title = 'Sign out';
-    user.addEventListener('click', signOut);
+    user.addEventListener('click', async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      try {
+        await signOut();
+      } catch (error) {
+        console.error('Sign out error:', error);
+        toast(error?.message || 'Unable to sign out.', 'bad');
+      }
+    });
   }
 
   const staffAddButton = $('#staffAddBtn');
@@ -2534,21 +2544,38 @@ function openOutletSection() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function applyRolePermissions() {
+  const role = state.profile?.role || '';
+  const permissions = ROLE_PERMISSIONS[role] || [];
+
+  document.querySelectorAll('.nav-btn[data-section]').forEach(button => {
+    const section = button.dataset.section;
+    button.style.display = permissions.includes(section) ? '' : 'none';
+  });
+
+  if (!permissions.includes(state.selectedSection || 'overview')) {
+    state.selectedSection = permissions[0] || 'overview';
+  }
+}
+
 function updateUserCard() {
   const strong = $('.user strong');
   const span = $('.user span');
   if (strong) strong.textContent = state.profile?.name || 'OHHO Admin';
-  if (span) span.textContent = 'Central Admin · Sign out';
+  if (span) span.textContent = `${state.profile?.role || 'UNKNOWN'} · Sign out`;
 }
 
 async function startApp(session) {
   state.session = session;
   try {
     await loadProfile();
+    applyRolePermissions();
     updateUserCard();
     $('#authGate')?.classList.add('hidden');
     await loadOutlets();
-    await loadStaff();
+    if (state.profile?.role === 'ADMIN') {
+      await loadStaff();
+    }
     await loadMenuManagement();
     await loadPosMenu();
     await loadOrders();

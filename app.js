@@ -35,6 +35,7 @@ const siteData = {
 };
 
 const $ = (selector) => document.querySelector(selector);
+const escapeHtml = (value = "") => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\"", "&quot;").replaceAll("\x27", "&#039;");
 const render = (selector, markup) => { const target = $(selector); if (target) target.innerHTML = markup; };
 render('#categoryGrid', siteData.categories.map((c, i) => `<article class="category-card reveal delay-${i % 3}"><img loading="lazy" src="${c.image}" alt="${c.name}"/><div class="category-shade"></div><span class="category-icon">${c.icon}</span><div><h3>${c.name}</h3><p>${c.copy}</p><a href="menu.html">Explore <b>→</b></a></div></article>`).join(''));
 const isMenuPage = window.location.pathname === '/menu' || window.location.pathname.endsWith('/menu.html') || window.location.pathname.endsWith('menu.html');
@@ -85,13 +86,22 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
 /* OHHO_CART_LOGIC */
 (() => {
   const cartKey = 'ohho-cart';
-  let cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
-    .filter(item => item && typeof item.name === 'string' && item.name.trim() && Number.isFinite(Number(item.price)) && Number(item.price) > 0 && Number.isFinite(Number(item.qty)) && Number(item.qty) >= 1)
-    .map(item => ({
-      name: item.name.trim(),
-      price: Number(item.price),
-      qty: Math.max(1, Math.floor(Number(item.qty)))
-    }));
+  let cart = [];
+  try {
+    const storedCart = JSON.parse(localStorage.getItem(cartKey) || '[]');
+    if (Array.isArray(storedCart)) {
+      cart = storedCart
+        .filter(item => item && typeof item.slug === 'string' && item.slug.trim() && typeof item.name === 'string' && item.name.trim() && Number.isFinite(Number(item.price)) && Number(item.price) > 0 && Number.isFinite(Number(item.qty)) && Number(item.qty) >= 1)
+        .map(item => ({
+          slug: item.slug.trim(),
+          name: item.name.trim(),
+          price: Number(item.price),
+          qty: Math.min(99, Math.max(1, Math.floor(Number(item.qty))))
+        }));
+    }
+  } catch {
+    localStorage.removeItem(cartKey);
+  }
 
   localStorage.setItem(cartKey, JSON.stringify(cart));
 
@@ -135,14 +145,14 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
     itemsEl.innerHTML = cart.map((item, index) => `
       <li class="cart-line">
         <div>
-          <h3>${item.name}</h3>
+          <h3>${escapeHtml(item.name)}</h3>
           <p>${money(item.price)} each</p>
         </div>
         <div class="cart-line-actions">
           <div class="quantity-control">
-            <button type="button" data-cart-minus="${index}" aria-label="Decrease ${item.name}">−</button>
+            <button type="button" data-cart-minus="${index}" aria-label="Decrease ${escapeHtml(item.name)}">−</button>
             <span>${item.qty}</span>
-            <button type="button" data-cart-plus="${index}" aria-label="Increase ${item.name}">+</button>
+            <button type="button" data-cart-plus="${index}" aria-label="Increase ${escapeHtml(item.name)}">+</button>
           </div>
           <b>${money(item.price * item.qty)}</b>
         </div>
@@ -157,6 +167,9 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
     const existing = cart.find(item => item.slug === product.slug);
 
     if (existing) {
+      if (existing.qty >= 99) {
+        return;
+      }
       existing.qty += 1;
     } else {
       cart.push({
@@ -206,11 +219,11 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
         <div class="checkout-order">
           <p>Customer</p>
           <ul>
-            <li><span>Name</span><b>${checkoutData.name}</b></li>
-            <li><span>Phone</span><b>${checkoutData.phone}</b></li>
+            <li><span>Name</span><b>${escapeHtml(checkoutData.name)}</b></li>
+            <li><span>Phone</span><b>${escapeHtml(checkoutData.phone)}</b></li>
             <li><span>Order Type</span><b>${typeLabel}</b></li>
             ${checkoutData.orderType === 'DELIVERY'
-              ? `<li><span>Address</span><b>${checkoutData.address}</b></li>`
+              ? `<li><span>Address</span><b>${escapeHtml(checkoutData.address)}</b></li>`
               : ''}
           </ul>
         </div>
@@ -220,7 +233,7 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
           <ul>
             ${cart.map(item => `
               <li>
-                <span>${item.name} × ${Number(item.qty)}</span>
+                <span>${escapeHtml(item.name)} × ${Number(item.qty)}</span>
                 <b>${money(item.price * item.qty)}</b>
               </li>
             `).join('')}
@@ -288,7 +301,10 @@ document.querySelectorAll('.platform-btn').forEach(btn => btn.addEventListener('
 
     const plus = event.target.closest('[data-cart-plus]');
     if (plus) {
-      cart[Number(plus.dataset.cartPlus)].qty += 1;
+      const index = Number(plus.dataset.cartPlus);
+      if (!Number.isInteger(index) || !cart[index]) return;
+      if (cart[index].qty >= 99) return;
+      cart[index].qty += 1;
       save();
       renderCart();
       return;

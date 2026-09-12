@@ -2,6 +2,27 @@ import { supabase } from "./supabase.js";
 
 const grid = document.getElementById("locationGrid");
 
+function safeUrl(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (!["http:", "https:"].includes(url.protocol)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("\x27", "&#039;");
+}
+
 async function loadLocations() {
   if (!grid) return;
 
@@ -33,11 +54,17 @@ async function loadLocations() {
 
     const openingTime = formatTime(outlet.opening_time);
     const closingTime = formatTime(outlet.closing_time);
+    const name = escapeHtml(outlet.name);
+    const address = escapeHtml(outlet.address);
+    const phone = escapeHtml(outlet.phone);
+    const mapsUrl = escapeHtml(safeUrl(outlet.maps_url) || "");
+    const zomatoUrl = escapeHtml(safeUrl(outlet.zomato_url) || "");
+    const swiggyUrl = escapeHtml(safeUrl(outlet.swiggy_url) || "");
 
     const links = [
-      outlet.maps_url ? `<a href="${outlet.maps_url}" target="_blank" rel="noopener">Maps ↗</a>` : "",
-      outlet.zomato_url ? `<a href="${outlet.zomato_url}" target="_blank" rel="noopener">Zomato ↗</a>` : "",
-      outlet.swiggy_url ? `<a href="${outlet.swiggy_url}" target="_blank" rel="noopener">Swiggy ↗</a>` : ""
+      mapsUrl ? `<a href="${mapsUrl}" target="_blank" rel="noopener">Maps ↗</a>` : "",
+      zomatoUrl ? `<a href="${zomatoUrl}" target="_blank" rel="noopener">Zomato ↗</a>` : "",
+      swiggyUrl ? `<a href="${swiggyUrl}" target="_blank" rel="noopener">Swiggy ↗</a>` : ""
     ].filter(Boolean).join("");
 
     return `
@@ -46,11 +73,11 @@ async function loadLocations() {
           <span class="location-status">OPEN OUTLET</span>
           <span class="location-arrow">↗</span>
         </div>
-        <h2>${outlet.name}</h2>
-        <p class="location-address">${outlet.address}</p>
+        <h2>${name}</h2>
+        <p class="location-address">${address}</p>
         <div class="location-meta">
           <span>${openingTime} – ${closingTime}</span>
-          ${outlet.phone ? `<span>☎ ${outlet.phone}</span>` : ""}
+          ${outlet.phone ? `<span>☎ ${phone}</span>` : ""}
         </div>
         ${links ? `<div class="location-links">${links}</div>` : ""}
       </article>

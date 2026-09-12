@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SECRET_KEY
 );
 
 function bearerToken(req) {
@@ -10,7 +10,7 @@ function bearerToken(req) {
   return value.startsWith("Bearer ") ? value.slice(7) : null;
 }
 
-async function requireAdmin(req, res) {
+async function requirePosUser(req, res, outletId) {
   const token = bearerToken(req);
 
   if (!token) {
@@ -28,30 +28,54 @@ async function requireAdmin(req, res) {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id,role")
+    .select("id,role,is_active")
     .eq("id", authData.user.id)
     .single();
 
-  if (profileError || profile?.role !== "ADMIN") {
-    res.status(403).json({ error: "Admin access required" });
+  if (
+    profileError ||
+    !profile ||
+    !["ADMIN", "OWNER", "MANAGER", "STAFF"].includes(profile.role) ||
+    profile.is_active === false
+  ) {
+    res.status(403).json({ error: "POS access denied" });
     return null;
+  }
+
+  if (profile.role !== "ADMIN") {
+    const { data: assignment, error: assignmentError } = await supabase
+      .from("outlet_users")
+      .select("outlet_id")
+      .eq("user_id", profile.id)
+      .eq("outlet_id", outletId)
+      .maybeSingle();
+
+    if (assignmentError || !assignment) {
+      res.status(403).json({ error: "You are not assigned to this outlet" });
+      return null;
+    }
   }
 
   return authData.user;
 }
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const user = await requireAdmin(req, res);
-    if (!user) return;
-
     const body = req.body || {};
 
     const outletId = String(body.outletId || "").trim();
+
+    if (!outletId) {
+      return res.status(400).json({
+        error: "Outlet is required"
+      });
+    }
+
+    const user = await requirePosUser(req, res, outletId);
+    if (!user) return;
     const orderType = String(body.orderType || "").trim().toUpperCase();
     const paymentMethod = String(body.paymentMethod || "").trim().toUpperCase();
     const tableNumber = body.tableNumber == null || body.tableNumber === ""
@@ -63,6 +87,18 @@ export default async function handler(req, res) {
     if (!outletId || !items.length) {
       return res.status(400).json({
         error: "Outlet and at least one item are required"
+      });
+    }
+
+    if (items.length > 50) {
+      return res.status(400).json({
+        error: "Too many order items"
+      });
+    }
+
+    if (items.some(item => !item || typeof item !== "object" || Array.isArray(item))) {
+      return res.status(400).json({
+        error: "Invalid order items"
       });
     }
 
@@ -113,6 +149,12 @@ export default async function handler(req, res) {
 
     const uniqueIds = [...new Set(requestedIds)];
 
+    if (uniqueIds.length !== requestedIds.length) {
+      return res.status(400).json({
+        error: "Duplicate menu items are not allowed"
+      });
+    }
+
     const { data: menuRows, error: menuError } = await supabase
       .from("menu_items")
       .select("id,name,price,is_available")
@@ -146,6 +188,7 @@ export default async function handler(req, res) {
 
     const orderItems = [];
     let subtotal = 0;
+    let totalQuantity = 0;
 
     for (const requestedItem of items) {
       const menuItemId = String(requestedItem.menuItemId || "").trim();
@@ -162,6 +205,14 @@ export default async function handler(req, res) {
       ) {
         return res.status(400).json({
           error: `Menu item unavailable or invalid: ${menuItem?.name || menuItemId}`
+        });
+      }
+
+      totalQuantity += quantity;
+
+      if (totalQuantity > 500) {
+        return res.status(400).json({
+          error: "Too many items in order"
         });
       }
 
@@ -225,13 +276,22 @@ export default async function handler(req, res) {
       });
     }
 
-    await supabase
+    const { error: historyError } = await supabase
       .from("order_status_history")
       .insert({
         order_id: order.id,
         status: "NEW",
         note: `POS order created by ${user.email || user.id}`
       });
+
+    if (historyError) {
+      await supabase.from("orders").delete().eq("id", order.id);
+
+      console.error("POS order history error", historyError);
+      return res.status(500).json({
+        error: "Unable to finalize POS order"
+      });
+    }
 
     return res.status(201).json({
       success: true,

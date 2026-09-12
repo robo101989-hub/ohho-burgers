@@ -2,15 +2,27 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SECRET_KEY
 );
+
+function safeUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (!["http:", "https:"].includes(url.protocol)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
 
 function bearerToken(req) {
   const value = req.headers?.authorization || "";
   return value.startsWith("Bearer ") ? value.slice(7) : null;
 }
 
-async function requireAdmin(req, res) {
+async function requireOutletManager(req, res, outletId = null) {
   const token = bearerToken(req);
   if (!token) {
     res.status(401).json({ error: "Authentication required" });
@@ -25,16 +37,35 @@ async function requireAdmin(req, res) {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id,role")
+    .select("id,role,is_active")
     .eq("id", authData.user.id)
     .single();
 
-  if (profileError || profile?.role !== "ADMIN") {
-    res.status(403).json({ error: "Admin access required" });
+  if (
+    profileError ||
+    !profile ||
+    !["ADMIN", "OWNER"].includes(profile.role) ||
+    profile.is_active === false
+  ) {
+    res.status(403).json({ error: "Admin or Owner access required" });
     return null;
   }
 
-  return authData.user;
+  if (profile.role === "OWNER" && outletId) {
+    const { data: assignment, error: assignmentError } = await supabase
+      .from("outlet_users")
+      .select("outlet_id")
+      .eq("user_id", profile.id)
+      .eq("outlet_id", outletId)
+      .maybeSingle();
+
+    if (assignmentError || !assignment) {
+      res.status(403).json({ error: "You are not assigned to this outlet" });
+      return null;
+    }
+  }
+
+  return { user: authData.user, profile };
 }
 
 export default async function handler(req, res) {
@@ -43,22 +74,50 @@ export default async function handler(req, res) {
   }
 
   try {
-    const user = await requireAdmin(req, res);
-    if (!user) return;
+    const body = req.body || {};
+
+    const requestedOutletId = String(body.id || "").trim() || null;
+    const auth = await requireOutletManager(req, res, requestedOutletId);
+    if (!auth) return;
+
+    const { user, profile } = auth;
 
     if (req.method === "GET") {
-      const { data, error } = await supabase
+      let query = supabase
         .from("outlets")
         .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at")
         .order("created_at", { ascending: true });
+
+      if (profile.role === "OWNER") {
+        const { data: assignments, error: assignmentError } = await supabase
+          .from("outlet_users")
+          .select("outlet_id")
+          .eq("user_id", profile.id);
+
+        if (assignmentError) {
+          return res.status(500).json({ error: "Unable to load outlet access" });
+        }
+
+        const outletIds = (assignments || []).map(row => row.outlet_id);
+
+        if (!outletIds.length) {
+          return res.status(200).json({ outlets: [] });
+        }
+
+        query = query.in("id", outletIds);
+      }
+
+      const { data, error } = await query;
 
       if (error) return res.status(500).json({ error: "Unable to load outlets" });
       return res.status(200).json({ outlets: data || [] });
     }
 
-    const body = req.body || {};
-
     if (req.method === "POST") {
+      if (profile.role !== "ADMIN") {
+        return res.status(403).json({ error: "Only Admin can create outlets" });
+      }
+
       const name = String(body.name || "").trim();
       const slug = String(body.slug || name).trim().toLowerCase()
         .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -80,9 +139,9 @@ export default async function handler(req, res) {
           phone,
           opening_time: openingTime,
           closing_time: closingTime,
-          maps_url: String(body.mapsUrl || "").trim() || null,
-          zomato_url: String(body.zomatoUrl || "").trim() || null,
-          swiggy_url: String(body.swiggyUrl || "").trim() || null,
+          maps_url: safeUrl(body.mapsUrl),
+          zomato_url: safeUrl(body.zomatoUrl),
+          swiggy_url: safeUrl(body.swiggyUrl),
           status: body.status === "INACTIVE" ? "INACTIVE" : "ACTIVE"
         })
         .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at")
@@ -133,16 +192,34 @@ export default async function handler(req, res) {
     const id = String(body.id || "").trim();
     if (!id) return res.status(400).json({ error: "Outlet id is required" });
 
+    if (profile.role === "OWNER") {
+      const { data: assignment, error: assignmentError } = await supabase
+        .from("outlet_users")
+        .select("outlet_id")
+        .eq("user_id", profile.id)
+        .eq("outlet_id", id)
+        .maybeSingle();
+
+      if (assignmentError || !assignment) {
+        return res.status(403).json({ error: "You are not assigned to this outlet" });
+      }
+    }
+
     const updates = {};
     if (body.name !== undefined) updates.name = String(body.name).trim();
     if (body.address !== undefined) updates.address = String(body.address).trim();
     if (body.phone !== undefined) updates.phone = String(body.phone).trim() || null;
     if (body.openingTime !== undefined) updates.opening_time = String(body.openingTime);
     if (body.closingTime !== undefined) updates.closing_time = String(body.closingTime);
-    if (body.mapsUrl !== undefined) updates.maps_url = String(body.mapsUrl).trim() || null;
-    if (body.zomatoUrl !== undefined) updates.zomato_url = String(body.zomatoUrl).trim() || null;
-    if (body.swiggyUrl !== undefined) updates.swiggy_url = String(body.swiggyUrl).trim() || null;
-    if (body.status !== undefined) updates.status = body.status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
+    if (body.mapsUrl !== undefined) updates.maps_url = safeUrl(body.mapsUrl);
+    if (body.zomatoUrl !== undefined) updates.zomato_url = safeUrl(body.zomatoUrl);
+    if (body.swiggyUrl !== undefined) updates.swiggy_url = safeUrl(body.swiggyUrl);
+    if (body.status !== undefined) {
+      if (profile.role !== "ADMIN") {
+        return res.status(403).json({ error: "Only Admin can change outlet status" });
+      }
+      updates.status = body.status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
+    }
     updates.updated_at = new Date().toISOString();
 
     const { data: outlet, error } = await supabase

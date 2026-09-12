@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SECRET_KEY
 );
 
 const ROLES = ['ADMIN', 'OWNER', 'MANAGER', 'STAFF'];
@@ -296,6 +296,25 @@ async function updateStaff(body) {
     throw error;
   }
 
+  if (
+    existing.role === 'ADMIN' &&
+    (role !== 'ADMIN' || !isActive)
+  ) {
+    const { count: activeAdminCount, error: activeAdminError } = await supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('role', 'ADMIN')
+      .eq('is_active', true);
+
+    if (activeAdminError) throw activeAdminError;
+
+    if ((activeAdminCount || 0) <= 1) {
+      const error = new Error('At least one active administrator must remain.');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
   const { error: profileError } = await supabase
     .from('profiles')
     .update({
@@ -351,8 +370,13 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Staff API error:', error);
 
-    return res.status(error?.statusCode || 500).json({
-      error: error?.message || 'Internal server error.'
+    const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
+    const clientMessage = statusCode >= 400 && statusCode < 500
+      ? (error?.message || 'Request could not be completed.')
+      : 'Internal server error.';
+
+    return res.status(statusCode).json({
+      error: clientMessage
     });
   }
 }
