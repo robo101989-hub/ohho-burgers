@@ -2682,6 +2682,7 @@ async function init() {
 
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === "PASSWORD_RECOVERY") {
+      state.session = session;
       state.recoveryMode = true;
       showPasswordReset();
       return;
