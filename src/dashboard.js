@@ -2700,19 +2700,15 @@ async function init() {
     }
   });
 
-  const { data, error } = await supabase.auth.getSession();
-
-  if (error) {
-    console.error("Unable to restore session:", error);
-    setAuthError("Unable to restore your session. Please sign in again.");
-    return;
-  }
-
-  if (data.session && !state.session && !state.recoveryMode) {
-    await startApp(data.session);
-  } else if (!data.session) {
-    gate?.classList.remove("hidden");
-  }
+  // INITIAL_SESSION can arrive before PASSWORD_RECOVERY during a reset-link redirect.
+  // Defer normal app startup so the recovery event gets priority.
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "INITIAL_SESSION" && session) {
+      setTimeout(() => {
+        if (!state.recoveryMode) startApp(session);
+      }, 0);
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
