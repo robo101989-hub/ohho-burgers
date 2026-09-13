@@ -11,7 +11,6 @@ const ROLE_PERMISSIONS = {
 const state = {
   session: null,
   profile: null,
-  recoveryMode: false,
   outlets: [],
   selectedOutlet: 'ALL',
   pos: {
@@ -276,29 +275,6 @@ function buildAuthGate() {
   document.body.prepend(gate);
   $('#authForm').addEventListener('submit', signIn);
   $('#authResetLink').addEventListener('click', requestPasswordReset);
-}
-
-function showPasswordReset() {
-  const gate = $("#authGate");
-  if (!gate) return;
-
-  gate.innerHTML = `
-    <div class="auth-card">
-      <div class="auth-brand">OHHO<span>BURGERS</span></div>
-      <div class="auth-kicker">Account Recovery</div>
-      <h1 class="auth-title">Set a new password</h1>
-      <p class="auth-reset-copy">Choose a new password for your OHHO operations account.</p>
-      <form class="auth-form" id="passwordResetForm">
-        <input id="newPassword" type="password" autocomplete="new-password" placeholder="New password" minlength="8" required>
-        <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="Confirm new password" minlength="8" required>
-        <div class="auth-error" id="authError"></div>
-        <button class="auth-submit" id="updatePasswordSubmit" type="submit">UPDATE PASSWORD</button>
-      </form>
-    </div>`;
-
-  gate.classList.remove("hidden");
-  document.body.classList.add("dashboard-auth-pending");
-  $("#passwordResetForm").addEventListener("submit", updatePassword);
 }
 
 function buildStaffModal() {
@@ -687,22 +663,26 @@ function setAuthError(message) {
 
 async function requestPasswordReset(event) {
   event.preventDefault();
-  const email = $("#authEmail").value.trim();
+
+  const email = $('#authEmail').value.trim();
+
   if (!email) {
-    setAuthError("Enter your email address first.");
+    setAuthError('Enter your email address first.');
     return;
   }
+
+  setAuthError('');
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${window.location.origin}/dashboard`
   });
 
   if (error) {
-    setAuthError(error.message || "Unable to send password reset email.");
+    setAuthError(error.message || 'Unable to send password reset email.');
     return;
   }
 
-  setAuthError("Password reset email sent. Check your inbox.");
+  setAuthError('Password reset email sent. Check your inbox.');
 }
 
 async function signIn(event) {
@@ -715,38 +695,6 @@ async function signIn(event) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) setAuthError(error.message || 'Unable to sign in.');
   button.disabled = false;
-}
-
-async function updatePassword(event) {
-  event.preventDefault();
-  const password = $("#newPassword").value;
-  const confirmPassword = $("#confirmPassword").value;
-
-  if (password.length < 8) {
-    setAuthError("Password must be at least 8 characters.");
-    return;
-  }
-
-  if (password !== confirmPassword) {
-    setAuthError("Passwords do not match.");
-    return;
-  }
-
-  const button = $("#updatePasswordSubmit");
-  button.disabled = true;
-  setAuthError("");
-
-  const { error } = await supabase.auth.updateUser({ password });
-
-  if (error) {
-    setAuthError(error.message || "Unable to update password.");
-    button.disabled = false;
-    return;
-  }
-
-  setAuthError("Password updated successfully. Please sign in with your new password.");
-  await supabase.auth.signOut();
-  window.location.reload();
 }
 
 async function signOut() {
@@ -2682,16 +2630,64 @@ async function init() {
 
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === "PASSWORD_RECOVERY") {
+      // Recovery is intentionally handled outside the normal dashboard startup.
       state.session = session;
-      state.recoveryMode = true;
-      showPasswordReset();
+      gate?.classList.remove("hidden");
+      document.body.classList.add("dashboard-auth-pending");
+
+      gate.innerHTML = `
+        <div class="auth-card">
+          <div class="auth-brand">OHHO<span>BURGERS</span></div>
+          <div class="auth-kicker">Account Recovery</div>
+          <h1 class="auth-title">Set a new password</h1>
+          <p class="auth-copy">Choose a new password for your OHHO operations account.</p>
+          <form class="auth-form" id="passwordResetForm">
+            <input id="newPassword" type="password" autocomplete="new-password" placeholder="New password" minlength="8" required>
+            <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="Confirm new password" minlength="8" required>
+            <div class="auth-error" id="authError"></div>
+            <button class="auth-submit" id="updatePasswordSubmit" type="submit">UPDATE PASSWORD</button>
+          </form>
+        </div>`;
+
+      $("#passwordResetForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const password = $("#newPassword").value;
+        const confirmPassword = $("#confirmPassword").value;
+
+        if (password.length < 8) {
+          setAuthError("Password must be at least 8 characters.");
+          return;
+        }
+
+        if (password !== confirmPassword) {
+          setAuthError("Passwords do not match.");
+          return;
+        }
+
+        const button = $("#updatePasswordSubmit");
+        button.disabled = true;
+        setAuthError("");
+
+        const { error } = await supabase.auth.updateUser({ password });
+
+        if (error) {
+          setAuthError(error.message || "Unable to update password.");
+          button.disabled = false;
+          return;
+        }
+
+        setAuthError("Password updated successfully. Please sign in with your new password.");
+        await supabase.auth.signOut();
+        window.location.reload();
+      });
+
       return;
     }
 
     if (session) {
-      if (state.recoveryMode) return;
       await startApp(session);
-    } else {
+    } else if (event !== "INITIAL_SESSION") {
       state.session = null;
       state.profile = null;
       closeOutletModal();
@@ -2700,15 +2696,6 @@ async function init() {
     }
   });
 
-  // INITIAL_SESSION can arrive before PASSWORD_RECOVERY during a reset-link redirect.
-  // Defer normal app startup so the recovery event gets priority.
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === "INITIAL_SESSION" && session) {
-      setTimeout(() => {
-        if (!state.recoveryMode) startApp(session);
-      }, 0);
-    }
-  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
