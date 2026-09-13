@@ -2689,6 +2689,7 @@ async function init() {
     }
 
     if (session) {
+      if (state.recoveryMode) return;
       await startApp(session);
     } else {
       state.session = null;
