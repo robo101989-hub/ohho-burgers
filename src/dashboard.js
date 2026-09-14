@@ -2643,7 +2643,53 @@ async function init() {
     }
   }
 
+  // Handle token-hash recovery links without consuming the token on page load.
+  const recoveryUrl = new URL(window.location.href);
+  const recoveryTokenHash = recoveryUrl.searchParams.get("token_hash");
+  const recoveryType = recoveryUrl.searchParams.get("type");
+
   supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "INITIAL_SESSION" && recoveryTokenHash && recoveryType === "recovery") {
+      gate?.classList.remove("hidden");
+      document.body.classList.add("dashboard-auth-pending");
+
+      gate.innerHTML = `
+        <div class="auth-card">
+          <div class="auth-brand">OHHO<span>BURGERS</span></div>
+          <div class="auth-kicker">Account Recovery</div>
+          <h1 class="auth-title">Reset your password</h1>
+          <p class="auth-copy">Click below to continue securely to password reset.</p>
+          <div class="auth-error" id="authError"></div>
+          <button class="auth-submit" id="continueRecovery" type="button">CONTINUE</button>
+        </div>`;
+
+      $("#continueRecovery").addEventListener("click", async () => {
+        const button = $("#continueRecovery");
+        button.disabled = true;
+        setAuthError("");
+
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: recoveryTokenHash,
+          type: "recovery"
+        });
+
+        if (error) {
+          setAuthError(error.message || "This recovery link is invalid or has expired.");
+          button.disabled = false;
+          return;
+        }
+
+        recoveryUrl.searchParams.delete("token_hash");
+        recoveryUrl.searchParams.delete("type");
+        window.history.replaceState(
+          {},
+          document.title,
+          recoveryUrl.pathname + recoveryUrl.search + recoveryUrl.hash
+        );
+      });
+
+      return;
+    }
     if (event === "PASSWORD_RECOVERY") {
       // Recovery is intentionally handled outside the normal dashboard startup.
       state.session = session;
