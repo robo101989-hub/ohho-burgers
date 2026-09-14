@@ -2628,6 +2628,21 @@ async function init() {
   // Wire actions after the dashboard DOM and modal exist.
   wireDashboardActions();
 
+  // Explicitly complete Supabase PKCE callbacks before normal auth handling.
+  const callbackCode = new URL(window.location.href).searchParams.get('code');
+  if (callbackCode) {
+    const { error } = await supabase.auth.exchangeCodeForSession(callbackCode);
+
+    // Remove the one-time callback code from the address bar.
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('code');
+    window.history.replaceState({}, document.title, cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+
+    if (error) {
+      setAuthError(error.message || 'Unable to complete authentication.');
+    }
+  }
+
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "PASSWORD_RECOVERY") {
       // Recovery is intentionally handled outside the normal dashboard startup.
