@@ -2628,7 +2628,7 @@ async function init() {
   // Wire actions after the dashboard DOM and modal exist.
   wireDashboardActions();
 
-  supabase.auth.onAuthStateChange(async (event, session) => {
+  supabase.auth.onAuthStateChange((event, session) => {
     if (event === "PASSWORD_RECOVERY") {
       // Recovery is intentionally handled outside the normal dashboard startup.
       state.session = session;
@@ -2686,7 +2686,7 @@ async function init() {
     }
 
     if (session) {
-      await startApp(session);
+      void startApp(session);
     } else if (event !== "INITIAL_SESSION") {
       state.session = null;
       state.profile = null;
