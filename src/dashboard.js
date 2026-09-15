@@ -1312,7 +1312,128 @@ function resetPosOrder() {
 }
 
 
+
+async function ohhoPrinterRequest(path, options = {}) {
+  const baseUrl = 'http://127.0.0.1:8765';
+
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      'Content-Type': 'application/json'
+    }
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || data.ok === false) {
+    throw new Error(data.error || 'Printer request failed.');
+  }
+
+  return data;
+}
+
+function ohhoBase64(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  bytes.forEach(byte => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+}
+
+function buildOhhoTestReceipt() {
+  return [
+    'OHHO BURGERS',
+    'PRINTER TEST',
+    '==============================',
+    'Bluetooth printer bridge OK',
+    '==============================',
+    '',
+    '',
+    ''
+  ].join('\n');
+}
+
+function buildOhhoReceipt(order, outlet, cart) {
+  const lines = [
+    'OHHO BURGERS',
+    outlet?.name || 'Outlet',
+    '==============================',
+    `ORDER #${order?.order_number || ''}`,
+    `TYPE: ${state.pos.orderType}`,
+    `PAYMENT: ${state.pos.paymentMethod}`,
+    '------------------------------'
+  ];
+
+  cart.forEach(item => {
+    const total = Number(item.price) * Number(item.quantity);
+    lines.push(
+      `${item.name} x${item.quantity}`,
+      `₹${total.toFixed(0)}`
+    );
+  });
+
+  const total = cart.reduce(
+    (sum, item) => sum + Number(item.price) * Number(item.quantity),
+    0
+  );
+
+  lines.push(
+    '------------------------------',
+    `TOTAL: ₹${total.toFixed(0)}`,
+    '==============================',
+    'Thank you!',
+    '',
+    '',
+    ''
+  );
+
+  return lines.join('\n');
+}
+
+async function connectOhhoPrinter() {
+  const button = $('#posPrinterBtn');
+  if (!button) return;
+
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'CHECKING PRINTER…';
+
+  try {
+    const result = await ohhoPrinterRequest('/health');
+
+    if (!result.connected) {
+      throw new Error('OHHO Printer app is running, but no printer is connected.');
+    }
+
+    button.textContent = '🟢 PRINTER CONNECTED';
+    toast('OHHO printer connected successfully.', 'ok');
+  } catch (error) {
+    console.error('Printer connection check failed:', error);
+    button.textContent = originalText;
+    toast(
+      error.message || 'Open OHHO Printer and connect the Bluetooth printer.',
+      'bad'
+    );
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function printOhhoReceipt(order, outlet, cart) {
+  const receipt = buildOhhoReceipt(order, outlet, cart);
+
+  return ohhoPrinterRequest('/print', {
+    method: 'POST',
+    body: ohhoBase64(receipt)
+  });
+}
+
 function wirePosActions() {
+  $('#posPrinterBtn')?.addEventListener('click', connectOhhoPrinter);
+
+
   $$('.pos-type-btn').forEach(button => {
     button.addEventListener('click', () => {
       state.pos.orderType = button.dataset.orderType;
@@ -1405,6 +1526,26 @@ function wirePosActions() {
         `Order #${result.order.order_number} created for ${result.outlet.name}.`,
         'ok'
       );
+
+      try {
+        await printOhhoReceipt(
+          result.order,
+          completedOutlet,
+          completedCart
+        );
+
+        toast(
+          `Order #${result.order.order_number} sent to printer.`,
+          'ok'
+        );
+      } catch (printError) {
+        console.error('Unable to print POS order:', printError);
+
+        toast(
+          `Order created, but printing failed: ${printError.message || 'Printer unavailable.'}`,
+          'bad'
+        );
+      }
     } catch (error) {
       console.error('Unable to create POS order:', error);
       toast(error.message || 'Unable to create POS order.', 'bad');
