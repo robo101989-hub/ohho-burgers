@@ -1,17 +1,12 @@
-import qz from 'qz-tray';
-
 const STORAGE_KEY = 'ohho.posPrinter.config';
 
 const DEFAULT_CONFIG = {
-  transport: 'qz-serial',
-  port: '',
   baudRate: 9600,
   dataBits: 8,
   stopBits: 1,
-  parity: 'NONE',
-  flowControl: 'NONE',
-  paperWidth: '58mm',
-  printerName: ''
+  parity: 'none',
+  flowControl: 'none',
+  paperWidth: '58mm'
 };
 
 function loadConfig() {
@@ -26,96 +21,87 @@ function loadConfig() {
 }
 
 function saveConfig(config) {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({
-      ...DEFAULT_CONFIG,
-      ...config
-    })
-  );
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 }
 
-function normalizeError(error) {
-  if (error instanceof Error) return error;
-  return new Error(String(error || 'Printer error'));
+function esc(...bytes) {
+  return bytes;
 }
 
-function textToHex(value) {
+function textBytes(value) {
   const text = String(value ?? '')
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[₹]/g, 'Rs ')
     .replace(/[^\x00-\xFF]/g, '');
 
-  return [...new TextEncoder().encode(text)]
-    .map(byte => byte.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function concatHex(...parts) {
-  return parts.filter(Boolean).join('');
-}
-
-function esc(...bytes) {
-  return bytes.map(byte => byte.toString(16).padStart(2, '0')).join('');
+  return [...new TextEncoder().encode(text)];
 }
 
 function buildEscPosReceipt(order, outlet, cart) {
-  const lines = [];
+  const bytes = [];
 
-  const addText = (text, options = {}) => {
-    let command = '';
+  const add = (...values) => bytes.push(...values);
 
-    if (options.align === 'center') command += esc(0x1b, 0x61, 0x01);
-    if (options.align === 'right') command += esc(0x1b, 0x61, 0x02);
-    if (options.align === 'left') command += esc(0x1b, 0x61, 0x00);
+  const text = (value, options = {}) => {
+    if (options.align === 'center') add(...esc(0x1b, 0x61, 0x01));
+    else if (options.align === 'right') add(...esc(0x1b, 0x61, 0x02));
+    else add(...esc(0x1b, 0x61, 0x00));
 
-    if (options.bold) command += esc(0x1b, 0x45, 0x01);
-
-    if (options.size === 2) {
-      command += esc(0x1d, 0x21, 0x11);
-    }
-
-    command += textToHex(text) + '0a';
+    if (options.bold) add(...esc(0x1b, 0x45, 0x01));
 
     if (options.size === 2) {
-      command += esc(0x1d, 0x21, 0x00);
+      add(...esc(0x1d, 0x21, 0x11));
     }
 
-    if (options.bold) command += esc(0x1b, 0x45, 0x00);
+    add(...textBytes(value));
+    add(0x0a);
 
-    lines.push(command);
+    if (options.size === 2) {
+      add(...esc(0x1d, 0x21, 0x00));
+    }
+
+    if (options.bold) add(...esc(0x1b, 0x45, 0x00));
   };
 
   const rule = () => {
-    lines.push(textToHex('--------------------------------') + '0a');
+    text('--------------------------------');
   };
 
-  addText('OHHO BURGERS', {
+  add(...esc(0x1b, 0x40));
+
+  text('OHHO BURGERS', {
     align: 'center',
     bold: true,
     size: 2
   });
 
-  addText(outlet?.name || 'OHHO BURGERS', {
+  text(outlet?.name || 'OHHO BURGERS', {
     align: 'center',
     bold: true
   });
 
-  addText('POS ORDER', { align: 'center' });
+  text('POS ORDER', {
+    align: 'center'
+  });
 
   rule();
 
-  addText(`ORDER #${order?.order_number || 'NEW'}`, { bold: true });
-  addText(
+  text(`ORDER #${order?.order_number || 'NEW'}`, {
+    bold: true
+  });
+
+  text(
     `TYPE: ${String(order?.order_type || '').replaceAll('_', '-')}`
   );
 
   if (order?.table_number) {
-    addText(`TABLE: ${order.table_number}`, { bold: true });
+    text(`TABLE: ${order.table_number}`, {
+      bold: true
+    });
   }
 
-  addText(`PAYMENT: ${order?.payment_method || 'CASH'}`);
+  text(`PAYMENT: ${order?.payment_method || 'CASH'}`);
 
   rule();
 
@@ -124,116 +110,136 @@ function buildEscPosReceipt(order, outlet, cart) {
     const price = Number(item.price || 0);
     const total = price * quantity;
 
-    addText(`${item.name} x${quantity}`);
-    addText(`Rs ${total.toFixed(0)}`, { align: 'right' });
+    text(`${item.name} x${quantity}`);
+    text(`Rs ${total.toFixed(0)}`, {
+      align: 'right'
+    });
   }
 
   rule();
 
-  addText(`TOTAL: Rs ${Number(order?.total || 0).toFixed(0)}`, {
+  text(`TOTAL: Rs ${Number(order?.total || 0).toFixed(0)}`, {
     align: 'right',
     bold: true,
     size: 2
   });
 
-  addText('', { align: 'center' });
-  addText('THANK YOU FOR ORDERING!', {
+  text('');
+
+  text('THANK YOU FOR ORDERING!', {
     align: 'center',
     bold: true
   });
-  addText('Happiness in Every Bite', {
+
+  text('Happiness in Every Bite', {
     align: 'center'
   });
 
-  // Feed and full cut.
-  lines.push(
-    esc(0x1b, 0x64, 0x05),
-    esc(0x1d, 0x56, 0x00)
-  );
+  // Feed paper and cut.
+  add(...esc(0x1b, 0x64, 0x05));
+  add(...esc(0x1d, 0x56, 0x00));
 
-  return concatHex(
-    esc(0x1b, 0x40),
-    ...lines
-  );
+  return new Uint8Array(bytes);
 }
 
 export const posPrinter = {
   config: loadConfig(),
+  port: null,
 
   async connect(config = {}) {
+    if (!('serial' in navigator)) {
+      throw new Error(
+        'Web Serial is not supported. Please use Google Chrome on this computer.'
+      );
+    }
+
     this.config = {
       ...this.config,
       ...config
     };
 
-    if (!this.config.port) {
-      throw new Error('Select a Bluetooth printer before connecting.');
+    if (!this.port) {
+      this.port = await navigator.serial.requestPort();
     }
 
-    if (!qz.websocket.isActive()) {
-      await qz.websocket.connect();
+    if (!this.port.readable && !this.port.writable) {
+      await this.port.open({
+        baudRate: Number(this.config.baudRate) || 9600,
+        dataBits: Number(this.config.dataBits) || 8,
+        stopBits: Number(this.config.stopBits) || 1,
+        parity: this.config.parity || 'none',
+        flowControl: this.config.flowControl || 'none'
+      });
     }
-
-    await qz.serial.openPort(this.config.port, {
-      baudRate: Number(this.config.baudRate) || 9600,
-      dataBits: Number(this.config.dataBits) || 8,
-      stopBits: Number(this.config.stopBits) || 1,
-      parity: this.config.parity || 'NONE',
-      flowControl: this.config.flowControl || 'NONE'
-    });
 
     saveConfig(this.config);
 
     return {
       connected: true,
+      transport: 'web-serial',
+      name: 'Bluetooth Thermal Printer',
       ...this.config
     };
   },
 
   async disconnect() {
-    if (this.config.port) {
+    if (this.port) {
       try {
-        await qz.serial.closePort(this.config.port);
+        if (this.port.readable || this.port.writable) {
+          await this.port.close();
+        }
       } catch {
         // Port may already be closed.
       }
     }
 
-    this.config = {
-      ...this.config
-    };
+    this.port = null;
   },
 
   async findBluetoothPrinters() {
-    if (!qz.websocket.isActive()) {
-      await qz.websocket.connect();
+    if (!('serial' in navigator)) {
+      throw new Error(
+        'Web Serial is not supported. Please use Google Chrome.'
+      );
     }
 
-    const ports = await qz.serial.findPorts();
+    const ports = await navigator.serial.getPorts();
 
-    return ports.map(port => ({
-      id: port,
-      name: port.split('/').pop() || port,
-      port,
-      transport: 'bluetooth-serial'
-    }));
+    return ports.map((port, index) => {
+      const info = port.getInfo();
+
+      return {
+        id: `${info.usbVendorId || 'serial'}-${info.usbProductId || index}`,
+        name: 'Bluetooth Thermal Printer',
+        port,
+        transport: 'bluetooth-serial'
+      };
+    });
   },
 
   async print(order, outlet, cart) {
-    if (!this.config.port) {
-      throw new Error('No Bluetooth printer is configured.');
+    if (!this.port) {
+      throw new Error('No Bluetooth printer is connected.');
     }
 
-    if (!qz.websocket.isActive()) {
-      await qz.websocket.connect();
+    if (!this.port.writable) {
+      await this.port.open({
+        baudRate: Number(this.config.baudRate) || 9600,
+        dataBits: Number(this.config.dataBits) || 8,
+        stopBits: Number(this.config.stopBits) || 1,
+        parity: this.config.parity || 'none',
+        flowControl: this.config.flowControl || 'none'
+      });
     }
 
     const data = buildEscPosReceipt(order, outlet, cart);
+    const writer = this.port.writable.getWriter();
 
-    await qz.serial.sendData(this.config.port, {
-      type: 'HEX',
-      data
-    });
+    try {
+      await writer.write(data);
+    } finally {
+      writer.releaseLock();
+    }
 
     return true;
   },
@@ -258,18 +264,11 @@ export const posPrinter = {
   },
 
   isConnected() {
-    return Boolean(
-      this.config.port &&
-      qz.websocket.isActive()
-    );
+    return Boolean(this.port && this.port.writable);
   },
 
   async shutdown() {
     await this.disconnect();
-
-    if (qz.websocket.isActive()) {
-      await qz.websocket.disconnect();
-    }
   }
 };
 
