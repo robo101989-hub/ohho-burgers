@@ -1,5 +1,4 @@
 import { supabase } from './supabase.js';
-import posPrinter from './posPrinter.js';
 
 const ROLE_PERMISSIONS = {
   ADMIN: ['overview', 'pos', 'orders', 'menu', 'outlets', 'staff', 'reports', 'settings'],
@@ -1313,51 +1312,7 @@ function resetPosOrder() {
 }
 
 
-async function connectPosPrinter() {
-  const button = $('#posPrinterBtn');
-  if (!button) return;
-
-  button.disabled = true;
-  const originalText = button.textContent;
-  button.textContent = 'CONNECTING…';
-
-  try {
-    const info = await posPrinter.connect();
-
-    state.pos.printer = posPrinter;
-    state.pos.printerInfo = info;
-
-    button.textContent = '🖨 PRINTER CONNECTED';
-    toast(`Printer connected: ${info.port}`, 'ok');
-  } catch (error) {
-    console.error('Unable to connect Bluetooth printer:', error);
-    button.textContent = originalText;
-    toast(error.message || 'Unable to connect Bluetooth printer.', 'bad');
-  } finally {
-    button.disabled = false;
-  }
-}
-
-
-async function printPosReceipt(order, outlet, cart) {
-  if (!posPrinter.isConnected()) {
-    toast('Connect the Bluetooth printer before printing.', 'bad');
-    return false;
-  }
-
-  try {
-    await posPrinter.print(order, outlet, cart);
-    toast(`Order #${order.order_number} printed.`, 'ok');
-    return true;
-  } catch (error) {
-    console.error('Unable to print POS receipt:', error);
-    toast(error.message || 'Unable to print receipt.', 'bad');
-    return false;
-  }
-}
-
 function wirePosActions() {
-  $('#posPrinterBtn')?.addEventListener('click', connectPosPrinter);
   $$('.pos-type-btn').forEach(button => {
     button.addEventListener('click', () => {
       state.pos.orderType = button.dataset.orderType;
@@ -1443,7 +1398,6 @@ function wirePosActions() {
 
       const completedCart = state.pos.cart.map(item => ({ ...item }));
       const completedOutlet = result.outlet;
-      await printPosReceipt(result.order, completedOutlet, completedCart);
 
       resetPosOrder();
 
