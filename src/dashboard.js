@@ -1322,22 +1322,7 @@ async function connectPosPrinter() {
   button.textContent = 'CONNECTING…';
 
   try {
-    const printers = await posPrinter.findBluetoothPrinters();
-
-    if (!printers.length) {
-      throw new Error('No Bluetooth printer ports found. Pair the printer with this Mac first.');
-    }
-
-    const configuredPort = posPrinter.getConfig().port;
-    const selectedPort =
-      configuredPort && printers.some(printer => printer.port === configuredPort)
-        ? configuredPort
-        : printers[0].port;
-
-    const info = await posPrinter.connect({
-      port: selectedPort,
-      transport: 'qz-serial'
-    });
+    const info = await posPrinter.connect();
 
     state.pos.printer = posPrinter;
     state.pos.printerInfo = info;
