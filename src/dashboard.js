@@ -1314,6 +1314,23 @@ function resetPosOrder() {
 
 
 async function ohhoPrinterRequest(path, options = {}) {
+  // Android OHHO POS native Bluetooth printer
+  if (window.OHHOPrinter) {
+    if (path === '/health') {
+      return JSON.parse(window.OHHOPrinter.health());
+    }
+
+    if (path === '/connect') {
+      return JSON.parse(window.OHHOPrinter.connect());
+    }
+
+    if (path === '/print') {
+      const body = options.body || '';
+      return JSON.parse(window.OHHOPrinter.print(body));
+    }
+  }
+
+  // Desktop fallback for the legacy local printer adapter.
   const baseUrl = 'http://127.0.0.1:8765';
 
   const response = await fetch(`${baseUrl}${path}`, {
@@ -1368,10 +1385,7 @@ function buildOhhoReceipt(order, outlet, cart) {
 
   cart.forEach(item => {
     const total = Number(item.price) * Number(item.quantity);
-    lines.push(
-      `${item.name} x${item.quantity}`,
-      `₹${total.toFixed(0)}`
-    );
+    lines.push(`${item.name} x${item.quantity}`, `₹${total.toFixed(0)}`);
   });
 
   const total = cart.reduce(
@@ -1398,22 +1412,41 @@ async function connectOhhoPrinter() {
 
   const originalText = button.textContent;
   button.disabled = true;
-  button.textContent = 'CHECKING PRINTER…';
+  button.textContent = 'CONNECTING PRINTER…';
 
   try {
+    if (window.OHHOPrinter) {
+      JSON.parse(window.OHHOPrinter.connect());
+
+      for (let attempt = 0; attempt < 10; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const result = JSON.parse(window.OHHOPrinter.health());
+
+        if (result.connected) {
+          button.textContent = '🟢 PRINTER CONNECTED';
+          toast('58Printer connected successfully.', 'ok');
+          button.disabled = false;
+          return;
+        }
+      }
+
+      throw new Error('58Printer could not be connected.');
+    }
+
     const result = await ohhoPrinterRequest('/health');
 
     if (!result.connected) {
-      throw new Error('OHHO Printer app is running, but no printer is connected.');
+      throw new Error('Printer adapter is running, but no printer is connected.');
     }
 
     button.textContent = '🟢 PRINTER CONNECTED';
     toast('OHHO printer connected successfully.', 'ok');
   } catch (error) {
-    console.error('Printer connection check failed:', error);
+    console.error('Printer connection failed:', error);
     button.textContent = originalText;
     toast(
-      error.message || 'Open OHHO Printer and connect the Bluetooth printer.',
+      error.message || 'Connect the Bluetooth printer and try again.',
       'bad'
     );
   } finally {
@@ -1423,7 +1456,6 @@ async function connectOhhoPrinter() {
 
 async function printOhhoReceipt(order, outlet, cart) {
   const receipt = buildOhhoReceipt(order, outlet, cart);
-
   return ohhoPrinterRequest('/print', {
     method: 'POST',
     body: ohhoBase64(receipt)
