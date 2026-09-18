@@ -1373,13 +1373,19 @@ function buildOhhoTestReceipt() {
 }
 
 function buildOhhoReceipt(order, outlet, cart) {
+  const orderType = String(order?.order_type || 'TAKEAWAY').toUpperCase();
+  const paymentMethod = String(order?.payment_method || 'CASH').toUpperCase();
+
   const lines = [
     'OHHO BURGERS',
     outlet?.name || 'Outlet',
     '==============================',
     `ORDER #${order?.order_number || ''}`,
-    `TYPE: ${state.pos.orderType}`,
-    `PAYMENT: ${state.pos.paymentMethod}`,
+    `TYPE: ${orderType}`,
+    ...(orderType === 'DINE_IN' && order?.table_number
+      ? [`TABLE: ${order.table_number}`]
+      : []),
+    `PAYMENT: ${paymentMethod}`,
     '------------------------------'
   ];
 
@@ -1425,13 +1431,13 @@ async function connectOhhoPrinter() {
 
         if (result.connected) {
           button.textContent = '🟢 PRINTER CONNECTED';
-          toast('58Printer connected successfully.', 'ok');
+          toast('58mm printer connected successfully.', 'ok');
           button.disabled = false;
           return;
         }
       }
 
-      throw new Error('58Printer could not be connected.');
+      throw new Error('58mm printer could not be connected.');
     }
 
     const result = await ohhoPrinterRequest('/health');
