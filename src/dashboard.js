@@ -13,13 +13,30 @@ const state = {
   profile: null,
   outlets: [],
   selectedOutlet: 'ALL',
+  orders: [],
+  salesReports: [],
+  reportOrders: [],
+  reportItems: [],
+  reportRange: 'SESSION',
+  ordersArchiveOpen: false,
+  liveRefreshTimer: null,
+  liveRefreshBusy: false,
+  versionCheckTimer: null,
+  versionUpdatePending: false,
+  orderEdit: {
+    orderId: null,
+    items: []
+  },
   pos: {
     items: [],
     categories: [],
     activeCategory: 'ALL',
     orderType: 'TAKEAWAY',
     tableNumber: '',
+    customerName: '',
+    customerPhone: '',
     paymentMethod: 'CASH',
+    orderSource: 'POS',
     cart: []
   }
 };
@@ -95,12 +112,16 @@ function injectStyles() {
     .order-action-btn:hover{transform:translateY(-1px);background:#ffe04a}
     .order-action-btn:active{transform:translateY(0)}
     .order-action-done{margin-top:15px;padding:10px 12px;text-align:center;border:1px solid #242424;border-radius:9px;color:#555;font:800 8px var(--mono);letter-spacing:1px}
+    .order-edit-btn{width:100%;margin-top:10px;border:1px solid #3a3a3a;background:#131313;color:#eee;border-radius:9px;padding:10px 12px;font:900 8px var(--mono);letter-spacing:.7px}.order-edit-btn:hover{border-color:#ffd21c;color:#ffd21c}
+    .order-edit-list{display:grid;gap:7px}.order-edit-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:11px 12px;border:1px solid #292929;border-radius:9px;background:#101010}.order-edit-row strong{display:block;font-size:11px}.order-edit-row small{display:block;margin-top:4px;color:#777;font-size:9px}.order-edit-qty{display:flex;align-items:center;gap:6px}.order-edit-qty button,.order-edit-remove{width:28px;height:28px;border:1px solid #343434;border-radius:6px;background:#171717;color:#eee;font-weight:900}.order-edit-qty span{min-width:22px;text-align:center;font:900 10px var(--mono)}.order-edit-remove{color:#ff8c8c;border-color:#4b2828}.order-edit-add{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:12px}.order-edit-add select{min-width:0;background:#0b0b0b;border:1px solid #303030;color:#eee;border-radius:8px;padding:10px;font-size:10px}.order-edit-add button{border:0;border-radius:8px;background:#ffd21c;color:#111;padding:10px 14px;font:900 8px var(--mono)}.order-edit-total{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:13px;border-top:1px solid #292929}.order-edit-total span{color:#888;font-size:10px}.order-edit-total strong{color:#ffd21c;font:900 20px var(--mono)}.order-edit-empty{padding:18px;text-align:center;color:#777;border:1px dashed #303030;border-radius:9px}.order-edit-footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 22px;border-top:1px solid #242424}.order-edit-footer button{padding:11px 14px;border-radius:8px;font:900 9px var(--mono)}.order-edit-cancel{border:1px solid #333;background:#111;color:#ddd}.order-edit-save{border:0;background:#ffd21c;color:#111}.order-edit-save:disabled{opacity:.5}.order-edit-body{padding:18px 22px;max-height:60vh;overflow:auto}
 
+    .orders-history-head,.reports-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:30px 0 12px;padding-top:20px;border-top:1px solid #242424}.orders-history-head h2,.reports-head h2{margin:3px 0 0;font-size:20px}.orders-history-head>span,.reports-head>span{color:#666;font-size:9px}.orders-history-board{opacity:.92}.reports-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.reports-summary>div{background:#0d0d0d;border:1px solid #242424;border-radius:12px;padding:15px 17px}.reports-summary span{display:block;color:#666;font:800 8px var(--mono);letter-spacing:1.5px;margin-bottom:7px}.reports-summary strong{font:900 24px var(--mono);color:#f5f5f0}.sales-reports-list{display:grid;gap:10px}.sales-report-card{background:#0d0d0d;border:1px solid #242424;border-radius:13px;padding:16px}.sales-report-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.sales-report-top h3{margin:0;font-size:16px}.sales-report-window{color:#777;font-size:9px;margin-top:5px}.sales-report-total{font:900 22px var(--mono);color:#ffd21c}.sales-report-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}.sales-report-grid div{background:#101010;border:1px solid #252525;border-radius:8px;padding:9px}.sales-report-grid span{display:block;color:#666;font:800 7px var(--mono);letter-spacing:1px}.sales-report-grid strong{display:block;margin-top:5px;font:900 11px var(--mono);color:#eee}@media(max-width:760px){.reports-summary{grid-template-columns:1fr}.sales-report-grid{grid-template-columns:repeat(2,1fr)}.orders-history-head,.reports-head{align-items:flex-start;flex-direction:column}}
+    .orders-archive{margin-top:18px}.orders-archive-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;border:1px solid #292929;border-radius:12px;background:#0d0d0d;color:#eee;text-align:left}.orders-archive-toggle:hover{border-color:#444;background:#101010}.orders-archive-title{display:flex;align-items:center;gap:12px}.orders-archive-icon{width:38px;height:34px;display:grid;place-items:center;border:1px solid #3b3417;border-radius:8px;background:#171407;color:#ffd21c;font-size:17px}.orders-archive-copy strong{display:block;font-size:13px}.orders-archive-copy span{display:block;margin-top:4px;color:#666;font-size:9px}.orders-archive-action{display:flex;align-items:center;gap:10px}.orders-archive-count{color:#888;font:800 8px var(--mono);letter-spacing:.5px}.orders-archive-open{min-width:58px;color:#ffd21c;font:900 8px var(--mono);text-align:right}.orders-archive-panel{margin-top:10px;padding:14px;border:1px solid #292929;border-radius:12px;background:#090909}.orders-archive-search-hint{margin:0 0 12px;color:#666;font-size:9px}.orders-history-board{opacity:.94}
     .orders-loading,.orders-empty{min-height:220px;grid-column:1/-1;display:grid;place-items:center;text-align:center;border:1px dashed #303030;border-radius:14px;color:#666;padding:30px}
     .orders-empty strong{display:block;color:#eee;font-size:15px}
     .orders-empty span{display:block;font-size:11px;margin-top:6px}
     @media(max-width:1050px){.orders-board{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:760px){.orders-page-head{align-items:flex-start}.orders-actions{width:100%}.orders-actions .search{flex:1;min-width:0}.orders-filter{flex:1}.orders-summary{grid-template-columns:1fr}.orders-board{grid-template-columns:1fr}}
+    @media(max-width:760px){.orders-page-head{align-items:flex-start}.orders-actions{width:100%}.orders-actions .search{flex:1;min-width:0}.orders-filter{flex:1}.orders-summary{grid-template-columns:1fr}.orders-board{grid-template-columns:1fr}.orders-archive-toggle{padding:12px}.orders-archive-count{display:none}.orders-archive-panel{padding:10px}}
 
     .menu-page-head{align-items:flex-end}
     .menu-management-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 16px}
@@ -177,9 +198,10 @@ function injectStyles() {
 
     .outlet-grid{grid-template-columns:repeat(3,minmax(0,1fr));display:grid;gap:12px}
     .outlet-card{position:relative;min-height:205px;padding:18px;background:#0d0d0d;border:1px solid #242424;border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.2);overflow:hidden}.outlet-card:before{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,#ffd21c,transparent 58%)}
-    .outlet-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.outlet-card h2{font-size:21px;letter-spacing:-.8px;margin:0}.outlet-status{font-size:8px;font-weight:950;letter-spacing:1px;padding:5px 7px;border-radius:6px;border:1px solid #253b25;color:#72d56b;background:#0d170d}.outlet-status.off{color:#ff8c8c;background:#1c0d0d;border-color:#482121}
+    .outlet-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.outlet-status-control{display:flex;align-items:flex-end;flex-direction:column;gap:7px;flex:0 0 auto}.outlet-card h2{font-size:21px;letter-spacing:-.8px;margin:0}.outlet-status{font-size:8px;font-weight:950;letter-spacing:1px;padding:5px 7px;border-radius:6px;border:1px solid #253b25;color:#72d56b;background:#0d170d}.outlet-status.off{color:#ff8c8c;background:#1c0d0d;border-color:#482121}.outlet-admin-actions{display:flex;gap:8px;margin-top:12px}.outlet-toggle-btn,.order-delete-btn{border:1px solid #383838;background:#111;color:#eee;border-radius:8px;padding:8px 10px;font:900 8px var(--mono);letter-spacing:.7px;cursor:pointer}.outlet-toggle-btn:hover{border-color:#ffd21c;color:#ffd21c}.order-delete-btn{border-color:#552525;color:#ff8c8c;background:#190d0d}.order-delete-btn:hover{border-color:#ff6b6b;color:#fff}.outlet-toggle-btn:disabled,.order-delete-btn:disabled{opacity:.55;cursor:wait}
     .outlet-address{color:#999;font-size:11px;line-height:1.5;margin:12px 0 11px;max-width:100%}.outlet-meta-row{display:flex;flex-wrap:wrap;gap:6px}.outlet-chip{border:1px solid #292929;background:#101010;color:#777;border-radius:7px;padding:6px 8px;font-size:8px;font-weight:800}.outlet-chip strong{color:#eee}
     .outlet-links{display:flex;gap:6px;margin-top:13px}.outlet-links button{border:1px solid #303030;background:#111;color:#ddd;border-radius:7px;padding:7px 9px;font-size:8px;font-weight:900}.outlet-links button:hover{border-color:#ffd21c;color:#ffd21c}
+    .pos-outlet-toggle-btn{min-width:92px}.pos-outlet-toggle-btn.is-off{border-color:#5a2b2b!important;color:#ff8c8c!important;background:#190d0d!important}.pos-outlet-toggle-btn.is-on{border-color:#2f4f2f!important;color:#72d56b!important;background:#0d170d!important}
     .outlet-empty{grid-column:1/-1;border:1px dashed #303030;border-radius:14px;min-height:220px;display:grid;place-items:center;text-align:center;color:#777;padding:30px}.outlet-empty strong{display:block;color:#eee;font-size:15px}.outlet-empty span{display:block;font-size:11px;margin-top:6px}
     .modal-backdrop{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;padding:20px}.modal-backdrop.open{display:flex}
     .modal{width:min(680px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#0d0d0d;border:1px solid #303030;border-radius:18px;box-shadow:0 30px 90px rgba(0,0,0,.55)}
@@ -458,8 +480,8 @@ function updateStaffOutletVisibility() {
 }
 
 function openStaffModal(member = null) {
-  if (state.profile?.role !== 'ADMIN') {
-    toast('Admin access required.', 'bad');
+  if (!['ADMIN', 'OWNER'].includes(state.profile?.role)) {
+    toast('Admin or Owner access required.', 'bad');
     return;
   }
 
@@ -646,6 +668,30 @@ function buildToast() {
   document.body.appendChild(toast);
 }
 
+function buildOrderEditModal() {
+  if ($('#orderEditModal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'orderEditModal';
+  modal.className = 'modal-backdrop';
+  modal.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="orderEditTitle">
+      <div class="modal-head"><div><div class="eyebrow">Active order</div><h2 id="orderEditTitle">Edit Order</h2><p>Add, remove or change item quantities.</p></div><button class="modal-close" type="button" data-order-edit-close>×</button></div>
+      <div class="order-edit-body">
+        <div id="orderEditList" class="order-edit-list"></div>
+        <div class="order-edit-add"><select id="orderEditMenuSelect" aria-label="Menu item"></select><button id="orderEditAddBtn" type="button">＋ ADD ITEM</button></div>
+        <div class="order-edit-total"><span>UPDATED TOTAL</span><strong id="orderEditTotal">₹0</strong></div>
+      </div>
+      <div class="order-edit-footer"><button class="order-edit-cancel" type="button" data-order-edit-close>CANCEL</button><button id="orderEditSaveBtn" class="order-edit-save" type="button">SAVE ORDER</button></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  $$('[data-order-edit-close]', modal).forEach(button => button.addEventListener('click', closeOrderEditModal));
+  modal.addEventListener('click', event => { if (event.target === modal) closeOrderEditModal(); });
+  $('#orderEditAddBtn', modal)?.addEventListener('click', addSelectedOrderEditItem);
+  $('#orderEditSaveBtn', modal)?.addEventListener('click', saveOrderEdit);
+  $('#orderEditList', modal)?.addEventListener('click', handleOrderEditItemAction);
+}
+
 function toast(message, type = 'ok') {
   const node = $('#dashboardToast');
   if (!node) return;
@@ -752,7 +798,7 @@ async function apiRequest(method, body = null) {
     if (method === 'GET') {
       const { data: outlets, error } = await supabase
         .from('outlets')
-        .select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at')
+        .select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at')
         .order('created_at', { ascending: true });
       if (error) throw new Error(error.message || 'Unable to load outlets.');
       return { outlets: outlets || [] };
@@ -797,7 +843,7 @@ async function loadOutlets() {
     // Supabase read path only during local development. Production API failures must surface.
     if (!import.meta.env.DEV) throw apiError;
 
-    const { data, error } = await supabase.from('outlets').select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at').order('created_at', { ascending: true });
+    const { data, error } = await supabase.from('outlets').select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at').order('created_at', { ascending: true });
     if (error) throw apiError;
     const allOutlets = data || [];
     state.outlets = state.profile?.role === 'ADMIN'
@@ -817,6 +863,7 @@ async function loadOutlets() {
   renderOutletCards();
   renderOutletSelector();
   renderOverviewOutlets();
+  renderSettings();
 }
 
 
@@ -1192,12 +1239,33 @@ function renderPosMenu() {
   });
 }
 
+function updatePosOutletControl() {
+  const button = $('#posOutletToggleBtn');
+  if (!button) return;
+
+  const canControl = ['ADMIN', 'OWNER'].includes(state.profile?.role);
+  const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
+
+  button.hidden = !canControl || !outlet;
+
+  if (!outlet) return;
+
+  const isActive = outlet.status === 'ACTIVE';
+  button.textContent = isActive ? 'OUTLET ON' : 'OUTLET OFF';
+  button.classList.toggle('is-on', isActive);
+  button.classList.toggle('is-off', !isActive);
+  button.title = isActive
+    ? 'Click to turn this outlet off'
+    : 'Click to turn this outlet on';
+}
+
 function updatePosOutletName() {
   const node = $('#posOutletName');
   if (!node) return;
 
   const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
   node.textContent = outlet ? outlet.name : 'All Outlets';
+  updatePosOutletControl();
 }
 
 function addPosItem(menuItemId) {
@@ -1294,7 +1362,10 @@ function resetPosOrder() {
   state.pos.cart = [];
   state.pos.orderType = 'TAKEAWAY';
   state.pos.tableNumber = '';
+  state.pos.customerName = '';
+  state.pos.customerPhone = '';
   state.pos.paymentMethod = 'CASH';
+  state.pos.orderSource = 'POS';
 
   $$('.pos-type-btn').forEach(button =>
     button.classList.toggle('active', button.dataset.orderType === 'TAKEAWAY')
@@ -1302,11 +1373,19 @@ function resetPosOrder() {
   $$('.pos-payment-btn').forEach(button =>
     button.classList.toggle('active', button.dataset.payment === 'CASH')
   );
+  $$('.pos-source-card').forEach(button =>
+    button.classList.toggle('active', button.dataset.orderSource === 'POS')
+  );
+
+  $('#posPaymentGrid')?.classList.remove('is-locked');
+  $('#posComplimentaryNote')?.classList.add('hidden');
 
   const tableWrap = $('#posTableWrap');
   const tableInput = $('#posTableNumber');
   if (tableWrap) tableWrap.classList.add('hidden');
   if (tableInput) tableInput.value = '';
+  if ($('#posCustomerName')) $('#posCustomerName').value = '';
+  if ($('#posCustomerPhone')) $('#posCustomerPhone').value = '';
 
   renderPosCart();
 }
@@ -1373,13 +1452,22 @@ function buildOhhoTestReceipt() {
 }
 
 function buildOhhoReceipt(order, outlet, cart) {
+  const orderType = String(order?.order_type || 'TAKEAWAY').toUpperCase();
+  const paymentMethod = String(order?.payment_method || 'CASH').toUpperCase();
+
   const lines = [
     'OHHO BURGERS',
     outlet?.name || 'Outlet',
     '==============================',
     `ORDER #${order?.order_number || ''}`,
-    `TYPE: ${state.pos.orderType}`,
-    `PAYMENT: ${state.pos.paymentMethod}`,
+    `TYPE: ${orderType}`,
+    `CATEGORY: ${String(order?.order_source || 'POS').replaceAll('_', ' ')}`,
+    ...(order?.customer_name ? [`NAME: ${order.customer_name}`] : []),
+    ...(order?.customer_phone ? [`MOBILE: ${order.customer_phone}`] : []),
+    ...(orderType === 'DINE_IN' && order?.table_number
+      ? [`TABLE: ${order.table_number}`]
+      : []),
+    `PAYMENT: ${paymentMethod}`,
     '------------------------------'
   ];
 
@@ -1425,13 +1513,13 @@ async function connectOhhoPrinter() {
 
         if (result.connected) {
           button.textContent = '🟢 PRINTER CONNECTED';
-          toast('58Printer connected successfully.', 'ok');
+          toast('58mm printer connected successfully.', 'ok');
           button.disabled = false;
           return;
         }
       }
 
-      throw new Error('58Printer could not be connected.');
+      throw new Error('58mm printer could not be connected.');
     }
 
     const result = await ohhoPrinterRequest('/health');
@@ -1465,6 +1553,22 @@ async function printOhhoReceipt(order, outlet, cart) {
 function wirePosActions() {
   $('#posPrinterBtn')?.addEventListener('click', connectOhhoPrinter);
 
+  $('#posOutletToggleBtn')?.addEventListener('click', async () => {
+    const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
+
+    if (!outlet) {
+      toast('Select a specific outlet first.', 'bad');
+      return;
+    }
+
+    const button = $('#posOutletToggleBtn');
+    if (button) button.disabled = true;
+
+    await toggleOutletStatus(outlet.id);
+
+    if (button) button.disabled = false;
+  });
+
 
   $$('.pos-type-btn').forEach(button => {
     button.addEventListener('click', () => {
@@ -1489,8 +1593,35 @@ function wirePosActions() {
     });
   });
 
+  $$('.pos-source-card').forEach(button => {
+    button.addEventListener('click', () => {
+      const source = button.dataset.orderSource;
+      state.pos.orderSource = source;
+      $$('.pos-source-card').forEach(card =>
+        card.classList.toggle('active', card === button)
+      );
+
+      const complimentary = source === 'FAMILY_FRIENDS';
+      state.pos.paymentMethod = complimentary ? 'COMPLIMENTARY' : 'CASH';
+      $$('.pos-payment-btn').forEach(paymentButton =>
+        paymentButton.classList.toggle(
+          'active',
+          !complimentary && paymentButton.dataset.payment === 'CASH'
+        )
+      );
+      $('.pos-payment-grid')?.classList.toggle('is-locked', complimentary);
+      $('#posComplimentaryNote')?.classList.toggle('hidden', !complimentary);
+    });
+  });
+
   $('#posTableNumber')?.addEventListener('input', event => {
     state.pos.tableNumber = event.target.value;
+  });
+  $('#posCustomerName')?.addEventListener('input', event => {
+    state.pos.customerName = event.target.value;
+  });
+  $('#posCustomerPhone')?.addEventListener('input', event => {
+    state.pos.customerPhone = event.target.value;
   });
 
   $('#posClearBtn')?.addEventListener('click', resetPosOrder);
@@ -1536,6 +1667,9 @@ function wirePosActions() {
               ? Number(state.pos.tableNumber)
               : null,
           paymentMethod: state.pos.paymentMethod,
+          orderSource: state.pos.orderSource,
+          customerName: state.pos.customerName.trim(),
+          customerPhone: state.pos.customerPhone.trim(),
           items: state.pos.cart.map(item => ({
             menuItemId: item.id,
             quantity: item.quantity
@@ -1578,6 +1712,12 @@ function wirePosActions() {
           'bad'
         );
       }
+
+      try {
+        await Promise.all([loadOrders(), loadReports()]);
+      } catch (refreshError) {
+        console.error('Unable to refresh live session sales:', refreshError);
+      }
     } catch (error) {
       console.error('Unable to create POS order:', error);
       toast(error.message || 'Unable to create POS order.', 'bad');
@@ -1595,6 +1735,41 @@ function formatTime(value) {
   const suffix = hour >= 12 ? 'PM' : 'AM';
   const h = hour % 12 || 12;
   return `${h}:${String(minute).padStart(2, '0')} ${suffix}`;
+}
+
+async function toggleOutletStatus(outletId) {
+  if (state.profile?.role !== 'ADMIN') {
+    toast('Admin access required.', 'bad');
+    return;
+  }
+
+  const outlet = state.outlets.find(item => item.id === outletId);
+  if (!outlet) return;
+
+  const nextStatus = outlet.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
+  try {
+    const payload = await apiRequest('PATCH', {
+      id: outlet.id,
+      status: nextStatus
+    });
+
+    state.outlets = state.outlets.map(item =>
+      item.id === outlet.id ? payload.outlet : item
+    );
+
+    renderOutletCards();
+    renderOutletSelector();
+    renderOverviewOutlets();
+    updatePosOutletName();
+    renderSettings();
+    await loadOrders();
+    await loadReports();
+    toast(`${payload.outlet.name} is now ${payload.outlet.status}.`, 'ok');
+  } catch (error) {
+    console.error('Unable to change outlet status:', error);
+    toast(error.message || 'Unable to change outlet status.', 'bad');
+  }
 }
 
 function renderOutletCards() {
@@ -1615,7 +1790,17 @@ function renderOutletCards() {
   }
   grid.innerHTML = state.outlets.map(outlet => `
     <article class="outlet-card">
-      <div class="outlet-card-top"><div><div class="card-kicker">OHHO Outlet</div><h2>${escapeHtml(outlet.name)}</h2></div><span class="outlet-status ${outlet.status !== 'ACTIVE' ? 'off' : ''}">${escapeHtml(outlet.status)}</span></div>
+      <div class="outlet-card-top">
+        <div><div class="card-kicker">OHHO Outlet</div><h2>${escapeHtml(outlet.name)}</h2></div>
+        <div class="outlet-status-control">
+          <span class="outlet-status ${outlet.status !== 'ACTIVE' ? 'off' : ''}">${escapeHtml(outlet.status)}</span>
+          ${state.profile?.role === 'ADMIN' ? `
+            <button type="button" class="outlet-toggle-btn" data-outlet-toggle="${escapeHtml(outlet.id)}">
+              ${outlet.status === 'ACTIVE' ? 'TURN OFF' : 'TURN ON'}
+            </button>
+          ` : ''}
+        </div>
+      </div>
       <div class="outlet-address">${escapeHtml(outlet.address)}</div>
       <div class="outlet-meta-row">
         <span class="outlet-chip"><strong>${formatTime(outlet.opening_time)}</strong> – <strong>${formatTime(outlet.closing_time)}</strong></span>
@@ -1629,6 +1814,10 @@ function renderOutletCards() {
       </div>
     </article>`).join('');
   $$('[data-url]', grid).forEach(button => button.addEventListener('click', () => window.open(button.dataset.url, '_blank', 'noopener,noreferrer')));
+  $$('[data-outlet-toggle]', grid).forEach(button => button.addEventListener('click', async () => {
+    button.disabled = true;
+    await toggleOutletStatus(button.dataset.outletToggle);
+  }));
 }
 
 function renderOutletSelector() {
@@ -1658,6 +1847,7 @@ function renderOutletSelector() {
     try {
       await loadPosMenu();
       await loadOrders();
+      await loadReports();
     } catch (error) {
       console.error('Unable to refresh POS menu:', error);
       toast(error.message || 'Unable to load POS menu.', 'bad');
@@ -1666,31 +1856,131 @@ function renderOutletSelector() {
 }
 
 function renderOverviewOutlets() {
-  const performance = $('.performance');
-  if (!performance) return;
-  const heading = $('.panel-head', performance);
-  const existing = $$('.outlet', performance);
-  existing.forEach(node => node.remove());
-  const outlets = state.selectedOutlet === 'ALL' ? state.outlets : state.outlets.filter(o => o.slug === state.selectedOutlet);
-  outlets.forEach(outlet => {
-    const node = document.createElement('div');
-    node.className = 'outlet';
-    node.innerHTML = `<div class="outlet-top"><span class="outlet-name">${escapeHtml(outlet.name)}</span><span class="outlet-revenue">₹0</span></div><div class="outlet-meta">${formatTime(outlet.opening_time)} – ${formatTime(outlet.closing_time)} · ${escapeHtml(outlet.status)}</div><div class="progress"><span style="width:0%"></span></div><div class="outlet-foot"><span>0 orders today</span><span class="${outlet.status === 'ACTIVE' ? 'green' : ''}">${escapeHtml(outlet.status)}</span></div>`;
-    performance.appendChild(node);
-  });
-  if (heading && !outlets.length) {
-    const node = document.createElement('div');
-    node.className = 'outlet';
-    node.textContent = 'No outlet selected.';
-    performance.appendChild(node);
+  renderOverview();
+}
+
+function renderOverview() {
+  if (!$('#overview')) return;
+
+  const scopedOutlets = state.selectedOutlet === 'ALL'
+    ? (state.outlets || [])
+    : (state.outlets || []).filter(outlet => outlet.slug === state.selectedOutlet);
+  const scopedOutletIds = new Set(scopedOutlets.map(outlet => outlet.id));
+  const sessionOrders = (state.orders || []).filter(order =>
+    scopedOutletIds.has(order.outlet_id) && isCurrentSessionOrder(order)
+  );
+  const paidOrders = sessionOrders.filter(order =>
+    order.payment_status === 'PAID' &&
+    order.order_status !== 'CANCELLED' &&
+    !isFamilyFriendsOrder(order)
+  );
+  const liveOrders = sessionOrders.filter(order =>
+    ['NEW', 'ACCEPTED', 'PREPARING', 'READY'].includes(order.order_status)
+  );
+  const sessionSales = paidOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+  const averageOrder = paidOrders.length ? sessionSales / paidOrders.length : 0;
+
+  const globalLiveItems = (menuManagementState.items || []).filter(item =>
+    item.is_available === true && item.is_archived !== true
+  );
+  let liveMenuCount = globalLiveItems.length;
+  if (state.selectedOutlet !== 'ALL' && scopedOutlets[0]) {
+    const outletId = scopedOutlets[0].id;
+    liveMenuCount = globalLiveItems.filter(item =>
+      menuManagementState.outletAvailability.get(`${outletId}:${item.id}`) === true
+    ).length;
   }
+
+  if ($('#overviewSessionSales')) $('#overviewSessionSales').textContent = formatReportMoney(sessionSales);
+  if ($('#overviewSessionOrders')) $('#overviewSessionOrders').textContent = String(sessionOrders.length);
+  if ($('#overviewAverageOrder')) $('#overviewAverageOrder').textContent = formatReportMoney(averageOrder);
+  if ($('#overviewMenuCount')) $('#overviewMenuCount').textContent = String(liveMenuCount);
+  if ($('#overviewLiveOrderFoot')) $('#overviewLiveOrderFoot').textContent = `${liveOrders.length} live order${liveOrders.length === 1 ? '' : 's'}`;
+  if ($('#overviewMenuFoot')) $('#overviewMenuFoot').textContent = `${liveMenuCount} active item${liveMenuCount === 1 ? '' : 's'}`;
+  if ($('#overviewLiveCount')) $('#overviewLiveCount').textContent = `${liveOrders.length} LIVE`;
+
+  const liveList = $('#overviewLiveOrders');
+  if (liveList) {
+    liveList.innerHTML = liveOrders.length
+      ? liveOrders.slice(0, 8).map(order => {
+          const itemCount = (order.order_items || []).reduce(
+            (sum, item) => sum + Number(item.quantity || 0),
+            0
+          );
+          return `
+            <div class="overview-order-row">
+              <div class="overview-order-main"><strong>Order #${escapeHtml(order.order_number)} · ${escapeHtml(order.outlets?.name || 'OHHO Outlet')}</strong><span>${escapeHtml(order.order_type || 'TAKEAWAY')} · ${itemCount} item${itemCount === 1 ? '' : 's'}</span></div>
+              <span class="overview-order-status">${escapeHtml(order.order_status || 'NEW')}</span>
+              <div class="overview-order-total"><strong>${formatReportMoney(order.total_amount)}</strong><span>${formatOrderTime(order.created_at)}</span></div>
+            </div>
+          `;
+        }).join('')
+      : '<div class="empty"><div><div class="empty-icon">⌁</div><strong>Your order queue is clear.</strong><p>New POS orders will appear here automatically.</p></div></div>';
+  }
+
+  const openOutlets = scopedOutlets.filter(outlet => outlet.status === 'ACTIVE');
+  if ($('#overviewOpenOutlets')) $('#overviewOpenOutlets').textContent = String(openOutlets.length);
+  if ($('#overviewPulseItems')) $('#overviewPulseItems').textContent = String(liveMenuCount);
+  if ($('#overviewPulseOrders')) $('#overviewPulseOrders').textContent = String(liveOrders.length);
+  if ($('#overviewActiveOutlets')) $('#overviewActiveOutlets').textContent = `${openOutlets.length} active`;
+  if ($('#overviewPulseLabel')) $('#overviewPulseLabel').textContent = openOutlets.length ? '● LIVE' : '● CLOSED';
+  if ($('#overviewPulseTitle')) $('#overviewPulseTitle').textContent = openOutlets.length ? 'Ready to serve.' : 'Outlets are closed.';
+  if ($('#overviewPulseCopy')) {
+    $('#overviewPulseCopy').textContent = openOutlets.length
+      ? `${openOutlets.length} of ${scopedOutlets.length} outlet${scopedOutlets.length === 1 ? '' : 's'} open with ${liveOrders.length} live order${liveOrders.length === 1 ? '' : 's'}.`
+      : 'Turn an outlet ON to begin a new sales session.';
+  }
+  if ($('#overviewPulseTrack')) {
+    const openShare = scopedOutlets.length ? (openOutlets.length / scopedOutlets.length) * 100 : 0;
+    $('#overviewPulseTrack').style.width = `${openShare}%`;
+  }
+
+  const outletList = $('.overview-outlet-list');
+  if (outletList) {
+    outletList.innerHTML = scopedOutlets.map(outlet => {
+      const outletPaidOrders = paidOrders.filter(order => order.outlet_id === outlet.id);
+      const outletSales = outletPaidOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+      const share = sessionSales ? (outletSales / sessionSales) * 100 : 0;
+      return `
+        <div class="outlet">
+          <div class="outlet-top"><span class="outlet-name">${escapeHtml(outlet.name)}</span><span class="outlet-revenue">${formatReportMoney(outletSales)}</span></div>
+          <div class="outlet-meta">${outletPaidOrders.length} paid order${outletPaidOrders.length === 1 ? '' : 's'} · ${formatTime(outlet.opening_time)} – ${formatTime(outlet.closing_time)}</div>
+          <div class="progress"><span style="width:${Math.min(100, share)}%"></span></div>
+          <div class="outlet-foot"><span>${Math.round(share)}% of session sales</span><span class="${outlet.status === 'ACTIVE' ? 'green' : ''}">${escapeHtml(outlet.status === 'ACTIVE' ? 'OPEN' : 'CLOSED')}</span></div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const paymentTotal = method => paidOrders
+    .filter(order => order.payment_method === method)
+    .reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+  const cash = paymentTotal('CASH');
+  const upi = paymentTotal('UPI');
+  const card = paymentTotal('CARD');
+  const setPayment = (valueId, barId, value) => {
+    if ($(valueId)) $(valueId).textContent = formatReportMoney(value);
+    if ($(barId)) $(barId).style.width = `${sessionSales ? (value / sessionSales) * 100 : 0}%`;
+  };
+  if ($('#overviewPaymentTotal')) $('#overviewPaymentTotal').textContent = `${formatReportMoney(sessionSales)} total`;
+  setPayment('#overviewCash', '#overviewCashBar', cash);
+  setPayment('#overviewUpi', '#overviewUpiBar', upi);
+  setPayment('#overviewCard', '#overviewCardBar', card);
+
+  const topStatus = $('.topbar .status');
+  if (topStatus) topStatus.innerHTML = `<i></i>${openOutlets.length ? `${openOutlets.length} OPEN` : 'CLOSED'}`;
 }
 
 function updateDashboardContext() {
   const span = $('.context span');
   if (!span) return;
   const selected = state.outlets.find(o => o.slug === state.selectedOutlet);
-  span.textContent = selected ? `${selected.name} · Live operations` : 'All outlets · Live operations';
+  const date = new Date().toLocaleDateString([], {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long'
+  });
+  span.textContent = `${date} · ${selected ? selected.name : 'All outlets'} · Live operations`;
 }
 
 function openOutletModal() {
@@ -1800,20 +2090,234 @@ async function updateOrderStatus(orderId, nextStatus) {
   toast(`Order updated to ${nextStatus.replaceAll('_', ' ')}.`, 'ok');
 }
 
+async function deleteOrderAsAdmin(orderId, orderNumber = '') {
+  if (state.profile?.role !== 'ADMIN') {
+    toast('Admin access required.', 'bad');
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Remove order #${orderNumber || orderId}? This cannot be undone.`
+  );
+  if (!confirmed) return;
+
+  const { data: sessionData, error: sessionError } =
+    await supabase.auth.getSession();
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    toast('Your session has expired. Please log in again.', 'bad');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/pos/orders', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session.access_token}`
+      },
+      body: JSON.stringify({ orderId })
+    });
+
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Unable to remove order.');
+    }
+
+    await loadOrders();
+    toast(`Order #${orderNumber || ''} removed.`, 'ok');
+  } catch (error) {
+    console.error('Unable to remove order:', error);
+    toast(error.message || 'Unable to remove order.', 'bad');
+  }
+}
+
+function closeOrderEditModal() {
+  $('#orderEditModal')?.classList.remove('open');
+  state.orderEdit.orderId = null;
+  state.orderEdit.items = [];
+}
+
+function availableItemsForOrder(order) {
+  return (menuManagementState.items || []).filter(item =>
+    item.is_available === true &&
+    item.is_archived !== true &&
+    menuManagementState.outletAvailability.get(`${order.outlet_id}:${item.id}`) === true
+  );
+}
+
+function openOrderEditModal(orderId) {
+  const order = (state.orders || []).find(item => item.id === orderId);
+  if (!order || ['COMPLETED', 'CANCELLED'].includes(order.order_status)) {
+    toast('This order can no longer be edited.', 'bad');
+    return;
+  }
+
+  state.orderEdit.orderId = order.id;
+  state.orderEdit.items = (order.order_items || []).map(item => ({
+    menuItemId: item.menu_item_id,
+    name: item.item_name || 'Menu Item',
+    price: Number(item.unit_price || 0),
+    quantity: Number(item.quantity || 0)
+  })).filter(item => item.menuItemId && item.quantity > 0);
+  $('#orderEditTitle').textContent = `Edit Order #${order.order_number}`;
+  $('#orderEditModal')?.classList.add('open');
+  renderOrderEditModal();
+}
+
+function renderOrderEditModal() {
+  const list = $('#orderEditList');
+  const select = $('#orderEditMenuSelect');
+  const total = $('#orderEditTotal');
+  const save = $('#orderEditSaveBtn');
+  const order = (state.orders || []).find(item => item.id === state.orderEdit.orderId);
+  if (!list || !select || !order) return;
+
+  list.innerHTML = state.orderEdit.items.length
+    ? state.orderEdit.items.map(item => `
+        <div class="order-edit-row">
+          <div><strong>${escapeHtml(item.name)}</strong><small>${formatReportMoney(item.price)} each</small></div>
+          <div class="order-edit-qty"><button type="button" data-edit-action="decrease" data-menu-item-id="${escapeHtml(item.menuItemId)}">−</button><span>${item.quantity}</span><button type="button" data-edit-action="increase" data-menu-item-id="${escapeHtml(item.menuItemId)}">＋</button></div>
+          <button type="button" class="order-edit-remove" data-edit-action="remove" data-menu-item-id="${escapeHtml(item.menuItemId)}" aria-label="Remove ${escapeHtml(item.name)}">×</button>
+        </div>
+      `).join('')
+    : '<div class="order-edit-empty">Add at least one menu item to this order.</div>';
+
+  const selectedIds = new Set(state.orderEdit.items.map(item => item.menuItemId));
+  const available = availableItemsForOrder(order).filter(item => !selectedIds.has(item.id));
+  select.innerHTML = available.length
+    ? available.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} · ${formatReportMoney(item.price)}</option>`).join('')
+    : '<option value="">No more available items</option>';
+  $('#orderEditAddBtn').disabled = !available.length;
+
+  const updatedTotal = state.orderEdit.items.reduce(
+    (sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 0)),
+    0
+  );
+  if (total) total.textContent = formatReportMoney(updatedTotal);
+  if (save) save.disabled = !state.orderEdit.items.length;
+}
+
+function handleOrderEditItemAction(event) {
+  const button = event.target.closest('[data-edit-action]');
+  if (!button) return;
+  const item = state.orderEdit.items.find(entry => entry.menuItemId === button.dataset.menuItemId);
+  if (!item) return;
+
+  if (button.dataset.editAction === 'increase' && item.quantity < 99) item.quantity += 1;
+  if (button.dataset.editAction === 'decrease') {
+    if (item.quantity > 1) item.quantity -= 1;
+    else state.orderEdit.items = state.orderEdit.items.filter(entry => entry !== item);
+  }
+  if (button.dataset.editAction === 'remove') {
+    state.orderEdit.items = state.orderEdit.items.filter(entry => entry !== item);
+  }
+  renderOrderEditModal();
+}
+
+function addSelectedOrderEditItem() {
+  const menuItemId = $('#orderEditMenuSelect')?.value;
+  const order = (state.orders || []).find(item => item.id === state.orderEdit.orderId);
+  const menuItem = order
+    ? availableItemsForOrder(order).find(item => item.id === menuItemId)
+    : null;
+  if (!menuItem || state.orderEdit.items.some(item => item.menuItemId === menuItem.id)) return;
+  state.orderEdit.items.push({
+    menuItemId: menuItem.id,
+    name: menuItem.name,
+    price: Number(menuItem.price || 0),
+    quantity: 1
+  });
+  renderOrderEditModal();
+}
+
+async function saveOrderEdit() {
+  if (!state.orderEdit.orderId || !state.orderEdit.items.length) return;
+  const button = $('#orderEditSaveBtn');
+  if (!button || button.disabled) return;
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = 'SAVING…';
+
+  try {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData?.session?.access_token) {
+      throw new Error('Your session has expired. Please log in again.');
+    }
+    const response = await fetch('/api/pos/orders', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session.access_token}`
+      },
+      body: JSON.stringify({
+        orderId: state.orderEdit.orderId,
+        items: state.orderEdit.items.map(item => ({
+          menuItemId: item.menuItemId,
+          quantity: item.quantity
+        }))
+      })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Unable to edit this order.');
+    closeOrderEditModal();
+    await Promise.all([loadOrders({ silent: true }), loadReports()]);
+    toast(`Order #${result.order?.order_number || ''} updated.`, 'ok');
+  } catch (error) {
+    console.error('Unable to edit order:', error);
+    toast(error.message || 'Unable to edit this order.', 'bad');
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
 function wireOrdersActions() {
   const search = $('#ordersSearch');
   const status = $('#ordersStatusFilter');
 
-  search?.addEventListener('input', renderOrders);
+  search?.addEventListener('input', () => {
+    if (search.value.trim()) state.ordersArchiveOpen = true;
+    renderOrders();
+  });
   status?.addEventListener('change', renderOrders);
 
+  $('#ordersArchiveToggle')?.addEventListener('click', () => {
+    state.ordersArchiveOpen = !state.ordersArchiveOpen;
+    renderOrders();
+  });
+
   $('#ordersBoard')?.addEventListener('click', event => {
+    const editButton = event.target.closest('[data-order-edit]');
+    if (editButton) {
+      openOrderEditModal(editButton.dataset.orderEdit);
+      return;
+    }
+    const deleteButton = event.target.closest('.order-delete-btn');
+    if (deleteButton) {
+      deleteOrderAsAdmin(
+        deleteButton.dataset.orderId,
+        deleteButton.dataset.orderNumber
+      );
+      return;
+    }
+
     const button = event.target.closest('.order-action-btn');
     if (!button) return;
 
     updateOrderStatus(
       button.dataset.orderId,
       button.dataset.nextStatus
+    );
+  });
+
+  $('#ordersHistoryBoard')?.addEventListener('click', event => {
+    const deleteButton = event.target.closest('.order-delete-btn');
+    if (!deleteButton) return;
+    deleteOrderAsAdmin(
+      deleteButton.dataset.orderId,
+      deleteButton.dataset.orderNumber
     );
   });
 }
@@ -1867,6 +2371,8 @@ async function loadMenuManagement() {
 
   renderMenuManagement();
   populateMenuCategoryControls();
+  renderSettings();
+  renderOverview();
 }
 
 function renderMenuManagementTableHead() {
@@ -2504,6 +3010,19 @@ function wireDashboardActions() {
     $$('.nav-btn').forEach(navButton => navButton.classList.toggle('active', navButton.dataset.section === id));
     state.selectedSection = id;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (id === 'settings') renderSettings();
+    if (id === 'reports') {
+      loadReports().catch(error => {
+        console.error('Unable to refresh reports:', error);
+        toast(error.message || 'Unable to refresh reports.', 'bad');
+      });
+    }
+  }));
+
+  $$('#overview [data-section]').forEach(button => button.addEventListener('click', () => {
+    const target = button.dataset.section;
+    if (target === 'outlets') return;
+    $(`.nav-btn[data-section="${target}"]`)?.click();
   }));
 
   $$('[data-section="outlets"], .action-outlet').forEach(button => button.addEventListener('click', openOutletSection));
@@ -2541,6 +3060,35 @@ function wireDashboardActions() {
   $('#staffSearch')?.addEventListener('input', renderStaffList);
   $('#staffRoleFilter')?.addEventListener('change', renderStaffList);
   $('#staffOutletFilter')?.addEventListener('change', renderStaffList);
+  $('#reportsRefreshBtn')?.addEventListener('click', loadReports);
+  $$('[data-report-range]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.reportRange = button.dataset.reportRange || 'SESSION';
+      $$('[data-report-range]').forEach(rangeButton => {
+        const active = rangeButton === button;
+        rangeButton.classList.toggle('active', active);
+        rangeButton.setAttribute('aria-pressed', String(active));
+      });
+      $('#customDatePanel')?.classList.toggle('hidden', state.reportRange !== 'CUSTOM');
+      if (state.reportRange === 'CUSTOM') setDefaultCustomReportDates();
+      renderReportDashboard();
+    });
+  });
+  $('#applyCustomDateBtn')?.addEventListener('click', () => {
+    const from = $('#reportDateFrom')?.value;
+    const to = $('#reportDateTo')?.value;
+    if (!from || !to) {
+      toast('Select both From and To dates.', 'bad');
+      return;
+    }
+    if (from > to) {
+      toast('From date must be before To date.', 'bad');
+      return;
+    }
+    renderReportDashboard();
+  });
+  $('#reportsExportBtn')?.addEventListener('click', exportSessionReports);
+  $('#reportsClearLogBtn')?.addEventListener('click', clearSelectedReportLogs);
 
   wirePosActions();
   wireOrdersActions();
@@ -2548,17 +3096,17 @@ function wireDashboardActions() {
 }
 
 
-async function loadOrders() {
+async function loadOrders({ silent = false } = {}) {
   const board = $('#ordersBoard');
-  if (board) {
+  if (board && !silent) {
     board.innerHTML = '<div class="orders-loading">Loading orders…</div>';
   }
 
   let query = supabase
     .from('orders')
-    .select('id, order_number, order_type, status, payment_method, payment_status, order_source, table_number, subtotal, total, created_at, outlet_id')
+    .select('id, order_number, token_number, order_type, status, payment_method, payment_status, order_source, table_number, customer_note, subtotal, total, created_at, outlet_id')
     .order('created_at', { ascending: false })
-    .limit(100);
+    .limit(1000);
 
   if (state.selectedOutlet !== 'ALL') {
     const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
@@ -2583,7 +3131,7 @@ async function loadOrders() {
   if (orderIds.length) {
     const { data: orderItems, error: itemsError } = await supabase
       .from('order_items')
-      .select('id, order_id, quantity, item_name, unit_price, line_total')
+      .select('id, order_id, menu_item_id, quantity, item_name, unit_price, line_total')
       .in('order_id', orderIds);
 
     if (itemsError) {
@@ -2609,6 +3157,9 @@ async function loadOrders() {
 
   state.orders = (orders || []).map(order => ({
     ...order,
+    database_order_number: order.order_number,
+    order_number: order.token_number || order.order_number,
+    ...parsePosCustomer(order.customer_note),
     order_status: order.status,
     total_amount: order.total,
     outlets: outletsById.get(order.outlet_id) || null,
@@ -2616,6 +3167,7 @@ async function loadOrders() {
   }));
 
   renderOrders();
+  renderOverview();
 }
 
 
@@ -2635,66 +3187,76 @@ function formatOrderDate(value) {
   });
 }
 
-function renderOrders() {
-  const board = $('#ordersBoard');
-  if (!board) return;
+function parsePosCustomer(value) {
+  if (!value) return { customer_name: '', customer_phone: '' };
+  try {
+    const customer = JSON.parse(value);
+    return {
+      customer_name: String(customer?.customerName || '').trim(),
+      customer_phone: String(customer?.customerPhone || '').trim()
+    };
+  } catch {
+    return { customer_name: '', customer_phone: '' };
+  }
+}
 
-  const search = ($('#ordersSearch')?.value || '').trim().toLowerCase();
-  const status = $('#ordersStatusFilter')?.value || 'ALL';
+function orderMatchesSearch(order, search) {
+  if (!search) return true;
 
-  const orders = (state.orders || []).filter(order => {
-    const matchesStatus = status === 'ALL' || order.order_status === status;
-    if (!matchesStatus) return false;
+  const orderNumber = String(order.order_number || '').toLowerCase();
+  const outletName = String(order.outlets?.name || '').toLowerCase();
+  const source = String(order.order_source || '').toLowerCase();
+  const type = String(order.order_type || '').toLowerCase();
+  const customerName = String(order.customer_name || '').toLowerCase();
+  const customerPhone = String(order.customer_phone || '').toLowerCase();
+  const createdAt = new Date(order.created_at);
+  const dateAndTime = Number.isNaN(createdAt.getTime())
+    ? ''
+    : [
+        createdAt.toLocaleString(),
+        createdAt.toLocaleDateString('en-IN'),
+        createdAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        createdAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+        createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        createdAt.toISOString().slice(0, 10)
+      ].join(' ').toLowerCase();
+  const itemNames = (order.order_items || [])
+    .map(item => String(item.item_name || item.menu_items?.name || '').toLowerCase())
+    .join(' ');
 
-    if (!search) return true;
-
-    const orderNumber = String(order.order_number || '').toLowerCase();
-    const outletName = String(order.outlets?.name || '').toLowerCase();
-    const source = String(order.order_source || '').toLowerCase();
-    const type = String(order.order_type || '').toLowerCase();
-
-    return (
-      orderNumber.includes(search) ||
-      outletName.includes(search) ||
-      source.includes(search) ||
-      type.includes(search)
-    );
-  });
-
-  const todayKey = new Date().toDateString();
-
-  const todayOrders = (state.orders || []).filter(order =>
-    new Date(order.created_at).toDateString() === todayKey
+  return (
+    orderNumber.includes(search) ||
+    outletName.includes(search) ||
+    source.includes(search) ||
+    type.includes(search) ||
+    customerName.includes(search) ||
+    customerPhone.includes(search) ||
+    dateAndTime.includes(search) ||
+    itemNames.includes(search)
   );
+}
 
-  const liveOrders = (state.orders || []).filter(order =>
-    ['NEW', 'ACCEPTED', 'PREPARING', 'READY'].includes(order.order_status)
-  );
+function isCurrentSessionOrder(order) {
+  const outlet = order.outlets;
+  if (!outlet || outlet.status !== 'ACTIVE') return false;
 
-  const todaySales = todayOrders.reduce(
-    (sum, order) => sum + Number(order.total_amount || 0),
-    0
-  );
+  const startedAt = outlet.current_session_started_at || outlet.updated_at;
+  if (!startedAt) return false;
 
-  const liveCount = $('#ordersLiveCount');
-  const todayCount = $('#ordersTodayCount');
-  const sales = $('#ordersTodaySales');
+  return new Date(order.created_at).getTime() >= new Date(startedAt).getTime();
+}
 
-  if (liveCount) liveCount.textContent = String(liveOrders.length);
-  if (todayCount) todayCount.textContent = String(todayOrders.length);
-  if (sales) sales.textContent = `₹${todaySales.toLocaleString('en-IN')}`;
-
+function renderOrderCards(orders, { archived = false } = {}) {
   if (!orders.length) {
-    board.innerHTML = `
+    return `
       <div class="orders-empty">
-        <strong>No orders found</strong>
-        <span>Try changing the filters or create a new POS order.</span>
+        <strong>${archived ? 'No order history yet' : 'No orders in the current session'}</strong>
+        <span>${archived ? 'Orders move here when an outlet session closes.' : 'New POS orders will appear here.'}</span>
       </div>
     `;
-    return;
   }
 
-  board.innerHTML = orders.map(order => {
+  return orders.map(order => {
     const items = order.order_items || [];
     const itemCount = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
     const statusClass = String(order.order_status || '').toLowerCase().replaceAll('_', '-');
@@ -2714,12 +3276,15 @@ function renderOrders() {
           <span>${escapeHtml(order.order_source || 'POS')}</span>
           <span>${escapeHtml(order.payment_method || 'CASH')}</span>
           ${order.table_number ? `<span>TABLE ${escapeHtml(order.table_number)}</span>` : ''}
+          ${order.customer_name ? `<span>${escapeHtml(order.customer_name)}</span>` : ''}
+          ${order.customer_phone ? `<span>${escapeHtml(order.customer_phone)}</span>` : ''}
+          ${archived ? '<span>HISTORY</span>' : ''}
         </div>
 
         <div class="order-items">
           ${items.map(item => `
             <div class="order-item-row">
-              <span><strong>${escapeHtml(item.quantity)}</strong> × ${escapeHtml(item.menu_items?.name || 'Menu Item')}</span>
+              <span><strong>${escapeHtml(item.quantity)}</strong> × ${escapeHtml(item.item_name || item.menu_items?.name || 'Menu Item')}</span>
               <span>₹${Number(item.line_total || 0).toLocaleString('en-IN')}</span>
             </div>
           `).join('')}
@@ -2733,10 +3298,581 @@ function renderOrders() {
           <strong class="order-total">₹${Number(order.total_amount || 0).toLocaleString('en-IN')}</strong>
         </div>
 
-        ${renderOrderAction(order)}
+        ${!archived && !['COMPLETED', 'CANCELLED'].includes(order.order_status) ? `
+          <button type="button" class="order-edit-btn" data-order-edit="${escapeHtml(order.id)}">EDIT ORDER</button>
+        ` : ''}
+        ${archived ? '' : renderOrderAction(order)}
+        ${state.profile?.role === 'ADMIN' ? `
+          <button
+            type="button"
+            class="order-delete-btn"
+            data-order-id="${escapeHtml(order.id)}"
+            data-order-number="${escapeHtml(order.order_number || '')}"
+          >REMOVE ORDER</button>
+        ` : ''}
       </article>
     `;
   }).join('');
+}
+
+function renderOrders() {
+  const board = $('#ordersBoard');
+  const historyBoard = $('#ordersHistoryBoard');
+  if (!board) return;
+
+  const search = ($('#ordersSearch')?.value || '').trim().toLowerCase();
+  const status = $('#ordersStatusFilter')?.value || 'ALL';
+
+  const matchesFilters = order =>
+    (status === 'ALL' || order.order_status === status) &&
+    orderMatchesSearch(order, search);
+
+  const currentSessionOrders = (state.orders || []).filter(isCurrentSessionOrder);
+  const historyOrders = (state.orders || []).filter(order => !isCurrentSessionOrder(order));
+
+  const filteredCurrent = currentSessionOrders.filter(matchesFilters);
+  const filteredHistory = historyOrders.filter(matchesFilters);
+
+  const liveOrders = currentSessionOrders.filter(order =>
+    ['NEW', 'ACCEPTED', 'PREPARING', 'READY'].includes(order.order_status)
+  );
+
+  const sessionSales = currentSessionOrders
+    .filter(order =>
+      order.payment_status === 'PAID' &&
+      order.order_status !== 'CANCELLED' &&
+      order.payment_method !== 'COMPLIMENTARY' &&
+      order.order_source !== 'FAMILY_FRIENDS'
+    )
+    .reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+
+  const liveCount = $('#ordersLiveCount');
+  const sessionCount = $('#ordersTodayCount');
+  const sales = $('#ordersTodaySales');
+
+  if (liveCount) liveCount.textContent = String(liveOrders.length);
+  if (sessionCount) sessionCount.textContent = String(currentSessionOrders.length);
+  if (sales) sales.textContent = `₹${sessionSales.toLocaleString('en-IN')}`;
+
+  board.innerHTML = renderOrderCards(filteredCurrent);
+  const archivePanel = $('#ordersArchivePanel');
+  const archiveToggle = $('#ordersArchiveToggle');
+  const archiveCount = $('#ordersArchiveCount');
+  const archiveOpenLabel = $('#ordersArchiveOpenLabel');
+  archivePanel?.classList.toggle('hidden', !state.ordersArchiveOpen);
+  archiveToggle?.setAttribute('aria-expanded', String(state.ordersArchiveOpen));
+  if (archiveCount) {
+    const count = search || status !== 'ALL' ? filteredHistory.length : historyOrders.length;
+    archiveCount.textContent = `${count} ORDER${count === 1 ? '' : 'S'}`;
+  }
+  if (archiveOpenLabel) archiveOpenLabel.textContent = state.ordersArchiveOpen ? 'CLOSE ↑' : 'OPEN ↓';
+  if (historyBoard) {
+    historyBoard.innerHTML = state.ordersArchiveOpen
+      ? renderOrderCards(filteredHistory, { archived: true })
+      : '';
+  }
+}
+
+function isFamilyFriendsOrder(order) {
+  return (
+    order.order_source === 'FAMILY_FRIENDS' ||
+    order.payment_method === 'COMPLIMENTARY'
+  );
+}
+
+function isReportableOrder(order) {
+  return order.status !== 'CANCELLED' && order.payment_status === 'PAID';
+}
+
+function formatReportMoney(value) {
+  return `₹${Number(value || 0).toLocaleString('en-IN')}`;
+}
+
+function localDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function setDefaultCustomReportDates() {
+  const from = $('#reportDateFrom');
+  const to = $('#reportDateTo');
+  const today = localDateInputValue();
+  if (from && !from.value) from.value = today;
+  if (to && !to.value) to.value = today;
+}
+
+function reportDateBounds() {
+  const range = state.reportRange || 'SESSION';
+  if (range === 'SESSION') return { start: null, end: null, session: true };
+  if (range === 'ALL') return { start: null, end: null };
+
+  if (range === 'CUSTOM') {
+    const fromValue = $('#reportDateFrom')?.value;
+    const toValue = $('#reportDateTo')?.value;
+    if (!fromValue || !toValue || fromValue > toValue) {
+      return { start: null, end: null, invalid: true };
+    }
+    const start = new Date(`${fromValue}T00:00:00`);
+    const end = new Date(`${toValue}T00:00:00`);
+    end.setDate(end.getDate() + 1);
+    return { start, end };
+  }
+
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  if (range === '7_DAYS') start.setDate(start.getDate() - 6);
+  return { start, end: null };
+}
+
+function filteredSessionReports() {
+  const { start, end, invalid, session } = reportDateBounds();
+  if (invalid) return [];
+  if (session) {
+    const latestByOutlet = new Set();
+    return (state.salesReports || []).filter(report => {
+      if (latestByOutlet.has(report.outlet_id)) return false;
+      latestByOutlet.add(report.outlet_id);
+      return true;
+    });
+  }
+  return (state.salesReports || []).filter(report => {
+    const closedAt = new Date(report.closed_at).getTime();
+    return (!start || closedAt >= start.getTime()) && (!end || closedAt < end.getTime());
+  });
+}
+
+function filteredReportOrders() {
+  const { start, end, invalid, session } = reportDateBounds();
+  if (invalid) return [];
+  return (state.reportOrders || []).filter(order => {
+    const createdAt = new Date(order.created_at).getTime();
+    if (session) {
+      const outlet = state.outlets.find(item => item.id === order.outlet_id);
+      const startedAt = outlet?.current_session_started_at || outlet?.updated_at;
+      return Boolean(
+        isReportableOrder(order) &&
+        outlet?.status === 'ACTIVE' &&
+        startedAt &&
+        createdAt >= new Date(startedAt).getTime()
+      );
+    }
+    return (
+      isReportableOrder(order) &&
+      (!start || createdAt >= start.getTime()) &&
+      (!end || createdAt < end.getTime())
+    );
+  });
+}
+
+function itemSalesTotals(orders) {
+  const ordersById = new Map(orders.map(order => [order.id, order]));
+  const totalsByItem = new Map();
+
+  (state.reportItems || []).forEach(item => {
+    const order = ordersById.get(item.order_id);
+    if (!order) return;
+
+    const name = String(item.item_name || 'Menu Item').trim() || 'Menu Item';
+    const key = name.toLowerCase();
+    const current = totalsByItem.get(key) || {
+      name,
+      paidQuantity: 0,
+      freeQuantity: 0,
+      paidSales: 0,
+      freeValue: 0
+    };
+    const quantity = Number(item.quantity || 0);
+    const value = Number(item.line_total || 0);
+
+    if (isFamilyFriendsOrder(order)) {
+      current.freeQuantity += quantity;
+      current.freeValue += value;
+    } else {
+      current.paidQuantity += quantity;
+      current.paidSales += value;
+    }
+    totalsByItem.set(key, current);
+  });
+
+  return [...totalsByItem.values()].sort(
+    (a, b) => (b.paidQuantity + b.freeQuantity) - (a.paidQuantity + a.freeQuantity)
+  );
+}
+
+function renderItemWiseSales(orders) {
+  const list = $('#itemSalesList');
+  if (!list) return;
+  const items = itemSalesTotals(orders);
+  if (!items.length) {
+    list.innerHTML = '<div class="report-empty"><div><strong>No items in this range</strong><span>Paid and Family &amp; Friends items will appear here.</span></div></div>';
+    return;
+  }
+  list.innerHTML = `
+    <div class="item-sales-table">
+      <div class="item-sales-head"><span>ITEM</span><span>PAID QTY</span><span>FREE QTY</span><span>TOTAL QTY</span><span>PAID SALES</span><span>FREE VALUE</span></div>
+      ${items.map(item => `
+        <div class="item-sales-row">
+          <strong>${escapeHtml(item.name)}</strong>
+          <span class="qty">${item.paidQuantity}</span>
+          <span class="qty free-qty">${item.freeQuantity}</span>
+          <span class="qty">${item.paidQuantity + item.freeQuantity}</span>
+          <span class="money">${formatReportMoney(item.paidSales)}</span>
+          <span class="free-value">${formatReportMoney(item.freeValue)}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderReportDashboard() {
+  const reports = filteredSessionReports();
+  const orders = filteredReportOrders();
+  const paidOrders = orders.filter(order => !isFamilyFriendsOrder(order));
+  const freeOrders = orders.filter(isFamilyFriendsOrder);
+  const sumOrders = rows => rows.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const sumItems = rows => rows.reduce((sum, order) => sum + Number(order.item_count || 0), 0);
+  const paymentTotal = method => sumOrders(paidOrders.filter(order => order.payment_method === method));
+  const cash = paymentTotal('CASH');
+  const upi = paymentTotal('UPI');
+  const card = paymentTotal('CARD');
+  const freeValue = sumOrders(freeOrders);
+  const freeItemTotals = itemSalesTotals(freeOrders).filter(item => item.freeQuantity > 0);
+  const mostGifted = freeItemTotals[0];
+  const paidSales = sumOrders(paidOrders);
+  const averageOrder = paidOrders.length ? paidSales / paidOrders.length : 0;
+
+  if ($('#reportsSessionCount')) $('#reportsSessionCount').textContent = String(reports.length);
+  if ($('#reportsTotalSales')) $('#reportsTotalSales').textContent = formatReportMoney(paidSales);
+  if ($('#reportsTotalOrders')) $('#reportsTotalOrders').textContent = String(paidOrders.length);
+  if ($('#reportsAverageOrder')) $('#reportsAverageOrder').textContent = formatReportMoney(averageOrder);
+  if ($('#reportsTotalItems')) $('#reportsTotalItems').textContent = String(sumItems(paidOrders));
+  if ($('#reportsFreeItems')) $('#reportsFreeItems').textContent = String(sumItems(freeOrders));
+  if ($('#legacyCashSales')) $('#legacyCashSales').textContent = formatReportMoney(cash);
+  if ($('#legacyUpiSales')) $('#legacyUpiSales').textContent = formatReportMoney(upi);
+  if ($('#legacyCardSales')) $('#legacyCardSales').textContent = formatReportMoney(card);
+  if ($('#reportsPaymentTotal')) $('#reportsPaymentTotal').textContent = formatReportMoney(cash + upi + card);
+  if ($('#reportsFreeOrders')) $('#reportsFreeOrders').textContent = String(freeOrders.length);
+  if ($('#reportsFamilyItems')) $('#reportsFamilyItems').textContent = String(sumItems(freeOrders));
+  if ($('#reportsFreeValue')) $('#reportsFreeValue').textContent = formatReportMoney(freeValue);
+  if ($('#reportsMostGifted')) {
+    $('#reportsMostGifted').textContent = mostGifted
+      ? `${mostGifted.name} · ${mostGifted.freeQuantity}`
+      : '—';
+  }
+  renderItemWiseSales(orders);
+  renderSalesReports(reports);
+}
+
+async function loadLegacyReports() {
+  let query = supabase
+    .from('orders')
+    .select('id,order_number,outlet_id,status,payment_method,payment_status,order_source,total,created_at')
+    .order('created_at', { ascending: false })
+    .limit(1000);
+
+  if (state.selectedOutlet !== 'ALL') {
+    const outlet = state.outlets.find(item => item.slug === state.selectedOutlet);
+    if (outlet?.id) query = query.eq('outlet_id', outlet.id);
+  }
+
+  const { data: orders, error } = await query;
+
+  if (error) {
+    console.error('Unable to load session order details:', error);
+    state.reportOrders = [];
+    state.reportItems = [];
+    return;
+  }
+
+  const itemCounts = new Map();
+  state.reportItems = [];
+  const orderIds = (orders || []).map(order => order.id);
+
+  for (let index = 0; index < orderIds.length; index += 200) {
+    const { data: items, error: itemsError } = await supabase
+      .from('order_items')
+      .select('order_id,quantity,item_name,line_total')
+      .in('order_id', orderIds.slice(index, index + 200));
+
+    if (itemsError) {
+      console.error('Unable to load report item totals:', itemsError);
+      continue;
+    }
+
+    (items || []).forEach(item => {
+      state.reportItems.push(item);
+      itemCounts.set(
+        item.order_id,
+        Number(itemCounts.get(item.order_id) || 0) + Number(item.quantity || 0)
+      );
+    });
+  }
+
+  state.reportOrders = (orders || []).map(order => ({
+    ...order,
+    item_count: itemCounts.get(order.id) || 0
+  }));
+}
+
+function csvCell(value) {
+  let text = String(value ?? '');
+  if (/^[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+function exportSessionReports() {
+  const orders = filteredReportOrders();
+  const items = itemSalesTotals(orders);
+
+  if (!items.length) {
+    toast('There are no item sales to export for this range.', 'bad');
+    return;
+  }
+
+  const rows = [
+    ['Item', 'Paid Quantity', 'Free Quantity', 'Total Quantity', 'Paid Sales', 'Free Food Value'],
+    ...items.map(item => [
+      item.name,
+      item.paidQuantity,
+      item.freeQuantity,
+      item.paidQuantity + item.freeQuantity,
+      item.paidSales.toFixed(2),
+      item.freeValue.toFixed(2)
+    ])
+  ];
+
+  const csv = rows.map(row => row.map(csvCell).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `ohho-item-sales-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function clearSelectedReportLogs() {
+  if (state.profile?.role !== 'ADMIN') {
+    toast('Admin access required.', 'bad');
+    return;
+  }
+
+  if (state.reportRange === 'SESSION') {
+    toast('Choose Today, Last 7 Days, Custom Date or All Time to clear report logs.', 'bad');
+    return;
+  }
+
+  const reports = filteredSessionReports();
+  if (!reports.length) {
+    toast('There are no report logs in the selected range.', 'bad');
+    return;
+  }
+
+  const labels = {
+    TODAY: 'today',
+    '7_DAYS': 'the last 7 days',
+    CUSTOM: 'the custom date range',
+    ALL: 'all time'
+  };
+  const scope = state.selectedOutlet === 'ALL'
+    ? 'all outlets'
+    : (state.outlets.find(outlet => outlet.slug === state.selectedOutlet)?.name || 'this outlet');
+  const confirmed = window.confirm(
+    `Clear ${labels[state.reportRange] || 'the selected'} report logs for ${scope}?\n\nOrders, items, payments and order history will be kept.`
+  );
+  if (!confirmed) return;
+
+  const button = $('#reportsClearLogBtn');
+  if (!button) return;
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = 'CLEARING…';
+
+  try {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData?.session?.access_token) {
+      throw new Error('Your session has expired. Please log in again.');
+    }
+
+    const { start, end } = reportDateBounds();
+    const outlet = state.selectedOutlet === 'ALL'
+      ? null
+      : state.outlets.find(item => item.slug === state.selectedOutlet);
+    const response = await fetch('/api/reports', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session.access_token}`
+      },
+      body: JSON.stringify({
+        start: start?.toISOString() || null,
+        end: end?.toISOString() || null,
+        outletId: outlet?.id || null,
+        preserveSalesData: true
+      })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Unable to clear report logs.');
+
+    await loadReports();
+    toast(
+      `${Number(result.deletedReportCount || 0)} report log${Number(result.deletedReportCount || 0) === 1 ? '' : 's'} cleared. Sales data was kept.`,
+      'ok'
+    );
+  } catch (error) {
+    console.error('Unable to clear report logs:', error);
+    toast(error.message || 'Unable to clear report logs.', 'bad');
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+async function loadReports() {
+  await Promise.all([loadLegacyReports(), loadSalesReports()]);
+  renderReportDashboard();
+}
+
+async function loadSalesReports() {
+  const list = $('#salesReportsList');
+  if (!list) return;
+
+  list.innerHTML = '<div class="orders-loading">Loading sales reports…</div>';
+
+  let query = supabase
+    .from('outlet_sales_reports')
+    .select('id,outlet_id,opened_at,closed_at,order_count,item_count,gross_sales,cash_sales,upi_sales,card_sales,created_at')
+    .order('closed_at', { ascending: false })
+    .limit(180);
+
+  if (state.selectedOutlet !== 'ALL') {
+    const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
+    if (outlet?.id) query = query.eq('outlet_id', outlet.id);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Unable to load sales reports:', error);
+    state.salesReports = [];
+    list.innerHTML = '<div class="orders-empty"><strong>Sales reports are not ready yet</strong><span>Apply the outlet session database migration, then close an outlet session to generate the first report.</span></div>';
+    return;
+  }
+
+  state.salesReports = data || [];
+}
+
+function renderSalesReports(reports = filteredSessionReports()) {
+  const list = $('#salesReportsList');
+  if (!list) return;
+
+  const outletsById = new Map(state.outlets.map(outlet => [outlet.id, outlet]));
+  if (!reports.length) {
+    list.innerHTML = '<div class="report-empty"><div><strong>No closed sessions in this range</strong><span>A session appears here when an outlet is turned OFF.</span></div></div>';
+    return;
+  }
+
+  list.innerHTML = reports.map(report => {
+    const outlet = outletsById.get(report.outlet_id);
+    const orderCount = Number(report.order_count || 0);
+    const averageOrder = orderCount ? Number(report.gross_sales || 0) / orderCount : 0;
+
+    return `
+      <article class="session-report-card">
+        <div class="session-report-main">
+          <div>
+            <h3>${escapeHtml(outlet?.name || 'OHHO Outlet')}</h3>
+            <div class="session-report-time">
+              ${formatOrderDate(report.opened_at)} · ${formatOrderTime(report.opened_at)}
+              → ${formatOrderDate(report.closed_at)} · ${formatOrderTime(report.closed_at)}
+            </div>
+          </div>
+          <div class="session-report-actions">
+            <div class="session-report-total">${formatReportMoney(report.gross_sales)}</div>
+            <button class="secondary session-report-download" type="button" data-download-session="${escapeHtml(report.id)}">DOWNLOAD CSV</button>
+          </div>
+        </div>
+        <div class="session-report-metrics">
+          <div><span>ORDERS</span><strong>${orderCount}</strong></div>
+          <div><span>ITEMS</span><strong>${Number(report.item_count || 0)}</strong></div>
+          <div><span>AVG ORDER</span><strong>${formatReportMoney(averageOrder)}</strong></div>
+          <div class="payment"><span>CASH</span><strong>${formatReportMoney(report.cash_sales)}</strong></div>
+          <div class="payment"><span>UPI</span><strong>${formatReportMoney(report.upi_sales)}</strong></div>
+          <div class="payment"><span>CARD</span><strong>${formatReportMoney(report.card_sales)}</strong></div>
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  $$('[data-download-session]', list).forEach(button => {
+    button.addEventListener('click', () => downloadCompletedSessionReport(button.dataset.downloadSession));
+  });
+}
+
+function downloadCompletedSessionReport(reportId) {
+  const report = (state.salesReports || []).find(item => String(item.id) === String(reportId));
+  if (!report) {
+    toast('This session report is no longer available.', 'bad');
+    return;
+  }
+
+  const openedAt = new Date(report.opened_at).getTime();
+  const closedAt = new Date(report.closed_at).getTime();
+  const sessionOrders = (state.reportOrders || []).filter(order => {
+    const createdAt = new Date(order.created_at).getTime();
+    return order.outlet_id === report.outlet_id &&
+      isReportableOrder(order) &&
+      createdAt >= openedAt && createdAt < closedAt;
+  });
+  const freeOrders = sessionOrders.filter(isFamilyFriendsOrder);
+  const sumOrders = rows => rows.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const sumItems = rows => rows.reduce((sum, order) => sum + Number(order.item_count || 0), 0);
+  const itemRows = itemSalesTotals(sessionOrders);
+  const outlet = state.outlets.find(item => item.id === report.outlet_id);
+  const orderCount = Number(report.order_count || 0);
+  const averageOrder = orderCount ? Number(report.gross_sales || 0) / orderCount : 0;
+  const rows = [
+    ['OHHO SESSION SALES REPORT'],
+    ['Outlet', outlet?.name || 'OHHO Outlet'],
+    ['Opened', new Date(report.opened_at).toLocaleString()],
+    ['Closed', new Date(report.closed_at).toLocaleString()],
+    [],
+    ['Metric', 'Value'],
+    ['Total Sales', Number(report.gross_sales || 0).toFixed(2)],
+    ['Paid Orders', orderCount],
+    ['Items Sold', Number(report.item_count || 0)],
+    ['Average Order Value', averageOrder.toFixed(2)],
+    ['Cash', Number(report.cash_sales || 0).toFixed(2)],
+    ['UPI', Number(report.upi_sales || 0).toFixed(2)],
+    ['Card', Number(report.card_sales || 0).toFixed(2)],
+    ['Family & Friends Orders', freeOrders.length],
+    ['Free Food Items', sumItems(freeOrders)],
+    ['Free Food Menu Value', sumOrders(freeOrders).toFixed(2)],
+    [],
+    ['Item', 'Paid Quantity', 'Free Quantity', 'Total Quantity', 'Paid Sales', 'Free Food Value'],
+    ...itemRows.map(item => [
+      item.name,
+      item.paidQuantity,
+      item.freeQuantity,
+      item.paidQuantity + item.freeQuantity,
+      item.paidSales.toFixed(2),
+      item.freeValue.toFixed(2)
+    ])
+  ];
+  const csv = rows.map(row => row.map(csvCell).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  const outletSlug = String(outlet?.slug || outlet?.name || 'outlet')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  link.href = url;
+  link.download = `ohho-${outletSlug}-session-${new Date(report.closed_at).toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function openOutletSection() {
@@ -2756,6 +3892,11 @@ function applyRolePermissions() {
     button.style.display = permissions.includes(section) ? '' : 'none';
   });
 
+  const clearReportLogButton = $('#reportsClearLogBtn');
+  if (clearReportLogButton) {
+    clearReportLogButton.style.display = role === 'ADMIN' ? '' : 'none';
+  }
+
   if (!permissions.includes(state.selectedSection || 'overview')) {
     state.selectedSection = permissions[0] || 'overview';
   }
@@ -2766,6 +3907,130 @@ function updateUserCard() {
   const span = $('.user span');
   if (strong) strong.textContent = state.profile?.name || 'OHHO Admin';
   if (span) span.textContent = `${state.profile?.role || 'UNKNOWN'} · Sign out`;
+}
+
+function startLiveDashboardRefresh() {
+  if (state.liveRefreshTimer) clearInterval(state.liveRefreshTimer);
+  state.liveRefreshTimer = setInterval(async () => {
+    if (document.hidden || state.liveRefreshBusy) return;
+    state.liveRefreshBusy = true;
+    try {
+      await loadOutlets();
+      await loadOrders({ silent: true });
+      if (state.selectedSection === 'reports') await loadReports();
+    } catch (error) {
+      console.error('Unable to refresh live dashboard feed:', error);
+    } finally {
+      state.liveRefreshBusy = false;
+    }
+  }, 20000);
+}
+
+function dashboardAssetPath(root = document) {
+  const script = [...root.querySelectorAll('script[src]')].find(node =>
+    /dashboardApp-[^/]+\.js(?:$|\?)/.test(node.getAttribute('src') || '')
+  );
+  if (!script) return null;
+  try {
+    return new URL(script.getAttribute('src'), window.location.origin).pathname;
+  } catch {
+    return null;
+  }
+}
+
+function dashboardHasUnsavedWork() {
+  return Boolean(
+    state.pos.cart.length ||
+    state.orderEdit.orderId ||
+    document.querySelector('.modal-backdrop.open')
+  );
+}
+
+async function checkForDashboardUpdate() {
+  const currentAsset = dashboardAssetPath();
+  if (!currentAsset) return;
+
+  try {
+    const response = await fetch(`/dashboard?version_check=${Date.now()}`, {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+    if (!response.ok) return;
+
+    const nextDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const nextAsset = dashboardAssetPath(nextDocument);
+    if (!nextAsset || nextAsset === currentAsset) return;
+
+    if (dashboardHasUnsavedWork()) {
+      if (!state.versionUpdatePending) {
+        state.versionUpdatePending = true;
+        toast('New POS version ready. Finish the current order and it will update automatically.', 'ok');
+      }
+      return;
+    }
+
+    if (state.versionCheckTimer) clearInterval(state.versionCheckTimer);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set('app_update', Date.now());
+    window.location.replace(nextUrl.toString());
+  } catch (error) {
+    console.warn('Unable to check for a newer POS version:', error);
+  }
+}
+
+function startDashboardVersionCheck() {
+  if (state.versionCheckTimer) clearInterval(state.versionCheckTimer);
+  window.setTimeout(checkForDashboardUpdate, 15000);
+  state.versionCheckTimer = window.setInterval(checkForDashboardUpdate, 60000);
+}
+
+function renderSettings() {
+  const userName = $('#settingsUserName');
+  const userRole = $('#settingsUserRole');
+  const userEmail = $('#settingsUserEmail');
+  const outletCount = $('#settingsOutletCount');
+  const menuCount = $('#settingsMenuCount');
+  const outletList = $('#settingsOutletList');
+
+  if (userName) userName.textContent = state.profile?.name || 'OHHO Admin';
+  if (userRole) userRole.textContent = state.profile?.role || '—';
+  if (userEmail) userEmail.textContent = state.session?.user?.email || '—';
+
+  const outlets = state.outlets || [];
+  const openOutlets = outlets.filter(outlet => outlet.status === 'ACTIVE');
+  if (outletCount) outletCount.textContent = `${openOutlets.length} / ${outlets.length}`;
+
+  const liveMenuItems = (menuManagementState.items || []).filter(
+    item => item.is_available === true && item.is_archived !== true
+  );
+  if (menuCount) menuCount.textContent = String(liveMenuItems.length);
+
+  if (!outletList) return;
+  if (!outlets.length) {
+    outletList.innerHTML = '<div class="settings-empty">No outlet is assigned to this account.</div>';
+    return;
+  }
+
+  outletList.innerHTML = outlets.map(outlet => {
+    const isOpen = outlet.status === 'ACTIVE';
+    const sessionStarted = outlet.current_session_started_at
+      ? new Date(outlet.current_session_started_at).toLocaleString([], {
+          day: '2-digit',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      : null;
+    return `
+      <div class="settings-outlet-row">
+        <strong>${escapeHtml(outlet.name || 'OHHO Outlet')}</strong>
+        <span class="hours">${escapeHtml(formatTime(outlet.opening_time))} – ${escapeHtml(formatTime(outlet.closing_time))}</span>
+        <span class="session">${isOpen && sessionStarted ? `Session opened ${escapeHtml(sessionStarted)}` : 'No active sales session'}</span>
+        <span class="${isOpen ? 'open' : 'closed'}">${isOpen ? '● OPEN' : 'CLOSED'}</span>
+      </div>
+    `;
+  }).join('');
 }
 
 async function startApp(session) {
@@ -2782,6 +4047,12 @@ async function startApp(session) {
     await loadMenuManagement();
     await loadPosMenu();
     await loadOrders();
+    await loadReports();
+    renderSettings();
+    updateDashboardContext();
+    renderOverview();
+    startLiveDashboardRefresh();
+    startDashboardVersionCheck();
   } catch (error) {
     await supabase.auth.signOut();
     setAuthError(error.message || 'Unable to authorize this account.');
@@ -2794,6 +4065,7 @@ async function init() {
   buildAuthGate();
   buildOutletModal();
   buildStaffModal();
+  buildOrderEditModal();
   buildToast();
 
   // Keep the dashboard hidden until authentication is confirmed.
