@@ -1673,8 +1673,8 @@ function renderOutletCards() {
         </div>
       ` : ''}
     </article>`).join('');
-  $('[data-url]', grid).forEach(button => button.addEventListener('click', () => window.open(button.dataset.url, '_blank', 'noopener,noreferrer')));
-  $('[data-outlet-toggle]', grid).forEach(button => button.addEventListener('click', async () => {
+  $$('[data-url]', grid).forEach(button => button.addEventListener('click', () => window.open(button.dataset.url, '_blank', 'noopener,noreferrer')));
+  $$('[data-outlet-toggle]', grid).forEach(button => button.addEventListener('click', async () => {
     button.disabled = true;
     await toggleOutletStatus(button.dataset.outletToggle);
   }));
