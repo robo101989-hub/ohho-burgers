@@ -18,6 +18,7 @@ const state = {
   reportOrders: [],
   reportItems: [],
   reportRange: 'SESSION',
+  ordersArchiveOpen: false,
   pos: {
     items: [],
     categories: [],
@@ -105,11 +106,12 @@ function injectStyles() {
     .order-action-done{margin-top:15px;padding:10px 12px;text-align:center;border:1px solid #242424;border-radius:9px;color:#555;font:800 8px var(--mono);letter-spacing:1px}
 
     .orders-history-head,.reports-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:30px 0 12px;padding-top:20px;border-top:1px solid #242424}.orders-history-head h2,.reports-head h2{margin:3px 0 0;font-size:20px}.orders-history-head>span,.reports-head>span{color:#666;font-size:9px}.orders-history-board{opacity:.92}.reports-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.reports-summary>div{background:#0d0d0d;border:1px solid #242424;border-radius:12px;padding:15px 17px}.reports-summary span{display:block;color:#666;font:800 8px var(--mono);letter-spacing:1.5px;margin-bottom:7px}.reports-summary strong{font:900 24px var(--mono);color:#f5f5f0}.sales-reports-list{display:grid;gap:10px}.sales-report-card{background:#0d0d0d;border:1px solid #242424;border-radius:13px;padding:16px}.sales-report-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.sales-report-top h3{margin:0;font-size:16px}.sales-report-window{color:#777;font-size:9px;margin-top:5px}.sales-report-total{font:900 22px var(--mono);color:#ffd21c}.sales-report-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}.sales-report-grid div{background:#101010;border:1px solid #252525;border-radius:8px;padding:9px}.sales-report-grid span{display:block;color:#666;font:800 7px var(--mono);letter-spacing:1px}.sales-report-grid strong{display:block;margin-top:5px;font:900 11px var(--mono);color:#eee}@media(max-width:760px){.reports-summary{grid-template-columns:1fr}.sales-report-grid{grid-template-columns:repeat(2,1fr)}.orders-history-head,.reports-head{align-items:flex-start;flex-direction:column}}
+    .orders-archive{margin-top:18px}.orders-archive-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;border:1px solid #292929;border-radius:12px;background:#0d0d0d;color:#eee;text-align:left}.orders-archive-toggle:hover{border-color:#444;background:#101010}.orders-archive-title{display:flex;align-items:center;gap:12px}.orders-archive-icon{width:38px;height:34px;display:grid;place-items:center;border:1px solid #3b3417;border-radius:8px;background:#171407;color:#ffd21c;font-size:17px}.orders-archive-copy strong{display:block;font-size:13px}.orders-archive-copy span{display:block;margin-top:4px;color:#666;font-size:9px}.orders-archive-action{display:flex;align-items:center;gap:10px}.orders-archive-count{color:#888;font:800 8px var(--mono);letter-spacing:.5px}.orders-archive-open{min-width:58px;color:#ffd21c;font:900 8px var(--mono);text-align:right}.orders-archive-panel{margin-top:10px;padding:14px;border:1px solid #292929;border-radius:12px;background:#090909}.orders-archive-search-hint{margin:0 0 12px;color:#666;font-size:9px}.orders-history-board{opacity:.94}
     .orders-loading,.orders-empty{min-height:220px;grid-column:1/-1;display:grid;place-items:center;text-align:center;border:1px dashed #303030;border-radius:14px;color:#666;padding:30px}
     .orders-empty strong{display:block;color:#eee;font-size:15px}
     .orders-empty span{display:block;font-size:11px;margin-top:6px}
     @media(max-width:1050px){.orders-board{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:760px){.orders-page-head{align-items:flex-start}.orders-actions{width:100%}.orders-actions .search{flex:1;min-width:0}.orders-filter{flex:1}.orders-summary{grid-template-columns:1fr}.orders-board{grid-template-columns:1fr}}
+    @media(max-width:760px){.orders-page-head{align-items:flex-start}.orders-actions{width:100%}.orders-actions .search{flex:1;min-width:0}.orders-filter{flex:1}.orders-summary{grid-template-columns:1fr}.orders-board{grid-template-columns:1fr}.orders-archive-toggle{padding:12px}.orders-archive-count{display:none}.orders-archive-panel{padding:10px}}
 
     .menu-page-head{align-items:flex-end}
     .menu-management-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 16px}
@@ -2001,8 +2003,16 @@ function wireOrdersActions() {
   const search = $('#ordersSearch');
   const status = $('#ordersStatusFilter');
 
-  search?.addEventListener('input', renderOrders);
+  search?.addEventListener('input', () => {
+    if (search.value.trim()) state.ordersArchiveOpen = true;
+    renderOrders();
+  });
   status?.addEventListener('change', renderOrders);
+
+  $('#ordersArchiveToggle')?.addEventListener('click', () => {
+    state.ordersArchiveOpen = !state.ordersArchiveOpen;
+    renderOrders();
+  });
 
   $('#ordersBoard')?.addEventListener('click', event => {
     const deleteButton = event.target.closest('.order-delete-btn');
@@ -2020,6 +2030,15 @@ function wireOrdersActions() {
     updateOrderStatus(
       button.dataset.orderId,
       button.dataset.nextStatus
+    );
+  });
+
+  $('#ordersHistoryBoard')?.addEventListener('click', event => {
+    const deleteButton = event.target.closest('.order-delete-btn');
+    if (!deleteButton) return;
+    deleteOrderAsAdmin(
+      deleteButton.dataset.orderId,
+      deleteButton.dataset.orderNumber
     );
   });
 }
@@ -2801,7 +2820,7 @@ async function loadOrders() {
     .from('orders')
     .select('id, order_number, token_number, order_type, status, payment_method, payment_status, order_source, table_number, customer_note, subtotal, total, created_at, outlet_id')
     .order('created_at', { ascending: false })
-    .limit(100);
+    .limit(1000);
 
   if (state.selectedOutlet !== 'ALL') {
     const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
@@ -2903,6 +2922,17 @@ function orderMatchesSearch(order, search) {
   const type = String(order.order_type || '').toLowerCase();
   const customerName = String(order.customer_name || '').toLowerCase();
   const customerPhone = String(order.customer_phone || '').toLowerCase();
+  const createdAt = new Date(order.created_at);
+  const dateAndTime = Number.isNaN(createdAt.getTime())
+    ? ''
+    : [
+        createdAt.toLocaleString(),
+        createdAt.toLocaleDateString('en-IN'),
+        createdAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        createdAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+        createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        createdAt.toISOString().slice(0, 10)
+      ].join(' ').toLowerCase();
   const itemNames = (order.order_items || [])
     .map(item => String(item.item_name || item.menu_items?.name || '').toLowerCase())
     .join(' ');
@@ -2914,6 +2944,7 @@ function orderMatchesSearch(order, search) {
     type.includes(search) ||
     customerName.includes(search) ||
     customerPhone.includes(search) ||
+    dateAndTime.includes(search) ||
     itemNames.includes(search)
   );
 }
@@ -3034,8 +3065,21 @@ function renderOrders() {
   if (sales) sales.textContent = `₹${sessionSales.toLocaleString('en-IN')}`;
 
   board.innerHTML = renderOrderCards(filteredCurrent);
+  const archivePanel = $('#ordersArchivePanel');
+  const archiveToggle = $('#ordersArchiveToggle');
+  const archiveCount = $('#ordersArchiveCount');
+  const archiveOpenLabel = $('#ordersArchiveOpenLabel');
+  archivePanel?.classList.toggle('hidden', !state.ordersArchiveOpen);
+  archiveToggle?.setAttribute('aria-expanded', String(state.ordersArchiveOpen));
+  if (archiveCount) {
+    const count = search || status !== 'ALL' ? filteredHistory.length : historyOrders.length;
+    archiveCount.textContent = `${count} ORDER${count === 1 ? '' : 'S'}`;
+  }
+  if (archiveOpenLabel) archiveOpenLabel.textContent = state.ordersArchiveOpen ? 'CLOSE ↑' : 'OPEN ↓';
   if (historyBoard) {
-    historyBoard.innerHTML = renderOrderCards(filteredHistory, { archived: true });
+    historyBoard.innerHTML = state.ordersArchiveOpen
+      ? renderOrderCards(filteredHistory, { archived: true })
+      : '';
   }
 }
 
