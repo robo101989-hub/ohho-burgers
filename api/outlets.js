@@ -85,7 +85,7 @@ export default async function handler(req, res) {
     if (req.method === "GET") {
       let query = supabase
         .from("outlets")
-        .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at")
+        .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at")
         .order("created_at", { ascending: true });
 
       if (profile.role === "OWNER") {
@@ -142,9 +142,11 @@ export default async function handler(req, res) {
           maps_url: safeUrl(body.mapsUrl),
           zomato_url: safeUrl(body.zomatoUrl),
           swiggy_url: safeUrl(body.swiggyUrl),
-          status: body.status === "INACTIVE" ? "INACTIVE" : "ACTIVE"
+          status: body.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+          current_session_started_at:
+            body.status === "INACTIVE" ? null : new Date().toISOString()
         })
-        .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at")
+        .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at")
         .single();
 
       if (outletError) {
@@ -205,6 +207,16 @@ export default async function handler(req, res) {
       }
     }
 
+    const { data: currentOutlet, error: currentOutletError } = await supabase
+      .from("outlets")
+      .select("id,status,current_session_started_at,updated_at")
+      .eq("id", id)
+      .single();
+
+    if (currentOutletError || !currentOutlet) {
+      return res.status(404).json({ error: "Outlet not found" });
+    }
+
     const updates = {};
     if (body.name !== undefined) updates.name = String(body.name).trim();
     if (body.address !== undefined) updates.address = String(body.address).trim();
@@ -218,7 +230,95 @@ export default async function handler(req, res) {
       if (!["ADMIN", "OWNER"].includes(profile.role)) {
         return res.status(403).json({ error: "Admin or Owner access required" });
       }
-      updates.status = body.status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
+
+      const nextStatus = body.status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
+      const now = new Date().toISOString();
+
+      if (currentOutlet.status !== nextStatus) {
+        if (nextStatus === "ACTIVE") {
+          updates.current_session_started_at = now;
+        } else {
+          const openedAt =
+            currentOutlet.current_session_started_at ||
+            currentOutlet.updated_at ||
+            now;
+
+          const { data: sessionOrders, error: sessionOrdersError } = await supabase
+            .from("orders")
+            .select("id,total,payment_method,payment_status,status,created_at")
+            .eq("outlet_id", id)
+            .gte("created_at", openedAt)
+            .lt("created_at", now);
+
+          if (sessionOrdersError) {
+            console.error("Unable to load session orders", sessionOrdersError);
+            return res.status(500).json({ error: "Unable to close outlet sales session" });
+          }
+
+          const saleOrders = (sessionOrders || []).filter(order =>
+            order.payment_status === "PAID" &&
+            order.status !== "CANCELLED"
+          );
+
+          const orderIds = saleOrders.map(order => order.id);
+          let itemCount = 0;
+
+          if (orderIds.length) {
+            const { data: itemRows, error: itemRowsError } = await supabase
+              .from("order_items")
+              .select("order_id,quantity")
+              .in("order_id", orderIds);
+
+            if (itemRowsError) {
+              console.error("Unable to load session order items", itemRowsError);
+              return res.status(500).json({ error: "Unable to close outlet sales session" });
+            }
+
+            itemCount = (itemRows || []).reduce(
+              (sum, item) => sum + Number(item.quantity || 0),
+              0
+            );
+          }
+
+          const totals = saleOrders.reduce(
+            (acc, order) => {
+              const amount = Number(order.total || 0);
+              acc.gross += amount;
+              if (order.payment_method === "CASH") acc.cash += amount;
+              if (order.payment_method === "UPI") acc.upi += amount;
+              if (order.payment_method === "CARD") acc.card += amount;
+              return acc;
+            },
+            { gross: 0, cash: 0, upi: 0, card: 0 }
+          );
+
+          const { error: reportError } = await supabase
+            .from("outlet_sales_reports")
+            .upsert(
+              {
+                outlet_id: id,
+                opened_at: openedAt,
+                closed_at: now,
+                order_count: saleOrders.length,
+                item_count: itemCount,
+                gross_sales: totals.gross,
+                cash_sales: totals.cash,
+                upi_sales: totals.upi,
+                card_sales: totals.card
+              },
+              { onConflict: "outlet_id,opened_at" }
+            );
+
+          if (reportError) {
+            console.error("Unable to archive outlet sales report", reportError);
+            return res.status(500).json({ error: "Unable to archive outlet sales report" });
+          }
+
+          updates.current_session_started_at = null;
+        }
+      }
+
+      updates.status = nextStatus;
     }
     updates.updated_at = new Date().toISOString();
 
@@ -226,7 +326,7 @@ export default async function handler(req, res) {
       .from("outlets")
       .update(updates)
       .eq("id", id)
-      .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at")
+      .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at")
       .single();
 
     if (error || !outlet) return res.status(404).json({ error: "Outlet not found" });
