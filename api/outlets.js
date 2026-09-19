@@ -323,6 +323,19 @@ export default async function handler(req, res) {
 
       updates.status = nextStatus;
     }
+
+    if (updates.name !== undefined && !updates.name) {
+      return res.status(400).json({ error: "Outlet name is required" });
+    }
+    if (updates.address !== undefined && !updates.address) {
+      return res.status(400).json({ error: "Outlet address is required" });
+    }
+    if (
+      (updates.opening_time !== undefined && !/^\d{2}:\d{2}$/.test(updates.opening_time)) ||
+      (updates.closing_time !== undefined && !/^\d{2}:\d{2}$/.test(updates.closing_time))
+    ) {
+      return res.status(400).json({ error: "Enter valid outlet opening and closing times" });
+    }
     updates.updated_at = new Date().toISOString();
 
     const { data: outlet, error } = await supabase

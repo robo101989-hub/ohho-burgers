@@ -18,3 +18,10 @@ dashboard-before-pos.html
 
 # Local dashboard backups
 dashboard-before-menu-management.html
+
+# Local Android build tools and archived project copy
+android-sdk/
+java21/
+android/
+ohho-burgers/
+app.js.backup-before-story-removal

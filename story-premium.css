@@ -1,0 +1,59 @@
+/* Homepage story feature */
+.story{
+  padding:150px 0;
+  grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);
+  gap:clamp(58px,10vw,150px);
+  position:relative;
+  isolation:isolate;
+}
+.story:before{
+  content:'';
+  position:absolute;
+  z-index:-1;
+  left:50%;top:38px;bottom:38px;width:100vw;
+  transform:translateX(-50%);
+  border-top:1px solid rgba(255,212,0,.16);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  background:radial-gradient(circle at 15% 38%,rgba(255,212,0,.12),transparent 25%),linear-gradient(110deg,rgba(255,255,255,.025),transparent 58%);
+}
+.story-image{
+  height:565px;
+  padding:10px 10px 0;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:48% 48% 12px 12px;
+  background:linear-gradient(145deg,rgba(255,212,0,.65),rgba(255,255,255,.06) 18%,rgba(255,255,255,.02));
+  box-shadow:0 30px 80px rgba(0,0,0,.42);
+}
+.story-image:after{
+  content:'OHHO · REAL FOOD · REAL PEOPLE';
+  position:absolute;left:27px;top:29px;z-index:2;
+  color:#fff;text-shadow:0 1px 15px #000;
+  font:600 8px var(--mono);letter-spacing:1.8px;
+}
+.story-image-cart{overflow:hidden;background:#080808}
+.story-image-cart img{
+  height:100%;object-fit:cover;border-radius:calc(48% - 8px) calc(48% - 8px) 5px 5px;
+  filter:saturate(1.08) contrast(1.04);
+}
+.story-stamp{bottom:18px;right:-42px;width:171px;height:171px;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.story-copy{position:relative;padding:25px 0 25px 34px;border-left:1px solid rgba(255,212,0,.45)}
+.story-copy:before{content:'OHHO';position:absolute;right:-4px;top:-58px;color:rgba(255,255,255,.045);font:900 clamp(90px,13vw,180px)/1 var(--display);letter-spacing:-7px;pointer-events:none}
+.story-copy h2{font-size:clamp(44px,4.4vw,70px);position:relative}
+.story-copy .story-manifesto{position:relative;color:#c0c0c0;font-size:15px;line-height:1.88;max-width:530px}
+.story-signature{display:flex;align-items:center;gap:16px;margin-top:30px;padding-top:18px;border-top:1px solid rgba(255,255,255,.15);position:relative;max-width:490px}
+.story-signature span{color:var(--yellow);font:700 11px var(--mono);letter-spacing:1px}
+.story-signature b{color:#f3f0ea;font:900 16px/1 var(--display);letter-spacing:.15px}
+@media(max-width:860px){
+  .story{padding:92px 0;gap:55px}
+  .story:before{top:15px;bottom:15px}
+  .story-image{width:93%;height:430px;padding:8px 8px 0}
+  .story-image:after{left:21px;top:23px;font-size:7px;letter-spacing:1.3px}
+  .story-image-cart img{border-radius:calc(48% - 6px) calc(48% - 6px) 5px 5px}
+  .story-stamp{right:-28px;width:142px;height:142px;font-size:13px}
+  .story-stamp b{font-size:16px}
+  .story-copy{padding:23px 0 23px 22px}
+  .story-copy:before{top:-35px;right:0;font-size:100px;letter-spacing:-5px}
+  .story-copy .story-manifesto{font-size:13px;line-height:1.82}
+  .story-signature{gap:12px;margin-top:24px}
+  .story-signature b{font-size:14px}
+}
