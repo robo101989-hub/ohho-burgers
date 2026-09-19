@@ -2658,12 +2658,16 @@ function renderOrders() {
     const outletName = String(order.outlets?.name || '').toLowerCase();
     const source = String(order.order_source || '').toLowerCase();
     const type = String(order.order_type || '').toLowerCase();
+    const itemNames = (order.order_items || [])
+      .map(item => String(item.item_name || item.menu_items?.name || '').toLowerCase())
+      .join(' ');
 
     return (
       orderNumber.includes(search) ||
       outletName.includes(search) ||
       source.includes(search) ||
-      type.includes(search)
+      type.includes(search) ||
+      itemNames.includes(search)
     );
   });
 
@@ -2725,7 +2729,7 @@ function renderOrders() {
         <div class="order-items">
           ${items.map(item => `
             <div class="order-item-row">
-              <span><strong>${escapeHtml(item.quantity)}</strong> × ${escapeHtml(item.menu_items?.name || 'Menu Item')}</span>
+              <span><strong>${escapeHtml(item.quantity)}</strong> × ${escapeHtml(item.item_name || item.menu_items?.name || 'Menu Item')}</span>
               <span>₹${Number(item.line_total || 0).toLocaleString('en-IN')}</span>
             </div>
           `).join('')}
