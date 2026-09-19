@@ -59,12 +59,74 @@ async function requirePosUser(req, res, outletId) {
   return authData.user;
 }
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
+  if (!["POST", "DELETE"].includes(req.method)) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
     const body = req.body || {};
+
+    if (req.method === "DELETE") {
+      const token = bearerToken(req);
+
+      if (!token) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const { data: authData, error: authError } =
+        await supabase.auth.getUser(token);
+
+      if (authError || !authData?.user) {
+        return res.status(401).json({ error: "Invalid authentication" });
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id,role,is_active")
+        .eq("id", authData.user.id)
+        .single();
+
+      if (
+        profileError ||
+        !profile ||
+        profile.role !== "ADMIN" ||
+        profile.is_active === false
+      ) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const orderId = String(body.orderId || "").trim();
+
+      if (!orderId) {
+        return res.status(400).json({ error: "Order id is required" });
+      }
+
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .select("id,order_number")
+        .eq("id", orderId)
+        .maybeSingle();
+
+      if (orderError || !order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      const { error: deleteError } = await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderId);
+
+      if (deleteError) {
+        console.error("POS order delete error", deleteError);
+        return res.status(500).json({ error: "Unable to remove order" });
+      }
+
+      return res.status(200).json({
+        success: true,
+        orderId: order.id,
+        orderNumber: order.order_number
+      });
+    }
 
     const outletId = String(body.outletId || "").trim();
 
