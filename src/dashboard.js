@@ -3622,32 +3622,133 @@ function csvCell(value) {
   return `"${text.replaceAll('"', '""')}"`;
 }
 
+function reportExportScope() {
+  const rangeLabels = {
+    SESSION: 'Current Session',
+    TODAY: 'Today',
+    '7_DAYS': 'Last 7 Days',
+    ALL: 'All Time'
+  };
+  let rangeLabel = rangeLabels[state.reportRange] || 'Selected Range';
+
+  if (state.reportRange === 'CUSTOM') {
+    const from = $('#reportDateFrom')?.value || '—';
+    const to = $('#reportDateTo')?.value || '—';
+    rangeLabel = `${from} to ${to}`;
+  }
+
+  const outlet = state.selectedOutlet === 'ALL'
+    ? null
+    : state.outlets.find(item => item.slug === state.selectedOutlet);
+
+  return {
+    rangeLabel,
+    outletLabel: outlet?.name || 'All Outlets',
+    fileScope: String(outlet?.slug || outlet?.name || 'all-outlets')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'all-outlets'
+  };
+}
+
 function exportSessionReports() {
   const orders = filteredReportOrders();
+  const reports = filteredSessionReports();
   const items = itemSalesTotals(orders);
 
-  if (!items.length) {
-    toast('There are no item sales to export for this range.', 'bad');
+  if (!orders.length && !reports.length) {
+    toast('There is no sales data to export for this range.', 'bad');
     return;
   }
 
+  const paidOrders = orders.filter(order => !isFamilyFriendsOrder(order));
+  const freeOrders = orders.filter(isFamilyFriendsOrder);
+  const sumOrders = rows => rows.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const sumItems = rows => rows.reduce((sum, order) => sum + Number(order.item_count || 0), 0);
+  const paymentTotal = method => sumOrders(
+    paidOrders.filter(order => String(order.payment_method || '').toUpperCase() === method)
+  );
+  const paidSales = sumOrders(paidOrders);
+  const paidItems = sumItems(paidOrders);
+  const freeValue = sumOrders(freeOrders);
+  const freeItems = sumItems(freeOrders);
+  const averageOrder = paidOrders.length ? paidSales / paidOrders.length : 0;
+  const cash = paymentTotal('CASH');
+  const upi = paymentTotal('UPI');
+  const card = paymentTotal('CARD');
+  const freeItemTotals = itemSalesTotals(freeOrders).filter(item => item.freeQuantity > 0);
+  const mostGifted = freeItemTotals[0];
+  const { rangeLabel, outletLabel, fileScope } = reportExportScope();
+
   const rows = [
+    ['OHHO BURGERS OVERALL SALES REPORT'],
+    ['Outlet', outletLabel],
+    ['Report Range', rangeLabel],
+    ['Generated At', new Date().toLocaleString()],
+    [],
+    ['SALES SUMMARY'],
+    ['Metric', 'Value'],
+    ['Total Paid Sales', paidSales.toFixed(2)],
+    ['Paid Orders', paidOrders.length],
+    ['Average Order Value', averageOrder.toFixed(2)],
+    ['Paid Items', paidItems],
+    ['Closed Sessions', reports.length],
+    [],
+    ['PAYMENT COLLECTION'],
+    ['Payment Mode', 'Amount'],
+    ['Cash', cash.toFixed(2)],
+    ['UPI', upi.toFixed(2)],
+    ['Card', card.toFixed(2)],
+    ['Total Paid', (cash + upi + card).toFixed(2)],
+    [],
+    ['FAMILY & FRIENDS / FREE FOOD'],
+    ['Metric', 'Value'],
+    ['Free Orders', freeOrders.length],
+    ['Free Items', freeItems],
+    ['Free Food Menu Value', freeValue.toFixed(2)],
+    ['Most Gifted Item', mostGifted ? `${mostGifted.name} (${mostGifted.freeQuantity})` : '—'],
+    [],
+    ['ITEM-WISE SALES'],
     ['Item', 'Paid Quantity', 'Free Quantity', 'Total Quantity', 'Paid Sales', 'Free Food Value'],
-    ...items.map(item => [
-      item.name,
-      item.paidQuantity,
-      item.freeQuantity,
-      item.paidQuantity + item.freeQuantity,
-      item.paidSales.toFixed(2),
-      item.freeValue.toFixed(2)
-    ])
+    ...(items.length
+      ? items.map(item => [
+        item.name,
+        item.paidQuantity,
+        item.freeQuantity,
+        item.paidQuantity + item.freeQuantity,
+        item.paidSales.toFixed(2),
+        item.freeValue.toFixed(2)
+      ])
+      : [['No item sales in this range']]),
+    [],
+    ['SESSION HISTORY'],
+    ['Outlet', 'Opened', 'Closed', 'Paid Orders', 'Items Sold', 'Average Order Value', 'Cash', 'UPI', 'Card', 'Total Sales'],
+    ...(reports.length
+      ? reports.map(report => {
+        const outlet = state.outlets.find(item => item.id === report.outlet_id);
+        const orderCount = Number(report.order_count || 0);
+        const grossSales = Number(report.gross_sales || 0);
+        return [
+          outlet?.name || 'OHHO Outlet',
+          new Date(report.opened_at).toLocaleString(),
+          new Date(report.closed_at).toLocaleString(),
+          orderCount,
+          Number(report.item_count || 0),
+          (orderCount ? grossSales / orderCount : 0).toFixed(2),
+          Number(report.cash_sales || 0).toFixed(2),
+          Number(report.upi_sales || 0).toFixed(2),
+          Number(report.card_sales || 0).toFixed(2),
+          grossSales.toFixed(2)
+        ];
+      })
+      : [['No completed sessions in this range']])
   ];
 
-  const csv = rows.map(row => row.map(csvCell).join(',')).join('\n');
+  const csv = `\uFEFF${rows.map(row => row.map(csvCell).join(',')).join('\n')}`;
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `ohho-item-sales-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.download = `ohho-${fileScope}-overall-sales-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(link);
   link.click();
   link.remove();
