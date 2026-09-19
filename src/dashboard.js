@@ -177,7 +177,7 @@ function injectStyles() {
 
     .outlet-grid{grid-template-columns:repeat(3,minmax(0,1fr));display:grid;gap:12px}
     .outlet-card{position:relative;min-height:205px;padding:18px;background:#0d0d0d;border:1px solid #242424;border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.2);overflow:hidden}.outlet-card:before{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,#ffd21c,transparent 58%)}
-    .outlet-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.outlet-card h2{font-size:21px;letter-spacing:-.8px;margin:0}.outlet-status{font-size:8px;font-weight:950;letter-spacing:1px;padding:5px 7px;border-radius:6px;border:1px solid #253b25;color:#72d56b;background:#0d170d}.outlet-status.off{color:#ff8c8c;background:#1c0d0d;border-color:#482121}
+    .outlet-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.outlet-card h2{font-size:21px;letter-spacing:-.8px;margin:0}.outlet-status{font-size:8px;font-weight:950;letter-spacing:1px;padding:5px 7px;border-radius:6px;border:1px solid #253b25;color:#72d56b;background:#0d170d}.outlet-status.off{color:#ff8c8c;background:#1c0d0d;border-color:#482121}.outlet-admin-actions{display:flex;gap:8px;margin-top:12px}.outlet-toggle-btn,.order-delete-btn{border:1px solid #383838;background:#111;color:#eee;border-radius:8px;padding:8px 10px;font:900 8px var(--mono);letter-spacing:.7px;cursor:pointer}.outlet-toggle-btn:hover{border-color:#ffd21c;color:#ffd21c}.order-delete-btn{border-color:#552525;color:#ff8c8c;background:#190d0d}.order-delete-btn:hover{border-color:#ff6b6b;color:#fff}.outlet-toggle-btn:disabled,.order-delete-btn:disabled{opacity:.55;cursor:wait}
     .outlet-address{color:#999;font-size:11px;line-height:1.5;margin:12px 0 11px;max-width:100%}.outlet-meta-row{display:flex;flex-wrap:wrap;gap:6px}.outlet-chip{border:1px solid #292929;background:#101010;color:#777;border-radius:7px;padding:6px 8px;font-size:8px;font-weight:800}.outlet-chip strong{color:#eee}
     .outlet-links{display:flex;gap:6px;margin-top:13px}.outlet-links button{border:1px solid #303030;background:#111;color:#ddd;border-radius:7px;padding:7px 9px;font-size:8px;font-weight:900}.outlet-links button:hover{border-color:#ffd21c;color:#ffd21c}
     .outlet-empty{grid-column:1/-1;border:1px dashed #303030;border-radius:14px;min-height:220px;display:grid;place-items:center;text-align:center;color:#777;padding:30px}.outlet-empty strong{display:block;color:#eee;font-size:15px}.outlet-empty span{display:block;font-size:11px;margin-top:6px}
@@ -1603,6 +1603,38 @@ function formatTime(value) {
   return `${h}:${String(minute).padStart(2, '0')} ${suffix}`;
 }
 
+async function toggleOutletStatus(outletId) {
+  if (state.profile?.role !== 'ADMIN') {
+    toast('Admin access required.', 'bad');
+    return;
+  }
+
+  const outlet = state.outlets.find(item => item.id === outletId);
+  if (!outlet) return;
+
+  const nextStatus = outlet.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
+  try {
+    const payload = await apiRequest('PATCH', {
+      id: outlet.id,
+      status: nextStatus
+    });
+
+    state.outlets = state.outlets.map(item =>
+      item.id === outlet.id ? payload.outlet : item
+    );
+
+    renderOutletCards();
+    renderOutletSelector();
+    renderOverviewOutlets();
+    renderPosOutletOptions?.();
+    toast(`${payload.outlet.name} is now ${payload.outlet.status}.`, 'ok');
+  } catch (error) {
+    console.error('Unable to change outlet status:', error);
+    toast(error.message || 'Unable to change outlet status.', 'bad');
+  }
+}
+
 function renderOutletCards() {
   const section = $('#outlets');
   if (!section) return;
@@ -1633,8 +1665,19 @@ function renderOutletCards() {
         ${safeUrl(outlet.zomato_url) ? `<button type="button" data-url="${escapeHtml(safeUrl(outlet.zomato_url))}">ZOMATO</button>` : ''}
         ${safeUrl(outlet.swiggy_url) ? `<button type="button" data-url="${escapeHtml(safeUrl(outlet.swiggy_url))}">SWIGGY</button>` : ''}
       </div>
+      ${state.profile?.role === 'ADMIN' ? `
+        <div class="outlet-admin-actions">
+          <button type="button" class="outlet-toggle-btn" data-outlet-toggle="${escapeHtml(outlet.id)}">
+            ${outlet.status === 'ACTIVE' ? 'TURN OUTLET OFF' : 'TURN OUTLET ON'}
+          </button>
+        </div>
+      ` : ''}
     </article>`).join('');
-  $$('[data-url]', grid).forEach(button => button.addEventListener('click', () => window.open(button.dataset.url, '_blank', 'noopener,noreferrer')));
+  $('[data-url]', grid).forEach(button => button.addEventListener('click', () => window.open(button.dataset.url, '_blank', 'noopener,noreferrer')));
+  $('[data-outlet-toggle]', grid).forEach(button => button.addEventListener('click', async () => {
+    button.disabled = true;
+    await toggleOutletStatus(button.dataset.outletToggle);
+  }));
 }
 
 function renderOutletSelector() {
@@ -1806,6 +1849,49 @@ async function updateOrderStatus(orderId, nextStatus) {
   toast(`Order updated to ${nextStatus.replaceAll('_', ' ')}.`, 'ok');
 }
 
+async function deleteOrderAsAdmin(orderId, orderNumber = '') {
+  if (state.profile?.role !== 'ADMIN') {
+    toast('Admin access required.', 'bad');
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Remove order #${orderNumber || orderId}? This cannot be undone.`
+  );
+  if (!confirmed) return;
+
+  const { data: sessionData, error: sessionError } =
+    await supabase.auth.getSession();
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    toast('Your session has expired. Please log in again.', 'bad');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/pos/orders', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session.access_token}`
+      },
+      body: JSON.stringify({ orderId })
+    });
+
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Unable to remove order.');
+    }
+
+    await loadOrders();
+    toast(`Order #${orderNumber || ''} removed.`, 'ok');
+  } catch (error) {
+    console.error('Unable to remove order:', error);
+    toast(error.message || 'Unable to remove order.', 'bad');
+  }
+}
+
 function wireOrdersActions() {
   const search = $('#ordersSearch');
   const status = $('#ordersStatusFilter');
@@ -1814,6 +1900,15 @@ function wireOrdersActions() {
   status?.addEventListener('change', renderOrders);
 
   $('#ordersBoard')?.addEventListener('click', event => {
+    const deleteButton = event.target.closest('.order-delete-btn');
+    if (deleteButton) {
+      deleteOrderAsAdmin(
+        deleteButton.dataset.orderId,
+        deleteButton.dataset.orderNumber
+      );
+      return;
+    }
+
     const button = event.target.closest('.order-action-btn');
     if (!button) return;
 
@@ -2744,6 +2839,14 @@ function renderOrders() {
         </div>
 
         ${renderOrderAction(order)}
+        ${state.profile?.role === 'ADMIN' ? `
+          <button
+            type="button"
+            class="order-delete-btn"
+            data-order-id="${escapeHtml(order.id)}"
+            data-order-number="${escapeHtml(order.order_number || '')}"
+          >REMOVE ORDER</button>
+        ` : ''}
       </article>
     `;
   }).join('');
