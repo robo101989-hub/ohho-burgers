@@ -685,6 +685,16 @@ body{font-size:14px}
 @media(max-width:1050px){.report-summary-grid,.report-payment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.report-toolbar{align-items:flex-start;flex-direction:column}.report-toolbar-actions{width:100%;justify-content:space-between}.session-report-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.report-panel{padding:14px;border-radius:12px}.report-toolbar-actions{align-items:stretch;flex-direction:column}.report-range-buttons{width:100%;grid-template-columns:repeat(2,minmax(0,1fr))}.report-range-btn{min-width:0}.report-export-btn,.report-clear-btn{width:100%}.custom-date-panel{align-items:stretch;flex-direction:column}.custom-date-field input{width:100%}.report-summary-grid,.report-payment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.report-section-head{align-items:flex-start;flex-direction:column}.report-section-head>span{text-align:left}.item-sales-head{display:none}.item-sales-row{grid-template-columns:1fr auto}.item-sales-row .money{grid-column:1/-1}.session-report-main{flex-direction:column}.session-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:430px){.report-summary-grid,.report-payment-grid{grid-template-columns:1fr}.session-report-metrics{grid-template-columns:1fr}.session-report-metrics div{display:flex;align-items:center;justify-content:space-between;gap:10px}.session-report-metrics strong{margin:0;text-align:right}}
+
+/* Reports: clean operational table layout */
+#reports h1,#reports h2,#reports h3{font-family:var(--sans);line-height:1.15;letter-spacing:-.45px;text-transform:none}
+#reports .page-head h1{font-size:34px;letter-spacing:-1.4px}
+.report-dashboard{gap:12px}.report-panel{background:#0d0d0d;border-color:#292929;border-radius:12px;padding:16px;box-shadow:none}.report-toolbar{align-items:center}.report-toolbar h2{font-size:17px;margin-top:5px}.report-toolbar-actions{gap:7px}.report-range-buttons{background:#0a0a0a;border-color:#292929}.report-range-btn{font-family:var(--sans);font-size:9px;letter-spacing:.15px}.report-summary-grid{gap:8px}.report-stat-card{position:relative;background:#0e0e0e;border-color:#292929;border-radius:10px;padding:15px 16px}.report-stat-card:before{content:"";position:absolute;left:0;top:13px;bottom:13px;width:2px;border-radius:2px;background:#3b3b36}.report-stat-card.free:before{background:var(--yellow)}.report-stat-card.free strong{color:var(--yellow)}.report-stat-card span,.report-payment-card span{font-family:var(--sans);font-size:9px;letter-spacing:.55px}.report-stat-card strong,.report-payment-card strong{font-family:var(--mono);font-size:22px}.report-split-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;min-width:0}.report-compact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.report-compact-grid .report-payment-card{padding:13px 14px;background:#101010}.report-family-panel{border-color:#393215}.report-family-panel .eyebrow:before{background:#ffd21c}.report-family-panel .report-payment-card{border-color:#302b17}.report-family-panel .report-payment-card strong{color:#ffd21c}.report-section-head{margin-bottom:11px}.report-section-head h2{font-size:16px;margin-top:4px}.report-section-head>span{font-size:10px}.item-sales-list{display:block;overflow-x:auto;border:1px solid #292929;border-radius:10px;background:#0a0a0a}.item-sales-table{min-width:800px}.item-sales-head,.item-sales-row{grid-template-columns:minmax(230px,1.5fr) 88px 88px 88px 125px 125px;gap:0;padding:0}.item-sales-head{display:grid!important;background:#111;border-bottom:1px solid #303030}.item-sales-head span{padding:11px 13px;color:#777;font:800 8px var(--sans);letter-spacing:.55px}.item-sales-row{display:grid!important;background:transparent;border:0;border-bottom:1px solid #202020;border-radius:0}.item-sales-row:last-child{border-bottom:0}.item-sales-row:hover{background:#111}.item-sales-row>*{min-width:0;padding:13px;color:#bdbdb7;font-size:11px}.item-sales-row strong{color:#f2f2ed;font-size:12px}.item-sales-row span{font:800 10px var(--mono)}.item-sales-row .qty{text-align:center}.item-sales-row .free-qty,.item-sales-row .free-value{color:#ffd21c}.item-sales-row .money{color:#ddd}.session-report-card{border-radius:9px;padding:13px}.session-report-main{padding-bottom:9px}.session-report-main h3{font-size:13px}.session-report-metrics{padding-top:9px}.report-empty{min-height:88px;border-radius:9px}.session-count-pill{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:24px;margin-left:8px;border:1px solid #343434;border-radius:99px;color:#ddd;font:800 9px var(--mono)}
+.report-family-panel #reportsMostGifted{font-family:var(--sans);font-size:13px;line-height:1.35}
+.report-section-actions{display:flex;align-items:center;gap:10px;color:#666;font-size:10px;text-align:right}.report-section-actions .report-clear-btn{height:34px;padding:8px 11px;font-size:8px}
+@media(max-width:1050px){.report-split-grid{grid-template-columns:1fr}.report-toolbar{align-items:flex-start}.report-toolbar-actions{width:100%}}
+@media(max-width:760px){#reports .page-head h1{font-size:29px}.report-panel{padding:13px}.report-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.report-compact-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.item-sales-list{overflow-x:auto}.item-sales-head,.item-sales-row{grid-template-columns:minmax(210px,1.5fr) 82px 82px 82px 118px 118px}.item-sales-row .money{grid-column:auto}.report-toolbar-actions{gap:7px}.report-section-actions{width:100%;justify-content:space-between;text-align:left}.report-section-actions .report-clear-btn{width:auto}}
+@media(max-width:430px){.report-summary-grid,.report-compact-grid{grid-template-columns:1fr 1fr}.report-stat-card strong,.report-payment-card strong{font-size:19px}}
 </style>
 <style>
 @media(max-width:760px){
@@ -1051,7 +1061,6 @@ body{font-size:14px}
           <button type="button" class="report-range-btn" data-report-range="ALL" aria-pressed="false">ALL TIME</button>
         </div>
         <button class="secondary report-export-btn" id="reportsExportBtn" type="button">EXPORT CSV</button>
-        <button class="secondary report-clear-btn" id="reportsClearLogBtn" type="button">CLEAR REPORT LOG</button>
       </div>
     </div>
     <div id="customDatePanel" class="report-panel custom-date-panel hidden">
@@ -1060,26 +1069,37 @@ body{font-size:14px}
       <button id="applyCustomDateBtn" class="primary" type="button">APPLY DATES</button>
     </div>
     <div class="report-summary-grid">
-      <div class="report-stat-card"><span>CLOSED SESSIONS</span><strong id="reportsSessionCount">0</strong></div>
-      <div class="report-stat-card"><span>TOTAL SALES</span><strong id="reportsTotalSales">₹0</strong></div>
-      <div class="report-stat-card"><span>TOTAL ORDERS</span><strong id="reportsTotalOrders">0</strong></div>
-      <div class="report-stat-card"><span>ITEMS SOLD</span><strong id="reportsTotalItems">0</strong></div>
+      <div class="report-stat-card"><span>PAID SALES</span><strong id="reportsTotalSales">₹0</strong></div>
+      <div class="report-stat-card"><span>PAID ORDERS</span><strong id="reportsTotalOrders">0</strong></div>
+      <div class="report-stat-card"><span>PAID ITEMS</span><strong id="reportsTotalItems">0</strong></div>
+      <div class="report-stat-card free"><span>FREE FOOD ITEMS</span><strong id="reportsFreeItems">0</strong></div>
     </div>
-    <div class="report-panel">
-      <div class="report-section-head"><div><div class="eyebrow">Payment collection</div><h2>CASH · UPI · CARD</h2></div></div>
-      <div class="report-payment-grid">
-        <div class="report-payment-card"><span>CASH</span><strong id="legacyCashSales">₹0</strong></div>
-        <div class="report-payment-card"><span>UPI</span><strong id="legacyUpiSales">₹0</strong></div>
-        <div class="report-payment-card"><span>CARD</span><strong id="legacyCardSales">₹0</strong></div>
-        <div class="report-payment-card total"><span>TOTAL PAID</span><strong id="reportsPaymentTotal">₹0</strong></div>
+    <div class="report-split-grid">
+      <div class="report-panel">
+        <div class="report-section-head"><div><div class="eyebrow">Payment collection</div><h2>Paid sales</h2></div></div>
+        <div class="report-compact-grid">
+          <div class="report-payment-card"><span>CASH</span><strong id="legacyCashSales">₹0</strong></div>
+          <div class="report-payment-card"><span>UPI</span><strong id="legacyUpiSales">₹0</strong></div>
+          <div class="report-payment-card"><span>CARD</span><strong id="legacyCardSales">₹0</strong></div>
+          <div class="report-payment-card total"><span>TOTAL PAID</span><strong id="reportsPaymentTotal">₹0</strong></div>
+        </div>
+      </div>
+      <div class="report-panel report-family-panel">
+        <div class="report-section-head"><div><div class="eyebrow">Family &amp; Friends</div><h2>Free food usage</h2></div></div>
+        <div class="report-compact-grid">
+          <div class="report-payment-card"><span>FREE ORDERS</span><strong id="reportsFreeOrders">0</strong></div>
+          <div class="report-payment-card"><span>FREE ITEMS</span><strong id="reportsFamilyItems">0</strong></div>
+          <div class="report-payment-card total"><span>MENU VALUE</span><strong id="reportsFreeValue">₹0</strong></div>
+          <div class="report-payment-card"><span>MOST GIFTED</span><strong id="reportsMostGifted">—</strong></div>
+        </div>
       </div>
     </div>
     <div class="report-panel">
-      <div class="report-section-head"><div><div class="eyebrow">Menu performance</div><h2>ITEM-WISE SALES</h2></div><span>Paid items sold inside the selected sessions</span></div>
+      <div class="report-section-head"><div><div class="eyebrow">Menu performance</div><h2>Item sales &amp; free food</h2></div><span>One row per menu item</span></div>
       <div id="itemSalesList" class="item-sales-list"><div class="report-empty">Loading item sales…</div></div>
     </div>
     <div class="report-panel">
-      <div class="report-section-head"><div><div class="eyebrow">Opening to closing</div><h2>SESSION HISTORY</h2></div><span>Each row is one complete outlet session</span></div>
+      <div class="report-section-head"><div><div class="eyebrow">Opening to closing</div><h2>Session history <span id="reportsSessionCount" class="session-count-pill">0</span></h2></div><div class="report-section-actions"><span>Each row is one complete outlet session</span><button class="secondary report-clear-btn" id="reportsClearLogBtn" type="button">CLEAR LOG</button></div></div>
       <div id="salesReportsList" class="sales-reports-list"><div class="orders-loading">Loading sales reports…</div></div>
     </div>
   </div>

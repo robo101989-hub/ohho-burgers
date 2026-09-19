@@ -3052,60 +3052,112 @@ function filteredSessionReports() {
   });
 }
 
-function orderBelongsToSessions(order, reports) {
-  const createdAt = new Date(order.created_at).getTime();
-  return reports.some(report =>
-    order.outlet_id === report.outlet_id &&
-    createdAt >= new Date(report.opened_at).getTime() &&
-    createdAt < new Date(report.closed_at).getTime()
+function filteredReportOrders() {
+  const { start, end, invalid } = reportDateBounds();
+  if (invalid) return [];
+  return (state.reportOrders || []).filter(order => {
+    const createdAt = new Date(order.created_at).getTime();
+    return (
+      isReportableOrder(order) &&
+      (!start || createdAt >= start.getTime()) &&
+      (!end || createdAt < end.getTime())
+    );
+  });
+}
+
+function itemSalesTotals(orders) {
+  const ordersById = new Map(orders.map(order => [order.id, order]));
+  const totalsByItem = new Map();
+
+  (state.reportItems || []).forEach(item => {
+    const order = ordersById.get(item.order_id);
+    if (!order) return;
+
+    const name = String(item.item_name || 'Menu Item').trim() || 'Menu Item';
+    const key = name.toLowerCase();
+    const current = totalsByItem.get(key) || {
+      name,
+      paidQuantity: 0,
+      freeQuantity: 0,
+      paidSales: 0,
+      freeValue: 0
+    };
+    const quantity = Number(item.quantity || 0);
+    const value = Number(item.line_total || 0);
+
+    if (isFamilyFriendsOrder(order)) {
+      current.freeQuantity += quantity;
+      current.freeValue += value;
+    } else {
+      current.paidQuantity += quantity;
+      current.paidSales += value;
+    }
+    totalsByItem.set(key, current);
+  });
+
+  return [...totalsByItem.values()].sort(
+    (a, b) => (b.paidQuantity + b.freeQuantity) - (a.paidQuantity + a.freeQuantity)
   );
 }
 
-function renderItemWiseSales(reports) {
+function renderItemWiseSales(orders) {
   const list = $('#itemSalesList');
   if (!list) return;
-  const paidOrderIds = new Set(
-    (state.reportOrders || [])
-      .filter(order => isReportableOrder(order) && !isFamilyFriendsOrder(order) && orderBelongsToSessions(order, reports))
-      .map(order => order.id)
-  );
-  const totalsByItem = new Map();
-  (state.reportItems || []).forEach(item => {
-    if (!paidOrderIds.has(item.order_id)) return;
-    const name = String(item.item_name || 'Menu Item').trim() || 'Menu Item';
-    const key = name.toLowerCase();
-    const current = totalsByItem.get(key) || { name, quantity: 0, sales: 0 };
-    current.quantity += Number(item.quantity || 0);
-    current.sales += Number(item.line_total || 0);
-    totalsByItem.set(key, current);
-  });
-  const items = [...totalsByItem.values()].sort((a, b) => b.quantity - a.quantity);
+  const items = itemSalesTotals(orders);
   if (!items.length) {
-    list.innerHTML = '<div class="report-empty"><div><strong>No item sales in these sessions</strong><span>Item totals appear after a paid session is closed.</span></div></div>';
+    list.innerHTML = '<div class="report-empty"><div><strong>No items in this range</strong><span>Paid and Family &amp; Friends items will appear here.</span></div></div>';
     return;
   }
   list.innerHTML = `
-    <div class="item-sales-head"><span>ITEM</span><span>QUANTITY SOLD</span><span>SALES</span></div>
-    ${items.map(item => `<div class="item-sales-row"><strong>${escapeHtml(item.name)}</strong><span>${item.quantity}</span><span class="money">${formatReportMoney(item.sales)}</span></div>`).join('')}
+    <div class="item-sales-table">
+      <div class="item-sales-head"><span>ITEM</span><span>PAID QTY</span><span>FREE QTY</span><span>TOTAL QTY</span><span>PAID SALES</span><span>FREE VALUE</span></div>
+      ${items.map(item => `
+        <div class="item-sales-row">
+          <strong>${escapeHtml(item.name)}</strong>
+          <span class="qty">${item.paidQuantity}</span>
+          <span class="qty free-qty">${item.freeQuantity}</span>
+          <span class="qty">${item.paidQuantity + item.freeQuantity}</span>
+          <span class="money">${formatReportMoney(item.paidSales)}</span>
+          <span class="free-value">${formatReportMoney(item.freeValue)}</span>
+        </div>
+      `).join('')}
+    </div>
   `;
 }
 
 function renderReportDashboard() {
   const reports = filteredSessionReports();
-  const sumField = field => reports.reduce((sum, report) => sum + Number(report[field] || 0), 0);
-  const gross = sumField('gross_sales');
-  const cash = sumField('cash_sales');
-  const upi = sumField('upi_sales');
-  const card = sumField('card_sales');
+  const orders = filteredReportOrders();
+  const paidOrders = orders.filter(order => !isFamilyFriendsOrder(order));
+  const freeOrders = orders.filter(isFamilyFriendsOrder);
+  const sumOrders = rows => rows.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const sumItems = rows => rows.reduce((sum, order) => sum + Number(order.item_count || 0), 0);
+  const paymentTotal = method => sumOrders(paidOrders.filter(order => order.payment_method === method));
+  const cash = paymentTotal('CASH');
+  const upi = paymentTotal('UPI');
+  const card = paymentTotal('CARD');
+  const freeValue = sumOrders(freeOrders);
+  const freeItemTotals = itemSalesTotals(freeOrders).filter(item => item.freeQuantity > 0);
+  const mostGifted = freeItemTotals[0];
+
   if ($('#reportsSessionCount')) $('#reportsSessionCount').textContent = String(reports.length);
-  if ($('#reportsTotalSales')) $('#reportsTotalSales').textContent = formatReportMoney(gross);
-  if ($('#reportsTotalOrders')) $('#reportsTotalOrders').textContent = String(sumField('order_count'));
-  if ($('#reportsTotalItems')) $('#reportsTotalItems').textContent = String(sumField('item_count'));
+  if ($('#reportsTotalSales')) $('#reportsTotalSales').textContent = formatReportMoney(sumOrders(paidOrders));
+  if ($('#reportsTotalOrders')) $('#reportsTotalOrders').textContent = String(paidOrders.length);
+  if ($('#reportsTotalItems')) $('#reportsTotalItems').textContent = String(sumItems(paidOrders));
+  if ($('#reportsFreeItems')) $('#reportsFreeItems').textContent = String(sumItems(freeOrders));
   if ($('#legacyCashSales')) $('#legacyCashSales').textContent = formatReportMoney(cash);
   if ($('#legacyUpiSales')) $('#legacyUpiSales').textContent = formatReportMoney(upi);
   if ($('#legacyCardSales')) $('#legacyCardSales').textContent = formatReportMoney(card);
   if ($('#reportsPaymentTotal')) $('#reportsPaymentTotal').textContent = formatReportMoney(cash + upi + card);
-  renderItemWiseSales(reports);
+  if ($('#reportsFreeOrders')) $('#reportsFreeOrders').textContent = String(freeOrders.length);
+  if ($('#reportsFamilyItems')) $('#reportsFamilyItems').textContent = String(sumItems(freeOrders));
+  if ($('#reportsFreeValue')) $('#reportsFreeValue').textContent = formatReportMoney(freeValue);
+  if ($('#reportsMostGifted')) {
+    $('#reportsMostGifted').textContent = mostGifted
+      ? `${mostGifted.name} · ${mostGifted.freeQuantity}`
+      : '—';
+  }
+  renderItemWiseSales(orders);
   renderSalesReports(reports);
 }
 
@@ -3167,26 +3219,23 @@ function csvCell(value) {
 }
 
 function exportSessionReports() {
-  const outletsById = new Map(state.outlets.map(outlet => [outlet.id, outlet]));
-  const reports = filteredSessionReports();
+  const orders = filteredReportOrders();
+  const items = itemSalesTotals(orders);
 
-  if (!reports.length) {
-    toast('There are no closed sessions to export for this period.', 'bad');
+  if (!items.length) {
+    toast('There are no item sales to export for this range.', 'bad');
     return;
   }
 
   const rows = [
-    ['Outlet', 'Opened At', 'Closed At', 'Orders', 'Items', 'Cash', 'UPI', 'Card', 'Total Sales'],
-    ...reports.map(report => [
-      outletsById.get(report.outlet_id)?.name || 'OHHO Outlet',
-      new Date(report.opened_at).toLocaleString(),
-      new Date(report.closed_at).toLocaleString(),
-      report.order_count,
-      report.item_count,
-      Number(report.cash_sales || 0).toFixed(2),
-      Number(report.upi_sales || 0).toFixed(2),
-      Number(report.card_sales || 0).toFixed(2),
-      Number(report.gross_sales || 0).toFixed(2)
+    ['Item', 'Paid Quantity', 'Free Quantity', 'Total Quantity', 'Paid Sales', 'Free Food Value'],
+    ...items.map(item => [
+      item.name,
+      item.paidQuantity,
+      item.freeQuantity,
+      item.paidQuantity + item.freeQuantity,
+      item.paidSales.toFixed(2),
+      item.freeValue.toFixed(2)
     ])
   ];
 
@@ -3194,7 +3243,7 @@ function exportSessionReports() {
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `ohho-session-sales-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.download = `ohho-item-sales-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(link);
   link.click();
   link.remove();
