@@ -16,6 +16,7 @@ const state = {
   orders: [],
   salesReports: [],
   reportOrders: [],
+  reportRange: 'TODAY',
   pos: {
     items: [],
     categories: [],
@@ -2728,7 +2729,17 @@ function wireDashboardActions() {
   $('#staffRoleFilter')?.addEventListener('change', renderStaffList);
   $('#staffOutletFilter')?.addEventListener('change', renderStaffList);
   $('#reportsRefreshBtn')?.addEventListener('click', loadReports);
-  $('#legacyReportRange')?.addEventListener('change', renderLegacyReports);
+  $$('[data-report-range]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.reportRange = button.dataset.reportRange || 'TODAY';
+      $$('[data-report-range]').forEach(rangeButton => {
+        const active = rangeButton === button;
+        rangeButton.classList.toggle('active', active);
+        rangeButton.setAttribute('aria-pressed', String(active));
+      });
+      renderLegacyReports();
+    });
+  });
   $('#reportsExportBtn')?.addEventListener('click', exportLegacyReports);
 
   wirePosActions();
@@ -2970,13 +2981,11 @@ function legacyReportStart(range) {
   start.setHours(0, 0, 0, 0);
 
   if (range === '7_DAYS') start.setDate(start.getDate() - 6);
-  if (range === '30_DAYS') start.setDate(start.getDate() - 29);
-
   return start;
 }
 
 function filteredLegacyReportOrders() {
-  const range = $('#legacyReportRange')?.value || 'TODAY';
+  const range = state.reportRange || 'TODAY';
   const start = legacyReportStart(range);
 
   return (state.reportOrders || []).filter(order =>
@@ -3058,11 +3067,11 @@ function renderLegacyReports() {
 
     return `
       <div class="report-outlet-row">
-        <strong>${escapeHtml(outletsById.get(outletId)?.name || 'OHHO Outlet')}</strong>
-        <span>${paid.length} paid order${paid.length === 1 ? '' : 's'}</span>
-        <span>${itemCount} item${itemCount === 1 ? '' : 's'}</span>
-        <span>${family.length} complimentary</span>
-        <span class="money">${formatReportMoney(sum(paid))}</span>
+        <strong class="report-outlet-name">${escapeHtml(outletsById.get(outletId)?.name || 'OHHO Outlet')}</strong>
+        <div class="report-outlet-metric"><em>PAID ORDERS</em><span>${paid.length}</span></div>
+        <div class="report-outlet-metric"><em>ITEMS SOLD</em><span>${itemCount}</span></div>
+        <div class="report-outlet-metric"><em>COMPLIMENTARY</em><span>${family.length}</span></div>
+        <div class="report-outlet-metric money"><em>PAID SALES</em><span>${formatReportMoney(sum(paid))}</span></div>
       </div>
     `;
   }).join('');
