@@ -17,7 +17,7 @@ const state = {
   salesReports: [],
   reportOrders: [],
   reportItems: [],
-  reportRange: 'TODAY',
+  reportRange: 'SESSION',
   pos: {
     items: [],
     categories: [],
@@ -760,7 +760,7 @@ async function apiRequest(method, body = null) {
     if (method === 'GET') {
       const { data: outlets, error } = await supabase
         .from('outlets')
-        .select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at')
+        .select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at')
         .order('created_at', { ascending: true });
       if (error) throw new Error(error.message || 'Unable to load outlets.');
       return { outlets: outlets || [] };
@@ -805,7 +805,7 @@ async function loadOutlets() {
     // Supabase read path only during local development. Production API failures must surface.
     if (!import.meta.env.DEV) throw apiError;
 
-    const { data, error } = await supabase.from('outlets').select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at').order('created_at', { ascending: true });
+    const { data, error } = await supabase.from('outlets').select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at').order('created_at', { ascending: true });
     if (error) throw apiError;
     const allOutlets = data || [];
     state.outlets = state.profile?.role === 'ADMIN'
@@ -1658,6 +1658,12 @@ function wirePosActions() {
           `Order created, but printing failed: ${printError.message || 'Printer unavailable.'}`,
           'bad'
         );
+      }
+
+      try {
+        await Promise.all([loadOrders(), loadReports()]);
+      } catch (refreshError) {
+        console.error('Unable to refresh live session sales:', refreshError);
       }
     } catch (error) {
       console.error('Unable to create POS order:', error);
@@ -2732,7 +2738,7 @@ function wireDashboardActions() {
   $('#reportsRefreshBtn')?.addEventListener('click', loadReports);
   $$('[data-report-range]').forEach(button => {
     button.addEventListener('click', () => {
-      state.reportRange = button.dataset.reportRange || 'TODAY';
+      state.reportRange = button.dataset.reportRange || 'SESSION';
       $$('[data-report-range]').forEach(rangeButton => {
         const active = rangeButton === button;
         rangeButton.classList.toggle('active', active);
@@ -3022,7 +3028,8 @@ function setDefaultCustomReportDates() {
 }
 
 function reportDateBounds() {
-  const range = state.reportRange || 'TODAY';
+  const range = state.reportRange || 'SESSION';
+  if (range === 'SESSION') return { start: null, end: null, session: true };
   if (range === 'ALL') return { start: null, end: null };
 
   if (range === 'CUSTOM') {
@@ -3044,8 +3051,16 @@ function reportDateBounds() {
 }
 
 function filteredSessionReports() {
-  const { start, end, invalid } = reportDateBounds();
+  const { start, end, invalid, session } = reportDateBounds();
   if (invalid) return [];
+  if (session) {
+    const latestByOutlet = new Set();
+    return (state.salesReports || []).filter(report => {
+      if (latestByOutlet.has(report.outlet_id)) return false;
+      latestByOutlet.add(report.outlet_id);
+      return true;
+    });
+  }
   return (state.salesReports || []).filter(report => {
     const closedAt = new Date(report.closed_at).getTime();
     return (!start || closedAt >= start.getTime()) && (!end || closedAt < end.getTime());
@@ -3053,10 +3068,20 @@ function filteredSessionReports() {
 }
 
 function filteredReportOrders() {
-  const { start, end, invalid } = reportDateBounds();
+  const { start, end, invalid, session } = reportDateBounds();
   if (invalid) return [];
   return (state.reportOrders || []).filter(order => {
     const createdAt = new Date(order.created_at).getTime();
+    if (session) {
+      const outlet = state.outlets.find(item => item.id === order.outlet_id);
+      const startedAt = outlet?.current_session_started_at || outlet?.updated_at;
+      return Boolean(
+        isReportableOrder(order) &&
+        outlet?.status === 'ACTIVE' &&
+        startedAt &&
+        createdAt >= new Date(startedAt).getTime()
+      );
+    }
     return (
       isReportableOrder(order) &&
       (!start || createdAt >= start.getTime()) &&
@@ -3139,10 +3164,13 @@ function renderReportDashboard() {
   const freeValue = sumOrders(freeOrders);
   const freeItemTotals = itemSalesTotals(freeOrders).filter(item => item.freeQuantity > 0);
   const mostGifted = freeItemTotals[0];
+  const paidSales = sumOrders(paidOrders);
+  const averageOrder = paidOrders.length ? paidSales / paidOrders.length : 0;
 
   if ($('#reportsSessionCount')) $('#reportsSessionCount').textContent = String(reports.length);
-  if ($('#reportsTotalSales')) $('#reportsTotalSales').textContent = formatReportMoney(sumOrders(paidOrders));
+  if ($('#reportsTotalSales')) $('#reportsTotalSales').textContent = formatReportMoney(paidSales);
   if ($('#reportsTotalOrders')) $('#reportsTotalOrders').textContent = String(paidOrders.length);
+  if ($('#reportsAverageOrder')) $('#reportsAverageOrder').textContent = formatReportMoney(averageOrder);
   if ($('#reportsTotalItems')) $('#reportsTotalItems').textContent = String(sumItems(paidOrders));
   if ($('#reportsFreeItems')) $('#reportsFreeItems').textContent = String(sumItems(freeOrders));
   if ($('#legacyCashSales')) $('#legacyCashSales').textContent = formatReportMoney(cash);
@@ -3253,6 +3281,11 @@ function exportSessionReports() {
 async function clearSelectedReportLogs() {
   if (state.profile?.role !== 'ADMIN') {
     toast('Admin access required.', 'bad');
+    return;
+  }
+
+  if (state.reportRange === 'SESSION') {
+    toast('Choose Today, Last 7 Days, Custom Date or All Time to clear report logs.', 'bad');
     return;
   }
 
@@ -3368,6 +3401,8 @@ function renderSalesReports(reports = filteredSessionReports()) {
 
   list.innerHTML = reports.map(report => {
     const outlet = outletsById.get(report.outlet_id);
+    const orderCount = Number(report.order_count || 0);
+    const averageOrder = orderCount ? Number(report.gross_sales || 0) / orderCount : 0;
 
     return `
       <article class="session-report-card">
@@ -3379,11 +3414,15 @@ function renderSalesReports(reports = filteredSessionReports()) {
               → ${formatOrderDate(report.closed_at)} · ${formatOrderTime(report.closed_at)}
             </div>
           </div>
-          <div class="session-report-total">${formatReportMoney(report.gross_sales)}</div>
+          <div class="session-report-actions">
+            <div class="session-report-total">${formatReportMoney(report.gross_sales)}</div>
+            <button class="secondary session-report-download" type="button" data-download-session="${escapeHtml(report.id)}">DOWNLOAD CSV</button>
+          </div>
         </div>
         <div class="session-report-metrics">
-          <div><span>ORDERS</span><strong>${Number(report.order_count || 0)}</strong></div>
+          <div><span>ORDERS</span><strong>${orderCount}</strong></div>
           <div><span>ITEMS</span><strong>${Number(report.item_count || 0)}</strong></div>
+          <div><span>AVG ORDER</span><strong>${formatReportMoney(averageOrder)}</strong></div>
           <div class="payment"><span>CASH</span><strong>${formatReportMoney(report.cash_sales)}</strong></div>
           <div class="payment"><span>UPI</span><strong>${formatReportMoney(report.upi_sales)}</strong></div>
           <div class="payment"><span>CARD</span><strong>${formatReportMoney(report.card_sales)}</strong></div>
@@ -3391,6 +3430,73 @@ function renderSalesReports(reports = filteredSessionReports()) {
       </article>
     `;
   }).join('');
+
+  $$('[data-download-session]', list).forEach(button => {
+    button.addEventListener('click', () => downloadCompletedSessionReport(button.dataset.downloadSession));
+  });
+}
+
+function downloadCompletedSessionReport(reportId) {
+  const report = (state.salesReports || []).find(item => String(item.id) === String(reportId));
+  if (!report) {
+    toast('This session report is no longer available.', 'bad');
+    return;
+  }
+
+  const openedAt = new Date(report.opened_at).getTime();
+  const closedAt = new Date(report.closed_at).getTime();
+  const sessionOrders = (state.reportOrders || []).filter(order => {
+    const createdAt = new Date(order.created_at).getTime();
+    return order.outlet_id === report.outlet_id &&
+      isReportableOrder(order) &&
+      createdAt >= openedAt && createdAt < closedAt;
+  });
+  const freeOrders = sessionOrders.filter(isFamilyFriendsOrder);
+  const sumOrders = rows => rows.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const sumItems = rows => rows.reduce((sum, order) => sum + Number(order.item_count || 0), 0);
+  const itemRows = itemSalesTotals(sessionOrders);
+  const outlet = state.outlets.find(item => item.id === report.outlet_id);
+  const orderCount = Number(report.order_count || 0);
+  const averageOrder = orderCount ? Number(report.gross_sales || 0) / orderCount : 0;
+  const rows = [
+    ['OHHO SESSION SALES REPORT'],
+    ['Outlet', outlet?.name || 'OHHO Outlet'],
+    ['Opened', new Date(report.opened_at).toLocaleString()],
+    ['Closed', new Date(report.closed_at).toLocaleString()],
+    [],
+    ['Metric', 'Value'],
+    ['Total Sales', Number(report.gross_sales || 0).toFixed(2)],
+    ['Paid Orders', orderCount],
+    ['Items Sold', Number(report.item_count || 0)],
+    ['Average Order Value', averageOrder.toFixed(2)],
+    ['Cash', Number(report.cash_sales || 0).toFixed(2)],
+    ['UPI', Number(report.upi_sales || 0).toFixed(2)],
+    ['Card', Number(report.card_sales || 0).toFixed(2)],
+    ['Family & Friends Orders', freeOrders.length],
+    ['Free Food Items', sumItems(freeOrders)],
+    ['Free Food Menu Value', sumOrders(freeOrders).toFixed(2)],
+    [],
+    ['Item', 'Paid Quantity', 'Free Quantity', 'Total Quantity', 'Paid Sales', 'Free Food Value'],
+    ...itemRows.map(item => [
+      item.name,
+      item.paidQuantity,
+      item.freeQuantity,
+      item.paidQuantity + item.freeQuantity,
+      item.paidSales.toFixed(2),
+      item.freeValue.toFixed(2)
+    ])
+  ];
+  const csv = rows.map(row => row.map(csvCell).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  const outletSlug = String(outlet?.slug || outlet?.name || 'outlet')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  link.href = url;
+  link.download = `ohho-${outletSlug}-session-${new Date(report.closed_at).toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function openOutletSection() {

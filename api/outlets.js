@@ -85,7 +85,7 @@ export default async function handler(req, res) {
     if (req.method === "GET") {
       let query = supabase
         .from("outlets")
-        .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at")
+        .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at")
         .order("created_at", { ascending: true });
 
       if (profile.role === "OWNER") {
@@ -142,9 +142,10 @@ export default async function handler(req, res) {
           maps_url: safeUrl(body.mapsUrl),
           zomato_url: safeUrl(body.zomatoUrl),
           swiggy_url: safeUrl(body.swiggyUrl),
-          status: body.status === "INACTIVE" ? "INACTIVE" : "ACTIVE"
+          status: body.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+          current_session_started_at: body.status === "INACTIVE" ? null : new Date().toISOString()
         })
-        .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at")
+        .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at")
         .single();
 
       if (outletError) {
