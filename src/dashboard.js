@@ -24,6 +24,8 @@ const state = {
     activeCategory: 'ALL',
     orderType: 'TAKEAWAY',
     tableNumber: '',
+    customerName: '',
+    customerPhone: '',
     paymentMethod: 'CASH',
     orderSource: 'POS',
     cart: []
@@ -1323,6 +1325,8 @@ function resetPosOrder() {
   state.pos.cart = [];
   state.pos.orderType = 'TAKEAWAY';
   state.pos.tableNumber = '';
+  state.pos.customerName = '';
+  state.pos.customerPhone = '';
   state.pos.paymentMethod = 'CASH';
   state.pos.orderSource = 'POS';
 
@@ -1343,6 +1347,8 @@ function resetPosOrder() {
   const tableInput = $('#posTableNumber');
   if (tableWrap) tableWrap.classList.add('hidden');
   if (tableInput) tableInput.value = '';
+  if ($('#posCustomerName')) $('#posCustomerName').value = '';
+  if ($('#posCustomerPhone')) $('#posCustomerPhone').value = '';
 
   renderPosCart();
 }
@@ -1419,6 +1425,8 @@ function buildOhhoReceipt(order, outlet, cart) {
     `ORDER #${order?.order_number || ''}`,
     `TYPE: ${orderType}`,
     `CATEGORY: ${String(order?.order_source || 'POS').replaceAll('_', ' ')}`,
+    ...(order?.customer_name ? [`NAME: ${order.customer_name}`] : []),
+    ...(order?.customer_phone ? [`MOBILE: ${order.customer_phone}`] : []),
     ...(orderType === 'DINE_IN' && order?.table_number
       ? [`TABLE: ${order.table_number}`]
       : []),
@@ -1572,6 +1580,12 @@ function wirePosActions() {
   $('#posTableNumber')?.addEventListener('input', event => {
     state.pos.tableNumber = event.target.value;
   });
+  $('#posCustomerName')?.addEventListener('input', event => {
+    state.pos.customerName = event.target.value;
+  });
+  $('#posCustomerPhone')?.addEventListener('input', event => {
+    state.pos.customerPhone = event.target.value;
+  });
 
   $('#posClearBtn')?.addEventListener('click', resetPosOrder);
   $('#posNewOrderBtn')?.addEventListener('click', resetPosOrder);
@@ -1617,6 +1631,8 @@ function wirePosActions() {
               : null,
           paymentMethod: state.pos.paymentMethod,
           orderSource: state.pos.orderSource,
+          customerName: state.pos.customerName.trim(),
+          customerPhone: state.pos.customerPhone.trim(),
           items: state.pos.cart.map(item => ({
             menuItemId: item.id,
             quantity: item.quantity
@@ -2779,7 +2795,7 @@ async function loadOrders() {
 
   let query = supabase
     .from('orders')
-    .select('id, order_number, order_type, status, payment_method, payment_status, order_source, table_number, subtotal, total, created_at, outlet_id')
+    .select('id, order_number, token_number, order_type, status, payment_method, payment_status, order_source, table_number, customer_note, subtotal, total, created_at, outlet_id')
     .order('created_at', { ascending: false })
     .limit(100);
 
@@ -2832,6 +2848,9 @@ async function loadOrders() {
 
   state.orders = (orders || []).map(order => ({
     ...order,
+    database_order_number: order.order_number,
+    order_number: order.token_number || order.order_number,
+    ...parsePosCustomer(order.customer_note),
     order_status: order.status,
     total_amount: order.total,
     outlets: outletsById.get(order.outlet_id) || null,
@@ -2858,6 +2877,19 @@ function formatOrderDate(value) {
   });
 }
 
+function parsePosCustomer(value) {
+  if (!value) return { customer_name: '', customer_phone: '' };
+  try {
+    const customer = JSON.parse(value);
+    return {
+      customer_name: String(customer?.customerName || '').trim(),
+      customer_phone: String(customer?.customerPhone || '').trim()
+    };
+  } catch {
+    return { customer_name: '', customer_phone: '' };
+  }
+}
+
 function orderMatchesSearch(order, search) {
   if (!search) return true;
 
@@ -2865,6 +2897,8 @@ function orderMatchesSearch(order, search) {
   const outletName = String(order.outlets?.name || '').toLowerCase();
   const source = String(order.order_source || '').toLowerCase();
   const type = String(order.order_type || '').toLowerCase();
+  const customerName = String(order.customer_name || '').toLowerCase();
+  const customerPhone = String(order.customer_phone || '').toLowerCase();
   const itemNames = (order.order_items || [])
     .map(item => String(item.item_name || item.menu_items?.name || '').toLowerCase())
     .join(' ');
@@ -2874,6 +2908,8 @@ function orderMatchesSearch(order, search) {
     outletName.includes(search) ||
     source.includes(search) ||
     type.includes(search) ||
+    customerName.includes(search) ||
+    customerPhone.includes(search) ||
     itemNames.includes(search)
   );
 }
@@ -2918,6 +2954,8 @@ function renderOrderCards(orders, { archived = false } = {}) {
           <span>${escapeHtml(order.order_source || 'POS')}</span>
           <span>${escapeHtml(order.payment_method || 'CASH')}</span>
           ${order.table_number ? `<span>TABLE ${escapeHtml(order.table_number)}</span>` : ''}
+          ${order.customer_name ? `<span>${escapeHtml(order.customer_name)}</span>` : ''}
+          ${order.customer_phone ? `<span>${escapeHtml(order.customer_phone)}</span>` : ''}
           ${archived ? '<span>HISTORY</span>' : ''}
         </div>
 

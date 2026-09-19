@@ -144,6 +144,16 @@ export default async function handler(req, res) {
     const tableNumber = body.tableNumber == null || body.tableNumber === ""
       ? null
       : Number(body.tableNumber);
+    const customerName = String(body.customerName || "")
+      .replace(/[\u0000-\u001f\u007f]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 100);
+    const customerPhone = String(body.customerPhone || "")
+      .replace(/[\u0000-\u001f\u007f]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 20);
 
     const items = Array.isArray(body.items) ? body.items : [];
 
@@ -196,9 +206,15 @@ export default async function handler(req, res) {
       });
     }
 
+    if (customerPhone && !/^[0-9+()\-\s]{7,20}$/.test(customerPhone)) {
+      return res.status(400).json({
+        error: "Enter a valid mobile number or leave it blank"
+      });
+    }
+
     const { data: outlet, error: outletError } = await supabase
       .from("outlets")
-      .select("id,name,status")
+      .select("id,name,status,current_session_started_at")
       .eq("id", outletId)
       .single();
 
@@ -208,6 +224,10 @@ export default async function handler(req, res) {
 
     if (outlet.status !== "ACTIVE") {
       return res.status(400).json({ error: "Outlet is inactive" });
+    }
+
+    if (!outlet.current_session_started_at) {
+      return res.status(400).json({ error: "Start the outlet sales session before placing an order" });
     }
 
     const requestedIds = items
@@ -303,6 +323,38 @@ export default async function handler(req, res) {
       });
     }
 
+    const [sessionCountResult, latestTokenResult] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("outlet_id", outlet.id)
+        .gte("created_at", outlet.current_session_started_at),
+      supabase
+        .from("orders")
+        .select("token_number")
+        .eq("outlet_id", outlet.id)
+        .gte("created_at", outlet.current_session_started_at)
+        .not("token_number", "is", null)
+        .order("token_number", { ascending: false })
+        .limit(1)
+    ]);
+
+    if (sessionCountResult.error || latestTokenResult.error) {
+      console.error(
+        "POS session order number error",
+        sessionCountResult.error || latestTokenResult.error
+      );
+      return res.status(500).json({ error: "Unable to assign the session order number" });
+    }
+
+    const sessionOrderNumber = Math.max(
+      Number(sessionCountResult.count || 0),
+      Number(latestTokenResult.data?.[0]?.token_number || 0)
+    ) + 1;
+    const customerNote = customerName || customerPhone
+      ? JSON.stringify({ customerName, customerPhone })
+      : null;
+
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
@@ -317,11 +369,12 @@ export default async function handler(req, res) {
         discount: 0,
         total: subtotal,
         delivery_address: null,
-        customer_note: null,
+        customer_note: customerNote,
         order_source: orderSource,
-        table_number: orderType === "DINE_IN" ? tableNumber : null
+        table_number: orderType === "DINE_IN" ? tableNumber : null,
+        token_number: sessionOrderNumber
       })
-      .select("id,order_number,outlet_id,order_type,status,payment_method,payment_status,subtotal,total,table_number,order_source,created_at")
+      .select("id,order_number,token_number,outlet_id,order_type,status,payment_method,payment_status,subtotal,total,table_number,customer_note,order_source,created_at")
       .single();
 
     if (orderError) {
@@ -368,7 +421,13 @@ export default async function handler(req, res) {
 
     return res.status(201).json({
       success: true,
-      order,
+      order: {
+        ...order,
+        database_order_number: order.order_number,
+        order_number: order.token_number,
+        customer_name: customerName,
+        customer_phone: customerPhone
+      },
       outlet: {
         id: outlet.id,
         name: outlet.name
