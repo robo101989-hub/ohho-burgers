@@ -2757,6 +2757,7 @@ function wireDashboardActions() {
     renderReportDashboard();
   });
   $('#reportsExportBtn')?.addEventListener('click', exportSessionReports);
+  $('#reportsClearLogBtn')?.addEventListener('click', clearSelectedReportLogs);
 
   wirePosActions();
   wireOrdersActions();
@@ -3027,7 +3028,9 @@ function reportDateBounds() {
   if (range === 'CUSTOM') {
     const fromValue = $('#reportDateFrom')?.value;
     const toValue = $('#reportDateTo')?.value;
-    if (!fromValue || !toValue) return { start: null, end: null };
+    if (!fromValue || !toValue || fromValue > toValue) {
+      return { start: null, end: null, invalid: true };
+    }
     const start = new Date(`${fromValue}T00:00:00`);
     const end = new Date(`${toValue}T00:00:00`);
     end.setDate(end.getDate() + 1);
@@ -3041,7 +3044,8 @@ function reportDateBounds() {
 }
 
 function filteredSessionReports() {
-  const { start, end } = reportDateBounds();
+  const { start, end, invalid } = reportDateBounds();
+  if (invalid) return [];
   return (state.salesReports || []).filter(report => {
     const closedAt = new Date(report.closed_at).getTime();
     return (!start || closedAt >= start.getTime()) && (!end || closedAt < end.getTime());
@@ -3197,6 +3201,78 @@ function exportSessionReports() {
   URL.revokeObjectURL(url);
 }
 
+async function clearSelectedReportLogs() {
+  if (state.profile?.role !== 'ADMIN') {
+    toast('Admin access required.', 'bad');
+    return;
+  }
+
+  const reports = filteredSessionReports();
+  if (!reports.length) {
+    toast('There are no report logs in the selected range.', 'bad');
+    return;
+  }
+
+  const labels = {
+    TODAY: 'today',
+    '7_DAYS': 'the last 7 days',
+    CUSTOM: 'the custom date range',
+    ALL: 'all time'
+  };
+  const scope = state.selectedOutlet === 'ALL'
+    ? 'all outlets'
+    : (state.outlets.find(outlet => outlet.slug === state.selectedOutlet)?.name || 'this outlet');
+  const confirmed = window.confirm(
+    `Clear ${labels[state.reportRange] || 'the selected'} report logs for ${scope}?\n\nOrders, items, payments and order history will be kept.`
+  );
+  if (!confirmed) return;
+
+  const button = $('#reportsClearLogBtn');
+  if (!button) return;
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = 'CLEARING…';
+
+  try {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData?.session?.access_token) {
+      throw new Error('Your session has expired. Please log in again.');
+    }
+
+    const { start, end } = reportDateBounds();
+    const outlet = state.selectedOutlet === 'ALL'
+      ? null
+      : state.outlets.find(item => item.slug === state.selectedOutlet);
+    const response = await fetch('/api/reports', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session.access_token}`
+      },
+      body: JSON.stringify({
+        start: start?.toISOString() || null,
+        end: end?.toISOString() || null,
+        outletId: outlet?.id || null,
+        preserveSalesData: true
+      })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Unable to clear report logs.');
+
+    await loadReports();
+    toast(
+      `${Number(result.deletedReportCount || 0)} report log${Number(result.deletedReportCount || 0) === 1 ? '' : 's'} cleared. Sales data was kept.`,
+      'ok'
+    );
+  } catch (error) {
+    console.error('Unable to clear report logs:', error);
+    toast(error.message || 'Unable to clear report logs.', 'bad');
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
 async function loadReports() {
   await Promise.all([loadLegacyReports(), loadSalesReports()]);
   renderReportDashboard();
@@ -3284,6 +3360,11 @@ function applyRolePermissions() {
     const section = button.dataset.section;
     button.style.display = permissions.includes(section) ? '' : 'none';
   });
+
+  const clearReportLogButton = $('#reportsClearLogBtn');
+  if (clearReportLogButton) {
+    clearReportLogButton.style.display = role === 'ADMIN' ? '' : 'none';
+  }
 
   if (!permissions.includes(state.selectedSection || 'overview')) {
     state.selectedSection = permissions[0] || 'overview';
