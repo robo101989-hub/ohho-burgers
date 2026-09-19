@@ -215,8 +215,8 @@ export default async function handler(req, res) {
     if (body.zomatoUrl !== undefined) updates.zomato_url = safeUrl(body.zomatoUrl);
     if (body.swiggyUrl !== undefined) updates.swiggy_url = safeUrl(body.swiggyUrl);
     if (body.status !== undefined) {
-      if (profile.role !== "ADMIN") {
-        return res.status(403).json({ error: "Only Admin can change outlet status" });
+      if (!["ADMIN", "OWNER"].includes(profile.role)) {
+        return res.status(403).json({ error: "Admin or Owner access required" });
       }
       updates.status = body.status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
     }
