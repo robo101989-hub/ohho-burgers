@@ -2,7 +2,7 @@ import { supabase } from './supabase.js';
 
 const ROLE_PERMISSIONS = {
   ADMIN: ['overview', 'pos', 'orders', 'menu', 'outlets', 'staff', 'reports', 'settings'],
-  OWNER: ['overview', 'pos', 'orders', 'menu', 'reports'],
+  OWNER: ['overview', 'pos', 'orders', 'menu', 'outlets', 'reports'],
   MANAGER: ['overview', 'pos', 'orders', 'menu', 'reports'],
   STAFF: ['overview', 'pos', 'orders', 'menu']
 };
@@ -200,7 +200,7 @@ function injectStyles() {
 
     .outlet-grid{grid-template-columns:repeat(3,minmax(0,1fr));display:grid;gap:12px}
     .outlet-card{position:relative;min-height:205px;padding:18px;background:#0d0d0d;border:1px solid #242424;border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.2);overflow:hidden}.outlet-card:before{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,#ffd21c,transparent 58%)}
-    .outlet-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.outlet-status-control{display:flex;align-items:flex-end;flex-direction:column;gap:7px;flex:0 0 auto}.outlet-card h2{font-size:21px;letter-spacing:-.8px;margin:0}.outlet-status{font-size:8px;font-weight:950;letter-spacing:1px;padding:5px 7px;border-radius:6px;border:1px solid #253b25;color:#72d56b;background:#0d170d}.outlet-status.off{color:#ff8c8c;background:#1c0d0d;border-color:#482121}.outlet-admin-actions{display:flex;gap:8px;margin-top:12px}.outlet-toggle-btn,.order-delete-btn{border:1px solid #383838;background:#111;color:#eee;border-radius:8px;padding:8px 10px;font:900 8px var(--mono);letter-spacing:.7px;cursor:pointer}.outlet-toggle-btn:hover{border-color:#ffd21c;color:#ffd21c}.order-delete-btn{border-color:#552525;color:#ff8c8c;background:#190d0d}.order-delete-btn:hover{border-color:#ff6b6b;color:#fff}.outlet-toggle-btn:disabled,.order-delete-btn:disabled{opacity:.55;cursor:wait}
+    .outlet-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.outlet-status-control{display:flex;align-items:flex-end;flex-direction:column;gap:7px;flex:0 0 auto}.outlet-state-row{display:flex;align-items:center;justify-content:flex-end;gap:7px}.outlet-state-label{color:#666;font:900 7px var(--mono);letter-spacing:.8px}.outlet-card h2{font-size:21px;letter-spacing:-.8px;margin:0}.outlet-status{font-size:8px;font-weight:950;letter-spacing:1px;padding:5px 7px;border-radius:6px;border:1px solid #253b25;color:#72d56b;background:#0d170d}.outlet-status.off{color:#ff8c8c;background:#1c0d0d;border-color:#482121}.outlet-admin-actions{display:flex;gap:8px;margin-top:12px}.outlet-toggle-btn,.order-delete-btn{border:1px solid #383838;background:#111;color:#eee;border-radius:8px;padding:8px 10px;font:900 8px var(--mono);letter-spacing:.7px;cursor:pointer}.outlet-toggle-btn:hover{border-color:#ffd21c;color:#ffd21c}.order-delete-btn{border-color:#552525;color:#ff8c8c;background:#190d0d}.order-delete-btn:hover{border-color:#ff6b6b;color:#fff}.outlet-toggle-btn:disabled,.order-delete-btn:disabled{opacity:.55;cursor:wait}
     .outlet-address{color:#999;font-size:11px;line-height:1.5;margin:12px 0 11px;max-width:100%}.outlet-meta-row{display:flex;flex-wrap:wrap;gap:6px}.outlet-chip{border:1px solid #292929;background:#101010;color:#777;border-radius:7px;padding:6px 8px;font-size:8px;font-weight:800}.outlet-chip strong{color:#eee}
     .outlet-links{display:flex;gap:6px;margin-top:13px}.outlet-links button{border:1px solid #303030;background:#111;color:#ddd;border-radius:7px;padding:7px 9px;font-size:8px;font-weight:900}.outlet-links button:hover{border-color:#ffd21c;color:#ffd21c}
     .pos-outlet-toggle-btn{min-width:92px}.pos-outlet-toggle-btn.is-off{border-color:#5a2b2b!important;color:#ff8c8c!important;background:#190d0d!important}.pos-outlet-toggle-btn.is-on{border-color:#2f4f2f!important;color:#72d56b!important;background:#0d170d!important}
@@ -636,7 +636,8 @@ function buildOutletModal() {
           <div class="field"><label for="outletSlug">Slug</label><input id="outletSlug" name="slug" placeholder="kandhla"><div class="form-help">Leave blank to generate automatically.</div></div>
           <div class="field full"><label for="outletAddress">Full address</label><input id="outletAddress" name="address" placeholder="OHHO BURGERS, Main Market, Kandhla, Uttar Pradesh" required></div>
           <div class="field"><label for="outletPhone">Phone</label><input id="outletPhone" name="phone" inputmode="tel" placeholder="9650443642"></div>
-          <div class="field"><label for="outletStatus">Status</label><select id="outletStatus" name="status"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></div>
+          <div class="field"><label for="outletStatus">Initial POS session</label><select id="outletStatus" name="status"><option value="ACTIVE">OPEN</option><option value="INACTIVE">CLOSED</option></select></div>
+          <div class="field"><label for="outletWebsiteEnabled">Customer website</label><select id="outletWebsiteEnabled" name="websiteEnabled"><option value="true">VISIBLE</option><option value="false">HIDDEN</option></select></div>
           <div class="field"><label for="openingTime">Opening time</label><input id="openingTime" name="openingTime" type="time" value="17:00" required></div>
           <div class="field"><label for="closingTime">Closing time</label><input id="closingTime" name="closingTime" type="time" value="01:00" required></div>
           <div class="field"><label for="mapsUrl">Google Maps URL</label><input id="mapsUrl" name="mapsUrl" type="url" placeholder="https://maps.google.com/..."></div>
@@ -800,7 +801,7 @@ async function apiRequest(method, body = null) {
     if (method === 'GET') {
       const { data: outlets, error } = await supabase
         .from('outlets')
-        .select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at')
+        .select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,website_enabled,current_session_started_at,created_at,updated_at')
         .order('created_at', { ascending: true });
       if (error) throw new Error(error.message || 'Unable to load outlets.');
       return { outlets: outlets || [] };
@@ -845,7 +846,7 @@ async function loadOutlets() {
     // Supabase read path only during local development. Production API failures must surface.
     if (!import.meta.env.DEV) throw apiError;
 
-    const { data, error } = await supabase.from('outlets').select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at').order('created_at', { ascending: true });
+    const { data, error } = await supabase.from('outlets').select('id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,website_enabled,current_session_started_at,created_at,updated_at').order('created_at', { ascending: true });
     if (error) throw apiError;
     const allOutlets = data || [];
     state.outlets = state.profile?.role === 'ADMIN'
@@ -1253,12 +1254,12 @@ function updatePosOutletControl() {
   if (!outlet) return;
 
   const isActive = outlet.status === 'ACTIVE';
-  button.textContent = isActive ? 'OUTLET ON' : 'OUTLET OFF';
+  button.textContent = isActive ? 'POS SESSION ON' : 'POS SESSION OFF';
   button.classList.toggle('is-on', isActive);
   button.classList.toggle('is-off', !isActive);
   button.title = isActive
-    ? 'Click to turn this outlet off'
-    : 'Click to turn this outlet on';
+    ? 'Close this POS sales session'
+    : 'Start a new POS sales session';
 }
 
 function updatePosOutletName() {
@@ -1786,8 +1787,8 @@ function formatTime(value) {
 }
 
 async function toggleOutletStatus(outletId) {
-  if (state.profile?.role !== 'ADMIN') {
-    toast('Admin access required.', 'bad');
+  if (!['ADMIN', 'OWNER'].includes(state.profile?.role)) {
+    toast('Admin or Owner access required.', 'bad');
     return;
   }
 
@@ -1813,10 +1814,48 @@ async function toggleOutletStatus(outletId) {
     renderSettings();
     await loadOrders();
     await loadReports();
-    toast(`${payload.outlet.name} is now ${payload.outlet.status}.`, 'ok');
+    toast(
+      nextStatus === 'ACTIVE'
+        ? `${payload.outlet.name} POS session started.`
+        : `${payload.outlet.name} POS session closed and report generated.`,
+      'ok'
+    );
   } catch (error) {
     console.error('Unable to change outlet status:', error);
     toast(error.message || 'Unable to change outlet status.', 'bad');
+  }
+}
+
+async function toggleWebsiteAvailability(outletId) {
+  if (!['ADMIN', 'OWNER'].includes(state.profile?.role)) {
+    toast('Admin or Owner access required.', 'bad');
+    return;
+  }
+
+  const outlet = state.outlets.find(item => item.id === outletId);
+  if (!outlet) return;
+
+  const nextWebsiteEnabled = outlet.website_enabled !== true;
+
+  try {
+    const payload = await apiRequest('PATCH', {
+      id: outlet.id,
+      websiteEnabled: nextWebsiteEnabled
+    });
+
+    state.outlets = state.outlets.map(item =>
+      item.id === outlet.id ? payload.outlet : item
+    );
+
+    renderOutletCards();
+    renderSettings();
+    toast(
+      `${payload.outlet.name} is now ${nextWebsiteEnabled ? 'visible on' : 'hidden from'} the customer website.`,
+      'ok'
+    );
+  } catch (error) {
+    console.error('Unable to change website availability:', error);
+    toast(error.message || 'Unable to change website availability.', 'bad');
   }
 }
 
@@ -1841,10 +1880,11 @@ function renderOutletCards() {
       <div class="outlet-card-top">
         <div><div class="card-kicker">OHHO Outlet</div><h2>${escapeHtml(outlet.name)}</h2></div>
         <div class="outlet-status-control">
-          <span class="outlet-status ${outlet.status !== 'ACTIVE' ? 'off' : ''}">${escapeHtml(outlet.status)}</span>
-          ${state.profile?.role === 'ADMIN' ? `
-            <button type="button" class="outlet-toggle-btn" data-outlet-toggle="${escapeHtml(outlet.id)}">
-              ${outlet.status === 'ACTIVE' ? 'TURN OFF' : 'TURN ON'}
+          <div class="outlet-state-row"><span class="outlet-state-label">POS</span><span class="outlet-status ${outlet.status !== 'ACTIVE' ? 'off' : ''}">${outlet.status === 'ACTIVE' ? 'SESSION OPEN' : 'SESSION CLOSED'}</span></div>
+          <div class="outlet-state-row"><span class="outlet-state-label">WEBSITE</span><span class="outlet-status ${outlet.website_enabled !== true ? 'off' : ''}">${outlet.website_enabled === true ? 'VISIBLE' : 'HIDDEN'}</span></div>
+          ${['ADMIN', 'OWNER'].includes(state.profile?.role) ? `
+            <button type="button" class="outlet-toggle-btn" data-website-toggle="${escapeHtml(outlet.id)}">
+              ${outlet.website_enabled === true ? 'HIDE ON WEBSITE' : 'SHOW ON WEBSITE'}
             </button>
           ` : ''}
         </div>
@@ -1862,9 +1902,9 @@ function renderOutletCards() {
       </div>
     </article>`).join('');
   $$('[data-url]', grid).forEach(button => button.addEventListener('click', () => window.open(button.dataset.url, '_blank', 'noopener,noreferrer')));
-  $$('[data-outlet-toggle]', grid).forEach(button => button.addEventListener('click', async () => {
+  $$('[data-website-toggle]', grid).forEach(button => button.addEventListener('click', async () => {
     button.disabled = true;
-    await toggleOutletStatus(button.dataset.outletToggle);
+    await toggleWebsiteAvailability(button.dataset.websiteToggle);
   }));
 }
 
@@ -4046,6 +4086,11 @@ function applyRolePermissions() {
   const clearReportLogButton = $('#reportsClearLogBtn');
   if (clearReportLogButton) {
     clearReportLogButton.style.display = role === 'ADMIN' ? '' : 'none';
+  }
+
+  const addOutletButton = $('#addNewOutletBtn');
+  if (addOutletButton) {
+    addOutletButton.style.display = role === 'ADMIN' ? '' : 'none';
   }
 
   if (!permissions.includes(state.selectedSection || 'overview')) {

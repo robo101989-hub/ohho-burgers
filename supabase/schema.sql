@@ -18,6 +18,7 @@ create table outlets (
   zomato_url text,
   swiggy_url text,
   status outlet_status not null default 'ACTIVE',
+  website_enabled boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

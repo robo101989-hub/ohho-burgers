@@ -59,9 +59,9 @@ export default async function handler(req, res) {
 
     const { data: outletRecord, error: outletError } = await supabase
       .from("outlets")
-      .select("id,name,status")
+      .select("id,name,website_enabled")
       .eq("slug", outletSlug)
-      .eq("status", "ACTIVE")
+      .eq("website_enabled", true)
       .single();
 
     if (outletError || !outletRecord) {

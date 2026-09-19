@@ -28,8 +28,8 @@ async function loadLocations() {
 
   const { data, error } = await supabase
     .from("outlets")
-    .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status")
-    .eq("status", "ACTIVE")
+    .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,website_enabled")
+    .eq("website_enabled", true)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -39,7 +39,7 @@ async function loadLocations() {
   }
 
   if (!data?.length) {
-    grid.innerHTML = '<p class="location-error">No active outlets available.</p>';
+    grid.innerHTML = '<p class="location-error">No outlets are currently available on the website.</p>';
     return;
   }
 

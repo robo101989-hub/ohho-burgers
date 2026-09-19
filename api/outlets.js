@@ -85,7 +85,7 @@ export default async function handler(req, res) {
     if (req.method === "GET") {
       let query = supabase
         .from("outlets")
-        .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at")
+        .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,website_enabled,current_session_started_at,created_at,updated_at")
         .order("created_at", { ascending: true });
 
       if (profile.role === "OWNER") {
@@ -143,9 +143,10 @@ export default async function handler(req, res) {
           zomato_url: safeUrl(body.zomatoUrl),
           swiggy_url: safeUrl(body.swiggyUrl),
           status: body.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+          website_enabled: body.websiteEnabled !== false && body.websiteEnabled !== "false",
           current_session_started_at: body.status === "INACTIVE" ? null : new Date().toISOString()
         })
-        .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at")
+        .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,website_enabled,current_session_started_at,created_at,updated_at")
         .single();
 
       if (outletError) {
@@ -225,6 +226,9 @@ export default async function handler(req, res) {
     if (body.mapsUrl !== undefined) updates.maps_url = safeUrl(body.mapsUrl);
     if (body.zomatoUrl !== undefined) updates.zomato_url = safeUrl(body.zomatoUrl);
     if (body.swiggyUrl !== undefined) updates.swiggy_url = safeUrl(body.swiggyUrl);
+    if (body.websiteEnabled !== undefined) {
+      updates.website_enabled = body.websiteEnabled === true || body.websiteEnabled === "true";
+    }
     if (body.status !== undefined) {
       if (!["ADMIN", "OWNER"].includes(profile.role)) {
         return res.status(403).json({ error: "Admin or Owner access required" });
@@ -342,7 +346,7 @@ export default async function handler(req, res) {
       .from("outlets")
       .update(updates)
       .eq("id", id)
-      .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at")
+      .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,website_enabled,current_session_started_at,created_at,updated_at")
       .single();
 
     if (error || !outlet) return res.status(404).json({ error: "Outlet not found" });
