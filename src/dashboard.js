@@ -180,6 +180,7 @@ function injectStyles() {
     .outlet-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.outlet-status-control{display:flex;align-items:flex-end;flex-direction:column;gap:7px;flex:0 0 auto}.outlet-card h2{font-size:21px;letter-spacing:-.8px;margin:0}.outlet-status{font-size:8px;font-weight:950;letter-spacing:1px;padding:5px 7px;border-radius:6px;border:1px solid #253b25;color:#72d56b;background:#0d170d}.outlet-status.off{color:#ff8c8c;background:#1c0d0d;border-color:#482121}.outlet-admin-actions{display:flex;gap:8px;margin-top:12px}.outlet-toggle-btn,.order-delete-btn{border:1px solid #383838;background:#111;color:#eee;border-radius:8px;padding:8px 10px;font:900 8px var(--mono);letter-spacing:.7px;cursor:pointer}.outlet-toggle-btn:hover{border-color:#ffd21c;color:#ffd21c}.order-delete-btn{border-color:#552525;color:#ff8c8c;background:#190d0d}.order-delete-btn:hover{border-color:#ff6b6b;color:#fff}.outlet-toggle-btn:disabled,.order-delete-btn:disabled{opacity:.55;cursor:wait}
     .outlet-address{color:#999;font-size:11px;line-height:1.5;margin:12px 0 11px;max-width:100%}.outlet-meta-row{display:flex;flex-wrap:wrap;gap:6px}.outlet-chip{border:1px solid #292929;background:#101010;color:#777;border-radius:7px;padding:6px 8px;font-size:8px;font-weight:800}.outlet-chip strong{color:#eee}
     .outlet-links{display:flex;gap:6px;margin-top:13px}.outlet-links button{border:1px solid #303030;background:#111;color:#ddd;border-radius:7px;padding:7px 9px;font-size:8px;font-weight:900}.outlet-links button:hover{border-color:#ffd21c;color:#ffd21c}
+    .pos-outlet-toggle-btn{min-width:92px}.pos-outlet-toggle-btn.is-off{border-color:#5a2b2b!important;color:#ff8c8c!important;background:#190d0d!important}.pos-outlet-toggle-btn.is-on{border-color:#2f4f2f!important;color:#72d56b!important;background:#0d170d!important}
     .outlet-empty{grid-column:1/-1;border:1px dashed #303030;border-radius:14px;min-height:220px;display:grid;place-items:center;text-align:center;color:#777;padding:30px}.outlet-empty strong{display:block;color:#eee;font-size:15px}.outlet-empty span{display:block;font-size:11px;margin-top:6px}
     .modal-backdrop{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;padding:20px}.modal-backdrop.open{display:flex}
     .modal{width:min(680px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#0d0d0d;border:1px solid #303030;border-radius:18px;box-shadow:0 30px 90px rgba(0,0,0,.55)}
@@ -458,8 +459,8 @@ function updateStaffOutletVisibility() {
 }
 
 function openStaffModal(member = null) {
-  if (state.profile?.role !== 'ADMIN') {
-    toast('Admin access required.', 'bad');
+  if (!['ADMIN', 'OWNER'].includes(state.profile?.role)) {
+    toast('Admin or Owner access required.', 'bad');
     return;
   }
 
@@ -1192,12 +1193,33 @@ function renderPosMenu() {
   });
 }
 
+function updatePosOutletControl() {
+  const button = $('#posOutletToggleBtn');
+  if (!button) return;
+
+  const canControl = ['ADMIN', 'OWNER'].includes(state.profile?.role);
+  const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
+
+  button.hidden = !canControl || !outlet;
+
+  if (!outlet) return;
+
+  const isActive = outlet.status === 'ACTIVE';
+  button.textContent = isActive ? 'OUTLET ON' : 'OUTLET OFF';
+  button.classList.toggle('is-on', isActive);
+  button.classList.toggle('is-off', !isActive);
+  button.title = isActive
+    ? 'Click to turn this outlet off'
+    : 'Click to turn this outlet on';
+}
+
 function updatePosOutletName() {
   const node = $('#posOutletName');
   if (!node) return;
 
   const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
   node.textContent = outlet ? outlet.name : 'All Outlets';
+  updatePosOutletControl();
 }
 
 function addPosItem(menuItemId) {
@@ -1471,6 +1493,22 @@ async function printOhhoReceipt(order, outlet, cart) {
 function wirePosActions() {
   $('#posPrinterBtn')?.addEventListener('click', connectOhhoPrinter);
 
+  $('#posOutletToggleBtn')?.addEventListener('click', async () => {
+    const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
+
+    if (!outlet) {
+      toast('Select a specific outlet first.', 'bad');
+      return;
+    }
+
+    const button = $('#posOutletToggleBtn');
+    if (button) button.disabled = true;
+
+    await toggleOutletStatus(outlet.id);
+
+    if (button) button.disabled = false;
+  });
+
 
   $$('.pos-type-btn').forEach(button => {
     button.addEventListener('click', () => {
@@ -1627,7 +1665,7 @@ async function toggleOutletStatus(outletId) {
     renderOutletCards();
     renderOutletSelector();
     renderOverviewOutlets();
-    renderPosOutletOptions?.();
+    updatePosOutletName();
     toast(`${payload.outlet.name} is now ${payload.outlet.status}.`, 'ok');
   } catch (error) {
     console.error('Unable to change outlet status:', error);
