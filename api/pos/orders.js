@@ -331,6 +331,10 @@ export default async function handler(req, res) {
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 20);
+    const spinRewardCode = String(body.spinRewardCode || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9-]/g, "");
 
     const items = Array.isArray(body.items) ? body.items : [];
 
@@ -532,6 +536,26 @@ export default async function handler(req, res) {
       ? JSON.stringify({ customerName, customerPhone })
       : null;
 
+    let spinReward = null;
+    let spinDiscount = 0;
+    if (spinRewardCode) {
+      const { data: reward, error: rewardError } = await supabase
+        .from("spin_rewards")
+        .select("id,code,label,reward_type,reward_value,status,expires_at")
+        .eq("outlet_id", outlet.id)
+        .eq("code", spinRewardCode)
+        .maybeSingle();
+      if (rewardError || !reward || reward.status !== "ISSUED") return res.status(400).json({ error: "Spin & Win reward is not available" });
+      if (new Date(reward.expires_at).getTime() < Date.now()) {
+        await supabase.from("spin_rewards").update({ status: "EXPIRED" }).eq("id", reward.id).eq("status", "ISSUED");
+        return res.status(400).json({ error: "Spin & Win reward has expired" });
+      }
+      if (reward.reward_type === "PERCENT") spinDiscount = Math.round((subtotal * Number(reward.reward_value || 0)) / 100);
+      if (reward.reward_type === "FLAT") spinDiscount = Number(reward.reward_value || 0);
+      spinDiscount = Math.max(0, Math.min(subtotal, spinDiscount));
+      spinReward = reward;
+    }
+
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
@@ -543,8 +567,8 @@ export default async function handler(req, res) {
         payment_status: "PAID",
         subtotal,
         delivery_fee: 0,
-        discount: 0,
-        total: subtotal,
+        discount: spinDiscount,
+        total: Math.max(0, subtotal - spinDiscount),
         delivery_address: null,
         customer_note: customerNote,
         order_source: orderSource,
@@ -596,6 +620,20 @@ export default async function handler(req, res) {
       });
     }
 
+    if (spinReward) {
+      const { data: redeemed, error: redeemError } = await supabase
+        .from("spin_rewards")
+        .update({ status: "REDEEMED", redeemed_at: new Date().toISOString(), redeemed_order_id: order.id })
+        .eq("id", spinReward.id)
+        .eq("status", "ISSUED")
+        .select("id")
+        .maybeSingle();
+      if (redeemError || !redeemed) {
+        await supabase.from("orders").delete().eq("id", order.id);
+        return res.status(409).json({ error: "This Spin & Win reward was just used. Please create the order again." });
+      }
+    }
+
     return res.status(201).json({
       success: true,
       order: {
@@ -603,7 +641,8 @@ export default async function handler(req, res) {
         database_order_number: order.order_number,
         order_number: order.token_number,
         customer_name: customerName,
-        customer_phone: customerPhone
+        customer_phone: customerPhone,
+        spin_reward: spinReward ? { code: spinReward.code, label: spinReward.label, discount: spinDiscount } : null
       },
       outlet: {
         id: outlet.id,

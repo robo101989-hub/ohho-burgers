@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ffd21c" />
+  <title>Spin & Win | OHHO Burgers</title>
+  <link rel="stylesheet" href="spin.css" />
+</head>
+<body>
+  <main class="spin-page">
+    <a class="brand" href="/">OHHO <span>BURGERS</span></a>
+    <p class="eyebrow">PHYSICAL CART REWARD</p>
+    <h1>SPIN FOR<br><em>HAPPINESS.</em></h1>
+    <p id="outletName" class="outlet">Loading your OHHO cart…</p>
+    <section class="wheel-card" aria-live="polite">
+      <div class="pointer">▼</div>
+      <div id="wheel" class="wheel"><div class="wheel-core">OHHO<br><span>SPIN</span></div></div>
+      <button id="spinButton" type="button" disabled>SPIN &amp; WIN <b>↻</b></button>
+      <p id="spinMessage" class="message">Open this page by scanning the QR at an OHHO cart.</p>
+    </section>
+    <section id="rewardCard" class="reward-card hidden">
+      <p>YOUR CART REWARD</p><strong id="rewardLabel">—</strong>
+      <code id="rewardCode">—</code>
+      <small>Show this code to the OHHO team before payment. Valid for 30 minutes.</small>
+    </section>
+    <p class="fine-print">One spin per phone, per cart, each day. Cannot be exchanged for cash.</p>
+  </main>
+  <script type="module" src="spin.js"></script>
+</body>
+</html>

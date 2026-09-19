@@ -16,7 +16,8 @@ export default defineConfig({
         locationsApp: resolve(process.cwd(), 'src/locations.js'),
         privacy: resolve(process.cwd(), 'privacy.html'),
         refunds: resolve(process.cwd(), 'refunds.html'),
-        terms: resolve(process.cwd(), 'terms.html')
+        terms: resolve(process.cwd(), 'terms.html'),
+        spin: resolve(process.cwd(), 'spin.html')
       }
     }
   }
