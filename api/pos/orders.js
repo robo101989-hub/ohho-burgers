@@ -140,6 +140,7 @@ export default async function handler(req, res) {
     if (!user) return;
     const orderType = String(body.orderType || "").trim().toUpperCase();
     const paymentMethod = String(body.paymentMethod || "").trim().toUpperCase();
+    const orderSource = String(body.orderSource || "POS").trim().toUpperCase();
     const tableNumber = body.tableNumber == null || body.tableNumber === ""
       ? null
       : Number(body.tableNumber);
@@ -170,7 +171,17 @@ export default async function handler(req, res) {
       });
     }
 
-    if (!["CASH", "UPI", "CARD"].includes(paymentMethod)) {
+    if (!["POS", "FAMILY_FRIENDS"].includes(orderSource)) {
+      return res.status(400).json({
+        error: "Invalid order category"
+      });
+    }
+
+    const expectedPaymentMethods = orderSource === "FAMILY_FRIENDS"
+      ? ["COMPLIMENTARY"]
+      : ["CASH", "UPI", "CARD"];
+
+    if (!expectedPaymentMethods.includes(paymentMethod)) {
       return res.status(400).json({
         error: "Invalid payment method"
       });
@@ -307,7 +318,7 @@ export default async function handler(req, res) {
         total: subtotal,
         delivery_address: null,
         customer_note: null,
-        order_source: "POS",
+        order_source: orderSource,
         table_number: orderType === "DINE_IN" ? tableNumber : null
       })
       .select("id,order_number,outlet_id,order_type,status,payment_method,payment_status,subtotal,total,table_number,order_source,created_at")

@@ -253,9 +253,13 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: "Unable to close outlet sales session" });
           }
 
-          const saleOrders = (sessionOrders || []).filter(order =>
+          const completedOrders = (sessionOrders || []).filter(order =>
             order.payment_status === "PAID" &&
             order.status !== "CANCELLED"
+          );
+
+          const saleOrders = completedOrders.filter(order =>
+            order.payment_method !== "COMPLIMENTARY"
           );
 
           const orderIds = saleOrders.map(order => order.id);
@@ -324,7 +328,7 @@ export default async function handler(req, res) {
       .from("outlets")
       .update(updates)
       .eq("id", id)
-      .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at,updated_at")
+      .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,current_session_started_at,created_at,updated_at")
       .single();
 
     if (error || !outlet) return res.status(404).json({ error: "Outlet not found" });

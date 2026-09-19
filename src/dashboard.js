@@ -15,6 +15,7 @@ const state = {
   selectedOutlet: 'ALL',
   orders: [],
   salesReports: [],
+  reportOrders: [],
   pos: {
     items: [],
     categories: [],
@@ -22,6 +23,7 @@ const state = {
     orderType: 'TAKEAWAY',
     tableNumber: '',
     paymentMethod: 'CASH',
+    orderSource: 'POS',
     cart: []
   }
 };
@@ -1320,6 +1322,7 @@ function resetPosOrder() {
   state.pos.orderType = 'TAKEAWAY';
   state.pos.tableNumber = '';
   state.pos.paymentMethod = 'CASH';
+  state.pos.orderSource = 'POS';
 
   $$('.pos-type-btn').forEach(button =>
     button.classList.toggle('active', button.dataset.orderType === 'TAKEAWAY')
@@ -1327,6 +1330,12 @@ function resetPosOrder() {
   $$('.pos-payment-btn').forEach(button =>
     button.classList.toggle('active', button.dataset.payment === 'CASH')
   );
+  $$('.pos-source-card').forEach(button =>
+    button.classList.toggle('active', button.dataset.orderSource === 'POS')
+  );
+
+  $('#posPaymentGrid')?.classList.remove('is-locked');
+  $('#posComplimentaryNote')?.classList.add('hidden');
 
   const tableWrap = $('#posTableWrap');
   const tableInput = $('#posTableNumber');
@@ -1407,6 +1416,7 @@ function buildOhhoReceipt(order, outlet, cart) {
     '==============================',
     `ORDER #${order?.order_number || ''}`,
     `TYPE: ${orderType}`,
+    `CATEGORY: ${String(order?.order_source || 'POS').replaceAll('_', ' ')}`,
     ...(orderType === 'DINE_IN' && order?.table_number
       ? [`TABLE: ${order.table_number}`]
       : []),
@@ -1536,6 +1546,27 @@ function wirePosActions() {
     });
   });
 
+  $$('.pos-source-card').forEach(button => {
+    button.addEventListener('click', () => {
+      const source = button.dataset.orderSource;
+      state.pos.orderSource = source;
+      $$('.pos-source-card').forEach(card =>
+        card.classList.toggle('active', card === button)
+      );
+
+      const complimentary = source === 'FAMILY_FRIENDS';
+      state.pos.paymentMethod = complimentary ? 'COMPLIMENTARY' : 'CASH';
+      $$('.pos-payment-btn').forEach(paymentButton =>
+        paymentButton.classList.toggle(
+          'active',
+          !complimentary && paymentButton.dataset.payment === 'CASH'
+        )
+      );
+      $('.pos-payment-grid')?.classList.toggle('is-locked', complimentary);
+      $('#posComplimentaryNote')?.classList.toggle('hidden', !complimentary);
+    });
+  });
+
   $('#posTableNumber')?.addEventListener('input', event => {
     state.pos.tableNumber = event.target.value;
   });
@@ -1583,6 +1614,7 @@ function wirePosActions() {
               ? Number(state.pos.tableNumber)
               : null,
           paymentMethod: state.pos.paymentMethod,
+          orderSource: state.pos.orderSource,
           items: state.pos.cart.map(item => ({
             menuItemId: item.id,
             quantity: item.quantity
@@ -1670,7 +1702,7 @@ async function toggleOutletStatus(outletId) {
     renderOverviewOutlets();
     updatePosOutletName();
     await loadOrders();
-    await loadSalesReports();
+    await loadReports();
     toast(`${payload.outlet.name} is now ${payload.outlet.status}.`, 'ok');
   } catch (error) {
     console.error('Unable to change outlet status:', error);
@@ -1753,7 +1785,7 @@ function renderOutletSelector() {
     try {
       await loadPosMenu();
       await loadOrders();
-      await loadSalesReports();
+      await loadReports();
     } catch (error) {
       console.error('Unable to refresh POS menu:', error);
       toast(error.message || 'Unable to load POS menu.', 'bad');
@@ -2652,6 +2684,12 @@ function wireDashboardActions() {
     $$('.nav-btn').forEach(navButton => navButton.classList.toggle('active', navButton.dataset.section === id));
     state.selectedSection = id;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (id === 'reports') {
+      loadReports().catch(error => {
+        console.error('Unable to refresh reports:', error);
+        toast(error.message || 'Unable to refresh reports.', 'bad');
+      });
+    }
   }));
 
   $$('[data-section="outlets"], .action-outlet').forEach(button => button.addEventListener('click', openOutletSection));
@@ -2689,7 +2727,9 @@ function wireDashboardActions() {
   $('#staffSearch')?.addEventListener('input', renderStaffList);
   $('#staffRoleFilter')?.addEventListener('change', renderStaffList);
   $('#staffOutletFilter')?.addEventListener('change', renderStaffList);
-  $('#reportsRefreshBtn')?.addEventListener('click', loadSalesReports);
+  $('#reportsRefreshBtn')?.addEventListener('click', loadReports);
+  $('#legacyReportRange')?.addEventListener('change', renderLegacyReports);
+  $('#reportsExportBtn')?.addEventListener('click', exportLegacyReports);
 
   wirePosActions();
   wireOrdersActions();
@@ -2901,7 +2941,12 @@ function renderOrders() {
   );
 
   const sessionSales = currentSessionOrders
-    .filter(order => order.payment_status === 'PAID' && order.order_status !== 'CANCELLED')
+    .filter(order =>
+      order.payment_status === 'PAID' &&
+      order.order_status !== 'CANCELLED' &&
+      order.payment_method !== 'COMPLIMENTARY' &&
+      order.order_source !== 'FAMILY_FRIENDS'
+    )
     .reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
 
   const liveCount = $('#ordersLiveCount');
@@ -2916,6 +2961,209 @@ function renderOrders() {
   if (historyBoard) {
     historyBoard.innerHTML = renderOrderCards(filteredHistory, { archived: true });
   }
+}
+
+function legacyReportStart(range) {
+  if (range === 'ALL') return null;
+
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  if (range === '7_DAYS') start.setDate(start.getDate() - 6);
+  if (range === '30_DAYS') start.setDate(start.getDate() - 29);
+
+  return start;
+}
+
+function filteredLegacyReportOrders() {
+  const range = $('#legacyReportRange')?.value || 'TODAY';
+  const start = legacyReportStart(range);
+
+  return (state.reportOrders || []).filter(order =>
+    !start || new Date(order.created_at).getTime() >= start.getTime()
+  );
+}
+
+function isFamilyFriendsOrder(order) {
+  return (
+    order.order_source === 'FAMILY_FRIENDS' ||
+    order.payment_method === 'COMPLIMENTARY'
+  );
+}
+
+function isReportableOrder(order) {
+  return order.status !== 'CANCELLED' && order.payment_status === 'PAID';
+}
+
+function formatReportMoney(value) {
+  return `₹${Number(value || 0).toLocaleString('en-IN')}`;
+}
+
+function renderLegacyReports() {
+  const outletList = $('#legacyOutletReports');
+  if (!outletList) return;
+
+  const orders = filteredLegacyReportOrders().filter(isReportableOrder);
+  const paidOrders = orders.filter(order => !isFamilyFriendsOrder(order));
+  const familyOrders = orders.filter(isFamilyFriendsOrder);
+  const sum = rows => rows.reduce((total, order) => total + Number(order.total || 0), 0);
+
+  const paidSales = sum(paidOrders);
+  const familyValue = sum(familyOrders);
+  const itemsSold = paidOrders.reduce(
+    (total, order) => total + Number(order.item_count || 0),
+    0
+  );
+
+  const paidSalesNode = $('#legacyPaidSales');
+  const paidOrdersNode = $('#legacyPaidOrders');
+  const itemsSoldNode = $('#legacyItemsSold');
+  const familyValueNode = $('#legacyComplimentaryValue');
+  const complimentaryOrdersNode = $('#legacyComplimentaryOrders');
+
+  if (paidSalesNode) paidSalesNode.textContent = formatReportMoney(paidSales);
+  if (paidOrdersNode) paidOrdersNode.textContent = String(paidOrders.length);
+  if (itemsSoldNode) itemsSoldNode.textContent = String(itemsSold);
+  if (familyValueNode) familyValueNode.textContent = formatReportMoney(familyValue);
+  if (complimentaryOrdersNode) {
+    complimentaryOrdersNode.textContent = `${familyOrders.length} order${familyOrders.length === 1 ? '' : 's'}`;
+  }
+
+  ['CASH', 'UPI', 'CARD'].forEach(method => {
+    const node = $(`#legacy${method[0]}${method.slice(1).toLowerCase()}Sales`);
+    const total = sum(paidOrders.filter(order => order.payment_method === method));
+    if (node) node.textContent = formatReportMoney(total);
+  });
+
+  const outletsById = new Map(state.outlets.map(outlet => [outlet.id, outlet]));
+  const rowsByOutlet = new Map();
+
+  orders.forEach(order => {
+    if (!rowsByOutlet.has(order.outlet_id)) rowsByOutlet.set(order.outlet_id, []);
+    rowsByOutlet.get(order.outlet_id).push(order);
+  });
+
+  if (!rowsByOutlet.size) {
+    outletList.innerHTML = '<div class="orders-empty"><strong>No sales in this period</strong><span>Choose another date range or create a POS order.</span></div>';
+    return;
+  }
+
+  outletList.innerHTML = [...rowsByOutlet.entries()].map(([outletId, outletOrders]) => {
+    const paid = outletOrders.filter(order => !isFamilyFriendsOrder(order));
+    const family = outletOrders.filter(isFamilyFriendsOrder);
+    const itemCount = paid.reduce(
+      (total, order) => total + Number(order.item_count || 0),
+      0
+    );
+
+    return `
+      <div class="report-outlet-row">
+        <strong>${escapeHtml(outletsById.get(outletId)?.name || 'OHHO Outlet')}</strong>
+        <span>${paid.length} paid order${paid.length === 1 ? '' : 's'}</span>
+        <span>${itemCount} item${itemCount === 1 ? '' : 's'}</span>
+        <span>${family.length} complimentary</span>
+        <span class="money">${formatReportMoney(sum(paid))}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadLegacyReports() {
+  const outletList = $('#legacyOutletReports');
+  if (!outletList) return;
+
+  outletList.innerHTML = '<div class="orders-loading">Loading sales overview…</div>';
+
+  let query = supabase
+    .from('orders')
+    .select('id,order_number,outlet_id,status,payment_method,payment_status,order_source,total,created_at')
+    .order('created_at', { ascending: false })
+    .limit(1000);
+
+  if (state.selectedOutlet !== 'ALL') {
+    const outlet = state.outlets.find(item => item.slug === state.selectedOutlet);
+    if (outlet?.id) query = query.eq('outlet_id', outlet.id);
+  }
+
+  const { data: orders, error } = await query;
+
+  if (error) {
+    console.error('Unable to load sales overview:', error);
+    outletList.innerHTML = '<div class="orders-empty"><strong>Unable to load sales overview</strong><span>Please refresh and try again.</span></div>';
+    return;
+  }
+
+  const itemCounts = new Map();
+  const orderIds = (orders || []).map(order => order.id);
+
+  for (let index = 0; index < orderIds.length; index += 200) {
+    const { data: items, error: itemsError } = await supabase
+      .from('order_items')
+      .select('order_id,quantity')
+      .in('order_id', orderIds.slice(index, index + 200));
+
+    if (itemsError) {
+      console.error('Unable to load report item totals:', itemsError);
+      continue;
+    }
+
+    (items || []).forEach(item => {
+      itemCounts.set(
+        item.order_id,
+        Number(itemCounts.get(item.order_id) || 0) + Number(item.quantity || 0)
+      );
+    });
+  }
+
+  state.reportOrders = (orders || []).map(order => ({
+    ...order,
+    item_count: itemCounts.get(order.id) || 0
+  }));
+
+  renderLegacyReports();
+}
+
+function csvCell(value) {
+  let text = String(value ?? '');
+  if (/^[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+function exportLegacyReports() {
+  const outletsById = new Map(state.outlets.map(outlet => [outlet.id, outlet]));
+  const orders = filteredLegacyReportOrders().filter(isReportableOrder);
+
+  if (!orders.length) {
+    toast('There are no sales to export for this period.', 'bad');
+    return;
+  }
+
+  const rows = [
+    ['Order Number', 'Created At', 'Outlet', 'Category', 'Payment', 'Items', 'Amount'],
+    ...orders.map(order => [
+      order.order_number,
+      new Date(order.created_at).toLocaleString(),
+      outletsById.get(order.outlet_id)?.name || 'OHHO Outlet',
+      isFamilyFriendsOrder(order) ? 'Family & Friends' : 'Regular Sale',
+      order.payment_method,
+      order.item_count,
+      Number(order.total || 0).toFixed(2)
+    ])
+  ];
+
+  const csv = rows.map(row => row.map(csvCell).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `ohho-sales-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function loadReports() {
+  await Promise.all([loadLegacyReports(), loadSalesReports()]);
 }
 
 async function loadSalesReports() {
@@ -3042,7 +3290,7 @@ async function startApp(session) {
     await loadMenuManagement();
     await loadPosMenu();
     await loadOrders();
-    await loadSalesReports();
+    await loadReports();
   } catch (error) {
     await supabase.auth.signOut();
     setAuthError(error.message || 'Unable to authorize this account.');
