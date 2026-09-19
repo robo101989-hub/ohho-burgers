@@ -21,6 +21,10 @@ const state = {
   ordersArchiveOpen: false,
   liveRefreshTimer: null,
   liveRefreshBusy: false,
+  orderEdit: {
+    orderId: null,
+    items: []
+  },
   pos: {
     items: [],
     categories: [],
@@ -106,6 +110,8 @@ function injectStyles() {
     .order-action-btn:hover{transform:translateY(-1px);background:#ffe04a}
     .order-action-btn:active{transform:translateY(0)}
     .order-action-done{margin-top:15px;padding:10px 12px;text-align:center;border:1px solid #242424;border-radius:9px;color:#555;font:800 8px var(--mono);letter-spacing:1px}
+    .order-edit-btn{width:100%;margin-top:10px;border:1px solid #3a3a3a;background:#131313;color:#eee;border-radius:9px;padding:10px 12px;font:900 8px var(--mono);letter-spacing:.7px}.order-edit-btn:hover{border-color:#ffd21c;color:#ffd21c}
+    .order-edit-list{display:grid;gap:7px}.order-edit-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:11px 12px;border:1px solid #292929;border-radius:9px;background:#101010}.order-edit-row strong{display:block;font-size:11px}.order-edit-row small{display:block;margin-top:4px;color:#777;font-size:9px}.order-edit-qty{display:flex;align-items:center;gap:6px}.order-edit-qty button,.order-edit-remove{width:28px;height:28px;border:1px solid #343434;border-radius:6px;background:#171717;color:#eee;font-weight:900}.order-edit-qty span{min-width:22px;text-align:center;font:900 10px var(--mono)}.order-edit-remove{color:#ff8c8c;border-color:#4b2828}.order-edit-add{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:12px}.order-edit-add select{min-width:0;background:#0b0b0b;border:1px solid #303030;color:#eee;border-radius:8px;padding:10px;font-size:10px}.order-edit-add button{border:0;border-radius:8px;background:#ffd21c;color:#111;padding:10px 14px;font:900 8px var(--mono)}.order-edit-total{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:13px;border-top:1px solid #292929}.order-edit-total span{color:#888;font-size:10px}.order-edit-total strong{color:#ffd21c;font:900 20px var(--mono)}.order-edit-empty{padding:18px;text-align:center;color:#777;border:1px dashed #303030;border-radius:9px}.order-edit-footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 22px;border-top:1px solid #242424}.order-edit-footer button{padding:11px 14px;border-radius:8px;font:900 9px var(--mono)}.order-edit-cancel{border:1px solid #333;background:#111;color:#ddd}.order-edit-save{border:0;background:#ffd21c;color:#111}.order-edit-save:disabled{opacity:.5}.order-edit-body{padding:18px 22px;max-height:60vh;overflow:auto}
 
     .orders-history-head,.reports-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:30px 0 12px;padding-top:20px;border-top:1px solid #242424}.orders-history-head h2,.reports-head h2{margin:3px 0 0;font-size:20px}.orders-history-head>span,.reports-head>span{color:#666;font-size:9px}.orders-history-board{opacity:.92}.reports-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.reports-summary>div{background:#0d0d0d;border:1px solid #242424;border-radius:12px;padding:15px 17px}.reports-summary span{display:block;color:#666;font:800 8px var(--mono);letter-spacing:1.5px;margin-bottom:7px}.reports-summary strong{font:900 24px var(--mono);color:#f5f5f0}.sales-reports-list{display:grid;gap:10px}.sales-report-card{background:#0d0d0d;border:1px solid #242424;border-radius:13px;padding:16px}.sales-report-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.sales-report-top h3{margin:0;font-size:16px}.sales-report-window{color:#777;font-size:9px;margin-top:5px}.sales-report-total{font:900 22px var(--mono);color:#ffd21c}.sales-report-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}.sales-report-grid div{background:#101010;border:1px solid #252525;border-radius:8px;padding:9px}.sales-report-grid span{display:block;color:#666;font:800 7px var(--mono);letter-spacing:1px}.sales-report-grid strong{display:block;margin-top:5px;font:900 11px var(--mono);color:#eee}@media(max-width:760px){.reports-summary{grid-template-columns:1fr}.sales-report-grid{grid-template-columns:repeat(2,1fr)}.orders-history-head,.reports-head{align-items:flex-start;flex-direction:column}}
     .orders-archive{margin-top:18px}.orders-archive-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;border:1px solid #292929;border-radius:12px;background:#0d0d0d;color:#eee;text-align:left}.orders-archive-toggle:hover{border-color:#444;background:#101010}.orders-archive-title{display:flex;align-items:center;gap:12px}.orders-archive-icon{width:38px;height:34px;display:grid;place-items:center;border:1px solid #3b3417;border-radius:8px;background:#171407;color:#ffd21c;font-size:17px}.orders-archive-copy strong{display:block;font-size:13px}.orders-archive-copy span{display:block;margin-top:4px;color:#666;font-size:9px}.orders-archive-action{display:flex;align-items:center;gap:10px}.orders-archive-count{color:#888;font:800 8px var(--mono);letter-spacing:.5px}.orders-archive-open{min-width:58px;color:#ffd21c;font:900 8px var(--mono);text-align:right}.orders-archive-panel{margin-top:10px;padding:14px;border:1px solid #292929;border-radius:12px;background:#090909}.orders-archive-search-hint{margin:0 0 12px;color:#666;font-size:9px}.orders-history-board{opacity:.94}
@@ -658,6 +664,30 @@ function buildToast() {
   toast.id = 'dashboardToast';
   toast.className = 'toast';
   document.body.appendChild(toast);
+}
+
+function buildOrderEditModal() {
+  if ($('#orderEditModal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'orderEditModal';
+  modal.className = 'modal-backdrop';
+  modal.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="orderEditTitle">
+      <div class="modal-head"><div><div class="eyebrow">Active order</div><h2 id="orderEditTitle">Edit Order</h2><p>Add, remove or change item quantities.</p></div><button class="modal-close" type="button" data-order-edit-close>×</button></div>
+      <div class="order-edit-body">
+        <div id="orderEditList" class="order-edit-list"></div>
+        <div class="order-edit-add"><select id="orderEditMenuSelect" aria-label="Menu item"></select><button id="orderEditAddBtn" type="button">＋ ADD ITEM</button></div>
+        <div class="order-edit-total"><span>UPDATED TOTAL</span><strong id="orderEditTotal">₹0</strong></div>
+      </div>
+      <div class="order-edit-footer"><button class="order-edit-cancel" type="button" data-order-edit-close>CANCEL</button><button id="orderEditSaveBtn" class="order-edit-save" type="button">SAVE ORDER</button></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  $$('[data-order-edit-close]', modal).forEach(button => button.addEventListener('click', closeOrderEditModal));
+  modal.addEventListener('click', event => { if (event.target === modal) closeOrderEditModal(); });
+  $('#orderEditAddBtn', modal)?.addEventListener('click', addSelectedOrderEditItem);
+  $('#orderEditSaveBtn', modal)?.addEventListener('click', saveOrderEdit);
+  $('#orderEditList', modal)?.addEventListener('click', handleOrderEditItemAction);
 }
 
 function toast(message, type = 'ok') {
@@ -2101,6 +2131,146 @@ async function deleteOrderAsAdmin(orderId, orderNumber = '') {
   }
 }
 
+function closeOrderEditModal() {
+  $('#orderEditModal')?.classList.remove('open');
+  state.orderEdit.orderId = null;
+  state.orderEdit.items = [];
+}
+
+function availableItemsForOrder(order) {
+  return (menuManagementState.items || []).filter(item =>
+    item.is_available === true &&
+    item.is_archived !== true &&
+    menuManagementState.outletAvailability.get(`${order.outlet_id}:${item.id}`) === true
+  );
+}
+
+function openOrderEditModal(orderId) {
+  const order = (state.orders || []).find(item => item.id === orderId);
+  if (!order || ['COMPLETED', 'CANCELLED'].includes(order.order_status)) {
+    toast('This order can no longer be edited.', 'bad');
+    return;
+  }
+
+  state.orderEdit.orderId = order.id;
+  state.orderEdit.items = (order.order_items || []).map(item => ({
+    menuItemId: item.menu_item_id,
+    name: item.item_name || 'Menu Item',
+    price: Number(item.unit_price || 0),
+    quantity: Number(item.quantity || 0)
+  })).filter(item => item.menuItemId && item.quantity > 0);
+  $('#orderEditTitle').textContent = `Edit Order #${order.order_number}`;
+  $('#orderEditModal')?.classList.add('open');
+  renderOrderEditModal();
+}
+
+function renderOrderEditModal() {
+  const list = $('#orderEditList');
+  const select = $('#orderEditMenuSelect');
+  const total = $('#orderEditTotal');
+  const save = $('#orderEditSaveBtn');
+  const order = (state.orders || []).find(item => item.id === state.orderEdit.orderId);
+  if (!list || !select || !order) return;
+
+  list.innerHTML = state.orderEdit.items.length
+    ? state.orderEdit.items.map(item => `
+        <div class="order-edit-row">
+          <div><strong>${escapeHtml(item.name)}</strong><small>${formatReportMoney(item.price)} each</small></div>
+          <div class="order-edit-qty"><button type="button" data-edit-action="decrease" data-menu-item-id="${escapeHtml(item.menuItemId)}">−</button><span>${item.quantity}</span><button type="button" data-edit-action="increase" data-menu-item-id="${escapeHtml(item.menuItemId)}">＋</button></div>
+          <button type="button" class="order-edit-remove" data-edit-action="remove" data-menu-item-id="${escapeHtml(item.menuItemId)}" aria-label="Remove ${escapeHtml(item.name)}">×</button>
+        </div>
+      `).join('')
+    : '<div class="order-edit-empty">Add at least one menu item to this order.</div>';
+
+  const selectedIds = new Set(state.orderEdit.items.map(item => item.menuItemId));
+  const available = availableItemsForOrder(order).filter(item => !selectedIds.has(item.id));
+  select.innerHTML = available.length
+    ? available.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} · ${formatReportMoney(item.price)}</option>`).join('')
+    : '<option value="">No more available items</option>';
+  $('#orderEditAddBtn').disabled = !available.length;
+
+  const updatedTotal = state.orderEdit.items.reduce(
+    (sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 0)),
+    0
+  );
+  if (total) total.textContent = formatReportMoney(updatedTotal);
+  if (save) save.disabled = !state.orderEdit.items.length;
+}
+
+function handleOrderEditItemAction(event) {
+  const button = event.target.closest('[data-edit-action]');
+  if (!button) return;
+  const item = state.orderEdit.items.find(entry => entry.menuItemId === button.dataset.menuItemId);
+  if (!item) return;
+
+  if (button.dataset.editAction === 'increase' && item.quantity < 99) item.quantity += 1;
+  if (button.dataset.editAction === 'decrease') {
+    if (item.quantity > 1) item.quantity -= 1;
+    else state.orderEdit.items = state.orderEdit.items.filter(entry => entry !== item);
+  }
+  if (button.dataset.editAction === 'remove') {
+    state.orderEdit.items = state.orderEdit.items.filter(entry => entry !== item);
+  }
+  renderOrderEditModal();
+}
+
+function addSelectedOrderEditItem() {
+  const menuItemId = $('#orderEditMenuSelect')?.value;
+  const order = (state.orders || []).find(item => item.id === state.orderEdit.orderId);
+  const menuItem = order
+    ? availableItemsForOrder(order).find(item => item.id === menuItemId)
+    : null;
+  if (!menuItem || state.orderEdit.items.some(item => item.menuItemId === menuItem.id)) return;
+  state.orderEdit.items.push({
+    menuItemId: menuItem.id,
+    name: menuItem.name,
+    price: Number(menuItem.price || 0),
+    quantity: 1
+  });
+  renderOrderEditModal();
+}
+
+async function saveOrderEdit() {
+  if (!state.orderEdit.orderId || !state.orderEdit.items.length) return;
+  const button = $('#orderEditSaveBtn');
+  if (!button || button.disabled) return;
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = 'SAVING…';
+
+  try {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData?.session?.access_token) {
+      throw new Error('Your session has expired. Please log in again.');
+    }
+    const response = await fetch('/api/pos/orders', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session.access_token}`
+      },
+      body: JSON.stringify({
+        orderId: state.orderEdit.orderId,
+        items: state.orderEdit.items.map(item => ({
+          menuItemId: item.menuItemId,
+          quantity: item.quantity
+        }))
+      })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Unable to edit this order.');
+    closeOrderEditModal();
+    await Promise.all([loadOrders({ silent: true }), loadReports()]);
+    toast(`Order #${result.order?.order_number || ''} updated.`, 'ok');
+  } catch (error) {
+    console.error('Unable to edit order:', error);
+    toast(error.message || 'Unable to edit this order.', 'bad');
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
 function wireOrdersActions() {
   const search = $('#ordersSearch');
   const status = $('#ordersStatusFilter');
@@ -2117,6 +2287,11 @@ function wireOrdersActions() {
   });
 
   $('#ordersBoard')?.addEventListener('click', event => {
+    const editButton = event.target.closest('[data-order-edit]');
+    if (editButton) {
+      openOrderEditModal(editButton.dataset.orderEdit);
+      return;
+    }
     const deleteButton = event.target.closest('.order-delete-btn');
     if (deleteButton) {
       deleteOrderAsAdmin(
@@ -2954,7 +3129,7 @@ async function loadOrders({ silent = false } = {}) {
   if (orderIds.length) {
     const { data: orderItems, error: itemsError } = await supabase
       .from('order_items')
-      .select('id, order_id, quantity, item_name, unit_price, line_total')
+      .select('id, order_id, menu_item_id, quantity, item_name, unit_price, line_total')
       .in('order_id', orderIds);
 
     if (itemsError) {
@@ -3121,6 +3296,9 @@ function renderOrderCards(orders, { archived = false } = {}) {
           <strong class="order-total">₹${Number(order.total_amount || 0).toLocaleString('en-IN')}</strong>
         </div>
 
+        ${!archived && !['COMPLETED', 'CANCELLED'].includes(order.order_status) ? `
+          <button type="button" class="order-edit-btn" data-order-edit="${escapeHtml(order.id)}">EDIT ORDER</button>
+        ` : ''}
         ${archived ? '' : renderOrderAction(order)}
         ${state.profile?.role === 'ADMIN' ? `
           <button
@@ -3825,6 +4003,7 @@ async function init() {
   buildAuthGate();
   buildOutletModal();
   buildStaffModal();
+  buildOrderEditModal();
   buildToast();
 
   // Keep the dashboard hidden until authentication is confirmed.

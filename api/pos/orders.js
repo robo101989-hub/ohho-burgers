@@ -59,7 +59,7 @@ async function requirePosUser(req, res, outletId) {
   return authData.user;
 }
 export default async function handler(req, res) {
-  if (!["POST", "DELETE"].includes(req.method)) {
+  if (!["POST", "PATCH", "DELETE"].includes(req.method)) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
@@ -125,6 +125,183 @@ export default async function handler(req, res) {
         success: true,
         orderId: order.id,
         orderNumber: order.order_number
+      });
+    }
+
+    if (req.method === "PATCH") {
+      const orderId = String(body.orderId || "").trim();
+      const requestedItems = Array.isArray(body.items) ? body.items : [];
+
+      if (!orderId || !requestedItems.length || requestedItems.length > 50) {
+        return res.status(400).json({ error: "Order and at least one valid item are required" });
+      }
+
+      if (requestedItems.some(item => !item || typeof item !== "object" || Array.isArray(item))) {
+        return res.status(400).json({ error: "Invalid order items" });
+      }
+
+      const { data: existingOrder, error: existingOrderError } = await supabase
+        .from("orders")
+        .select("id,outlet_id,status,subtotal,total,order_number,token_number,created_at")
+        .eq("id", orderId)
+        .maybeSingle();
+
+      if (existingOrderError || !existingOrder) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      const user = await requirePosUser(req, res, existingOrder.outlet_id);
+      if (!user) return;
+
+      if (["COMPLETED", "CANCELLED"].includes(existingOrder.status)) {
+        return res.status(409).json({ error: "Completed or cancelled orders cannot be edited" });
+      }
+
+      const { data: outlet, error: outletError } = await supabase
+        .from("outlets")
+        .select("id,status,current_session_started_at")
+        .eq("id", existingOrder.outlet_id)
+        .single();
+
+      if (outletError || !outlet || outlet.status !== "ACTIVE") {
+        return res.status(409).json({ error: "This outlet session is closed" });
+      }
+
+      if (
+        !outlet.current_session_started_at ||
+        new Date(existingOrder.created_at).getTime() < new Date(outlet.current_session_started_at).getTime()
+      ) {
+        return res.status(409).json({ error: "Previous-session orders cannot be edited" });
+      }
+
+      const requestedIds = requestedItems
+        .map(item => String(item.menuItemId || "").trim())
+        .filter(Boolean);
+      const uniqueIds = [...new Set(requestedIds)];
+
+      if (!requestedIds.length || uniqueIds.length !== requestedItems.length) {
+        return res.status(400).json({ error: "Invalid or duplicate menu items" });
+      }
+
+      const [{ data: menuRows, error: menuError }, { data: outletMenuRows, error: outletMenuError }] = await Promise.all([
+        supabase
+          .from("menu_items")
+          .select("id,name,price,is_available")
+          .in("id", uniqueIds),
+        supabase
+          .from("outlet_menu_items")
+          .select("menu_item_id,is_available")
+          .eq("outlet_id", existingOrder.outlet_id)
+          .in("menu_item_id", uniqueIds)
+      ]);
+
+      if (menuError || outletMenuError) {
+        return res.status(500).json({ error: "Unable to validate menu items" });
+      }
+
+      const menuMap = new Map((menuRows || []).map(item => [item.id, item]));
+      const outletMenuMap = new Map(
+        (outletMenuRows || []).map(item => [item.menu_item_id, item.is_available])
+      );
+      const nextItems = [];
+      let subtotal = 0;
+      let totalQuantity = 0;
+
+      for (const requestedItem of requestedItems) {
+        const menuItemId = String(requestedItem.menuItemId || "").trim();
+        const quantity = Number(requestedItem.quantity);
+        const menuItem = menuMap.get(menuItemId);
+
+        if (
+          !menuItem ||
+          menuItem.is_available !== true ||
+          outletMenuMap.get(menuItemId) !== true ||
+          !Number.isInteger(quantity) ||
+          quantity < 1 ||
+          quantity > 99
+        ) {
+          return res.status(400).json({
+            error: `Menu item unavailable or invalid: ${menuItem?.name || menuItemId}`
+          });
+        }
+
+        totalQuantity += quantity;
+        if (totalQuantity > 500) {
+          return res.status(400).json({ error: "Too many items in order" });
+        }
+
+        const unitPrice = Number(menuItem.price);
+        const lineTotal = unitPrice * quantity;
+        subtotal += lineTotal;
+        nextItems.push({
+          order_id: existingOrder.id,
+          menu_item_id: menuItem.id,
+          item_name: menuItem.name,
+          unit_price: unitPrice,
+          quantity,
+          line_total: lineTotal
+        });
+      }
+
+      const { data: previousItems, error: previousItemsError } = await supabase
+        .from("order_items")
+        .select("order_id,menu_item_id,item_name,unit_price,quantity,line_total")
+        .eq("order_id", existingOrder.id);
+
+      if (previousItemsError) {
+        return res.status(500).json({ error: "Unable to prepare the order update" });
+      }
+
+      const { error: deleteItemsError } = await supabase
+        .from("order_items")
+        .delete()
+        .eq("order_id", existingOrder.id);
+
+      if (deleteItemsError) {
+        return res.status(500).json({ error: "Unable to update order items" });
+      }
+
+      const { error: insertItemsError } = await supabase
+        .from("order_items")
+        .insert(nextItems);
+
+      if (insertItemsError) {
+        if (previousItems?.length) await supabase.from("order_items").insert(previousItems);
+        console.error("POS order edit item error", insertItemsError);
+        return res.status(500).json({ error: "Unable to save the edited items" });
+      }
+
+      const { data: updatedOrder, error: updateOrderError } = await supabase
+        .from("orders")
+        .update({ subtotal, total: subtotal })
+        .eq("id", existingOrder.id)
+        .select("id,order_number,token_number,outlet_id,status,subtotal,total")
+        .single();
+
+      if (updateOrderError || !updatedOrder) {
+        await supabase.from("order_items").delete().eq("order_id", existingOrder.id);
+        if (previousItems?.length) await supabase.from("order_items").insert(previousItems);
+        return res.status(500).json({ error: "Unable to recalculate the order total" });
+      }
+
+      const { error: historyError } = await supabase
+        .from("order_status_history")
+        .insert({
+          order_id: existingOrder.id,
+          status: existingOrder.status,
+          note: `POS order items edited by ${user.email || user.id}`
+        });
+
+      if (historyError) console.error("Unable to record POS order edit history", historyError);
+
+      return res.status(200).json({
+        success: true,
+        order: {
+          ...updatedOrder,
+          database_order_number: updatedOrder.order_number,
+          order_number: updatedOrder.token_number || updatedOrder.order_number
+        },
+        items: nextItems
       });
     }
 
