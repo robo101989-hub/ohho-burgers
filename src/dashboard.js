@@ -21,6 +21,8 @@ const state = {
   ordersArchiveOpen: false,
   liveRefreshTimer: null,
   liveRefreshBusy: false,
+  versionCheckTimer: null,
+  versionUpdatePending: false,
   orderEdit: {
     orderId: null,
     items: []
@@ -3924,6 +3926,65 @@ function startLiveDashboardRefresh() {
   }, 20000);
 }
 
+function dashboardAssetPath(root = document) {
+  const script = [...root.querySelectorAll('script[src]')].find(node =>
+    /dashboardApp-[^/]+\.js(?:$|\?)/.test(node.getAttribute('src') || '')
+  );
+  if (!script) return null;
+  try {
+    return new URL(script.getAttribute('src'), window.location.origin).pathname;
+  } catch {
+    return null;
+  }
+}
+
+function dashboardHasUnsavedWork() {
+  return Boolean(
+    state.pos.cart.length ||
+    state.orderEdit.orderId ||
+    document.querySelector('.modal-backdrop.open')
+  );
+}
+
+async function checkForDashboardUpdate() {
+  const currentAsset = dashboardAssetPath();
+  if (!currentAsset) return;
+
+  try {
+    const response = await fetch(`/dashboard?version_check=${Date.now()}`, {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+    if (!response.ok) return;
+
+    const nextDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const nextAsset = dashboardAssetPath(nextDocument);
+    if (!nextAsset || nextAsset === currentAsset) return;
+
+    if (dashboardHasUnsavedWork()) {
+      if (!state.versionUpdatePending) {
+        state.versionUpdatePending = true;
+        toast('New POS version ready. Finish the current order and it will update automatically.', 'ok');
+      }
+      return;
+    }
+
+    if (state.versionCheckTimer) clearInterval(state.versionCheckTimer);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set('app_update', Date.now());
+    window.location.replace(nextUrl.toString());
+  } catch (error) {
+    console.warn('Unable to check for a newer POS version:', error);
+  }
+}
+
+function startDashboardVersionCheck() {
+  if (state.versionCheckTimer) clearInterval(state.versionCheckTimer);
+  window.setTimeout(checkForDashboardUpdate, 15000);
+  state.versionCheckTimer = window.setInterval(checkForDashboardUpdate, 60000);
+}
+
 function renderSettings() {
   const userName = $('#settingsUserName');
   const userRole = $('#settingsUserRole');
@@ -3991,6 +4052,7 @@ async function startApp(session) {
     updateDashboardContext();
     renderOverview();
     startLiveDashboardRefresh();
+    startDashboardVersionCheck();
   } catch (error) {
     await supabase.auth.signOut();
     setAuthError(error.message || 'Unable to authorize this account.');
