@@ -827,6 +827,7 @@ async function loadOutlets() {
   renderOutletCards();
   renderOutletSelector();
   renderOverviewOutlets();
+  renderSettings();
 }
 
 
@@ -1725,6 +1726,7 @@ async function toggleOutletStatus(outletId) {
     renderOutletSelector();
     renderOverviewOutlets();
     updatePosOutletName();
+    renderSettings();
     await loadOrders();
     await loadReports();
     toast(`${payload.outlet.name} is now ${payload.outlet.status}.`, 'ok');
@@ -2071,6 +2073,7 @@ async function loadMenuManagement() {
 
   renderMenuManagement();
   populateMenuCategoryControls();
+  renderSettings();
 }
 
 function renderMenuManagementTableHead() {
@@ -2708,6 +2711,7 @@ function wireDashboardActions() {
     $$('.nav-btn').forEach(navButton => navButton.classList.toggle('active', navButton.dataset.section === id));
     state.selectedSection = id;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (id === 'settings') renderSettings();
     if (id === 'reports') {
       loadReports().catch(error => {
         console.error('Unable to refresh reports:', error);
@@ -3571,6 +3575,54 @@ function updateUserCard() {
   if (span) span.textContent = `${state.profile?.role || 'UNKNOWN'} · Sign out`;
 }
 
+function renderSettings() {
+  const userName = $('#settingsUserName');
+  const userRole = $('#settingsUserRole');
+  const userEmail = $('#settingsUserEmail');
+  const outletCount = $('#settingsOutletCount');
+  const menuCount = $('#settingsMenuCount');
+  const outletList = $('#settingsOutletList');
+
+  if (userName) userName.textContent = state.profile?.name || 'OHHO Admin';
+  if (userRole) userRole.textContent = state.profile?.role || '—';
+  if (userEmail) userEmail.textContent = state.session?.user?.email || '—';
+
+  const outlets = state.outlets || [];
+  const openOutlets = outlets.filter(outlet => outlet.status === 'ACTIVE');
+  if (outletCount) outletCount.textContent = `${openOutlets.length} / ${outlets.length}`;
+
+  const liveMenuItems = (menuManagementState.items || []).filter(
+    item => item.is_available === true && item.is_archived !== true
+  );
+  if (menuCount) menuCount.textContent = String(liveMenuItems.length);
+
+  if (!outletList) return;
+  if (!outlets.length) {
+    outletList.innerHTML = '<div class="settings-empty">No outlet is assigned to this account.</div>';
+    return;
+  }
+
+  outletList.innerHTML = outlets.map(outlet => {
+    const isOpen = outlet.status === 'ACTIVE';
+    const sessionStarted = outlet.current_session_started_at
+      ? new Date(outlet.current_session_started_at).toLocaleString([], {
+          day: '2-digit',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      : null;
+    return `
+      <div class="settings-outlet-row">
+        <strong>${escapeHtml(outlet.name || 'OHHO Outlet')}</strong>
+        <span class="hours">${escapeHtml(formatTime(outlet.opening_time))} – ${escapeHtml(formatTime(outlet.closing_time))}</span>
+        <span class="session">${isOpen && sessionStarted ? `Session opened ${escapeHtml(sessionStarted)}` : 'No active sales session'}</span>
+        <span class="${isOpen ? 'open' : 'closed'}">${isOpen ? '● OPEN' : 'CLOSED'}</span>
+      </div>
+    `;
+  }).join('');
+}
+
 async function startApp(session) {
   state.session = session;
   try {
@@ -3586,6 +3638,7 @@ async function startApp(session) {
     await loadPosMenu();
     await loadOrders();
     await loadReports();
+    renderSettings();
   } catch (error) {
     await supabase.auth.signOut();
     setAuthError(error.message || 'Unable to authorize this account.');
