@@ -16,6 +16,7 @@ const state = {
   orders: [],
   salesReports: [],
   reportOrders: [],
+  reportItems: [],
   reportRange: 'TODAY',
   pos: {
     items: [],
@@ -2737,10 +2738,25 @@ function wireDashboardActions() {
         rangeButton.classList.toggle('active', active);
         rangeButton.setAttribute('aria-pressed', String(active));
       });
-      renderLegacyReports();
+      $('#customDatePanel')?.classList.toggle('hidden', state.reportRange !== 'CUSTOM');
+      if (state.reportRange === 'CUSTOM') setDefaultCustomReportDates();
+      renderReportDashboard();
     });
   });
-  $('#reportsExportBtn')?.addEventListener('click', exportLegacyReports);
+  $('#applyCustomDateBtn')?.addEventListener('click', () => {
+    const from = $('#reportDateFrom')?.value;
+    const to = $('#reportDateTo')?.value;
+    if (!from || !to) {
+      toast('Select both From and To dates.', 'bad');
+      return;
+    }
+    if (from > to) {
+      toast('From date must be before To date.', 'bad');
+      return;
+    }
+    renderReportDashboard();
+  });
+  $('#reportsExportBtn')?.addEventListener('click', exportSessionReports);
 
   wirePosActions();
   wireOrdersActions();
@@ -2974,25 +2990,6 @@ function renderOrders() {
   }
 }
 
-function legacyReportStart(range) {
-  if (range === 'ALL') return null;
-
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-
-  if (range === '7_DAYS') start.setDate(start.getDate() - 6);
-  return start;
-}
-
-function filteredLegacyReportOrders() {
-  const range = state.reportRange || 'TODAY';
-  const start = legacyReportStart(range);
-
-  return (state.reportOrders || []).filter(order =>
-    !start || new Date(order.created_at).getTime() >= start.getTime()
-  );
-}
-
 function isFamilyFriendsOrder(order) {
   return (
     order.order_source === 'FAMILY_FRIENDS' ||
@@ -3008,81 +3005,107 @@ function formatReportMoney(value) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`;
 }
 
-function renderLegacyReports() {
-  const outletList = $('#legacyOutletReports');
-  if (!outletList) return;
+function localDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
-  const orders = filteredLegacyReportOrders().filter(isReportableOrder);
-  const paidOrders = orders.filter(order => !isFamilyFriendsOrder(order));
-  const familyOrders = orders.filter(isFamilyFriendsOrder);
-  const sum = rows => rows.reduce((total, order) => total + Number(order.total || 0), 0);
+function setDefaultCustomReportDates() {
+  const from = $('#reportDateFrom');
+  const to = $('#reportDateTo');
+  const today = localDateInputValue();
+  if (from && !from.value) from.value = today;
+  if (to && !to.value) to.value = today;
+}
 
-  const paidSales = sum(paidOrders);
-  const familyValue = sum(familyOrders);
-  const itemsSold = paidOrders.reduce(
-    (total, order) => total + Number(order.item_count || 0),
-    0
-  );
+function reportDateBounds() {
+  const range = state.reportRange || 'TODAY';
+  if (range === 'ALL') return { start: null, end: null };
 
-  const paidSalesNode = $('#legacyPaidSales');
-  const paidOrdersNode = $('#legacyPaidOrders');
-  const itemsSoldNode = $('#legacyItemsSold');
-  const familyValueNode = $('#legacyComplimentaryValue');
-  const complimentaryOrdersNode = $('#legacyComplimentaryOrders');
-
-  if (paidSalesNode) paidSalesNode.textContent = formatReportMoney(paidSales);
-  if (paidOrdersNode) paidOrdersNode.textContent = String(paidOrders.length);
-  if (itemsSoldNode) itemsSoldNode.textContent = String(itemsSold);
-  if (familyValueNode) familyValueNode.textContent = formatReportMoney(familyValue);
-  if (complimentaryOrdersNode) {
-    complimentaryOrdersNode.textContent = `${familyOrders.length} order${familyOrders.length === 1 ? '' : 's'}`;
+  if (range === 'CUSTOM') {
+    const fromValue = $('#reportDateFrom')?.value;
+    const toValue = $('#reportDateTo')?.value;
+    if (!fromValue || !toValue) return { start: null, end: null };
+    const start = new Date(`${fromValue}T00:00:00`);
+    const end = new Date(`${toValue}T00:00:00`);
+    end.setDate(end.getDate() + 1);
+    return { start, end };
   }
 
-  ['CASH', 'UPI', 'CARD'].forEach(method => {
-    const node = $(`#legacy${method[0]}${method.slice(1).toLowerCase()}Sales`);
-    const total = sum(paidOrders.filter(order => order.payment_method === method));
-    if (node) node.textContent = formatReportMoney(total);
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  if (range === '7_DAYS') start.setDate(start.getDate() - 6);
+  return { start, end: null };
+}
+
+function filteredSessionReports() {
+  const { start, end } = reportDateBounds();
+  return (state.salesReports || []).filter(report => {
+    const closedAt = new Date(report.closed_at).getTime();
+    return (!start || closedAt >= start.getTime()) && (!end || closedAt < end.getTime());
   });
+}
 
-  const outletsById = new Map(state.outlets.map(outlet => [outlet.id, outlet]));
-  const rowsByOutlet = new Map();
+function orderBelongsToSessions(order, reports) {
+  const createdAt = new Date(order.created_at).getTime();
+  return reports.some(report =>
+    order.outlet_id === report.outlet_id &&
+    createdAt >= new Date(report.opened_at).getTime() &&
+    createdAt < new Date(report.closed_at).getTime()
+  );
+}
 
-  orders.forEach(order => {
-    if (!rowsByOutlet.has(order.outlet_id)) rowsByOutlet.set(order.outlet_id, []);
-    rowsByOutlet.get(order.outlet_id).push(order);
+function renderItemWiseSales(reports) {
+  const list = $('#itemSalesList');
+  if (!list) return;
+  const paidOrderIds = new Set(
+    (state.reportOrders || [])
+      .filter(order => isReportableOrder(order) && !isFamilyFriendsOrder(order) && orderBelongsToSessions(order, reports))
+      .map(order => order.id)
+  );
+  const totalsByItem = new Map();
+  (state.reportItems || []).forEach(item => {
+    if (!paidOrderIds.has(item.order_id)) return;
+    const name = String(item.item_name || 'Menu Item').trim() || 'Menu Item';
+    const key = name.toLowerCase();
+    const current = totalsByItem.get(key) || { name, quantity: 0, sales: 0 };
+    current.quantity += Number(item.quantity || 0);
+    current.sales += Number(item.line_total || 0);
+    totalsByItem.set(key, current);
   });
-
-  if (!rowsByOutlet.size) {
-    outletList.innerHTML = '<div class="orders-empty"><strong>No sales in this period</strong><span>Choose another date range or create a POS order.</span></div>';
+  const items = [...totalsByItem.values()].sort((a, b) => b.quantity - a.quantity);
+  if (!items.length) {
+    list.innerHTML = '<div class="report-empty"><div><strong>No item sales in these sessions</strong><span>Item totals appear after a paid session is closed.</span></div></div>';
     return;
   }
+  list.innerHTML = `
+    <div class="item-sales-head"><span>ITEM</span><span>QUANTITY SOLD</span><span>SALES</span></div>
+    ${items.map(item => `<div class="item-sales-row"><strong>${escapeHtml(item.name)}</strong><span>${item.quantity}</span><span class="money">${formatReportMoney(item.sales)}</span></div>`).join('')}
+  `;
+}
 
-  outletList.innerHTML = [...rowsByOutlet.entries()].map(([outletId, outletOrders]) => {
-    const paid = outletOrders.filter(order => !isFamilyFriendsOrder(order));
-    const family = outletOrders.filter(isFamilyFriendsOrder);
-    const itemCount = paid.reduce(
-      (total, order) => total + Number(order.item_count || 0),
-      0
-    );
-
-    return `
-      <div class="report-outlet-row">
-        <strong class="report-outlet-name">${escapeHtml(outletsById.get(outletId)?.name || 'OHHO Outlet')}</strong>
-        <div class="report-outlet-metric"><em>PAID ORDERS</em><span>${paid.length}</span></div>
-        <div class="report-outlet-metric"><em>ITEMS SOLD</em><span>${itemCount}</span></div>
-        <div class="report-outlet-metric"><em>COMPLIMENTARY</em><span>${family.length}</span></div>
-        <div class="report-outlet-metric money"><em>PAID SALES</em><span>${formatReportMoney(sum(paid))}</span></div>
-      </div>
-    `;
-  }).join('');
+function renderReportDashboard() {
+  const reports = filteredSessionReports();
+  const sumField = field => reports.reduce((sum, report) => sum + Number(report[field] || 0), 0);
+  const gross = sumField('gross_sales');
+  const cash = sumField('cash_sales');
+  const upi = sumField('upi_sales');
+  const card = sumField('card_sales');
+  if ($('#reportsSessionCount')) $('#reportsSessionCount').textContent = String(reports.length);
+  if ($('#reportsTotalSales')) $('#reportsTotalSales').textContent = formatReportMoney(gross);
+  if ($('#reportsTotalOrders')) $('#reportsTotalOrders').textContent = String(sumField('order_count'));
+  if ($('#reportsTotalItems')) $('#reportsTotalItems').textContent = String(sumField('item_count'));
+  if ($('#legacyCashSales')) $('#legacyCashSales').textContent = formatReportMoney(cash);
+  if ($('#legacyUpiSales')) $('#legacyUpiSales').textContent = formatReportMoney(upi);
+  if ($('#legacyCardSales')) $('#legacyCardSales').textContent = formatReportMoney(card);
+  if ($('#reportsPaymentTotal')) $('#reportsPaymentTotal').textContent = formatReportMoney(cash + upi + card);
+  renderItemWiseSales(reports);
+  renderSalesReports(reports);
 }
 
 async function loadLegacyReports() {
-  const outletList = $('#legacyOutletReports');
-  if (!outletList) return;
-
-  outletList.innerHTML = '<div class="orders-loading">Loading sales overview…</div>';
-
   let query = supabase
     .from('orders')
     .select('id,order_number,outlet_id,status,payment_method,payment_status,order_source,total,created_at')
@@ -3097,18 +3120,20 @@ async function loadLegacyReports() {
   const { data: orders, error } = await query;
 
   if (error) {
-    console.error('Unable to load sales overview:', error);
-    outletList.innerHTML = '<div class="orders-empty"><strong>Unable to load sales overview</strong><span>Please refresh and try again.</span></div>';
+    console.error('Unable to load session order details:', error);
+    state.reportOrders = [];
+    state.reportItems = [];
     return;
   }
 
   const itemCounts = new Map();
+  state.reportItems = [];
   const orderIds = (orders || []).map(order => order.id);
 
   for (let index = 0; index < orderIds.length; index += 200) {
     const { data: items, error: itemsError } = await supabase
       .from('order_items')
-      .select('order_id,quantity')
+      .select('order_id,quantity,item_name,line_total')
       .in('order_id', orderIds.slice(index, index + 200));
 
     if (itemsError) {
@@ -3117,6 +3142,7 @@ async function loadLegacyReports() {
     }
 
     (items || []).forEach(item => {
+      state.reportItems.push(item);
       itemCounts.set(
         item.order_id,
         Number(itemCounts.get(item.order_id) || 0) + Number(item.quantity || 0)
@@ -3128,8 +3154,6 @@ async function loadLegacyReports() {
     ...order,
     item_count: itemCounts.get(order.id) || 0
   }));
-
-  renderLegacyReports();
 }
 
 function csvCell(value) {
@@ -3138,25 +3162,27 @@ function csvCell(value) {
   return `"${text.replaceAll('"', '""')}"`;
 }
 
-function exportLegacyReports() {
+function exportSessionReports() {
   const outletsById = new Map(state.outlets.map(outlet => [outlet.id, outlet]));
-  const orders = filteredLegacyReportOrders().filter(isReportableOrder);
+  const reports = filteredSessionReports();
 
-  if (!orders.length) {
-    toast('There are no sales to export for this period.', 'bad');
+  if (!reports.length) {
+    toast('There are no closed sessions to export for this period.', 'bad');
     return;
   }
 
   const rows = [
-    ['Order Number', 'Created At', 'Outlet', 'Category', 'Payment', 'Items', 'Amount'],
-    ...orders.map(order => [
-      order.order_number,
-      new Date(order.created_at).toLocaleString(),
-      outletsById.get(order.outlet_id)?.name || 'OHHO Outlet',
-      isFamilyFriendsOrder(order) ? 'Family & Friends' : 'Regular Sale',
-      order.payment_method,
-      order.item_count,
-      Number(order.total || 0).toFixed(2)
+    ['Outlet', 'Opened At', 'Closed At', 'Orders', 'Items', 'Cash', 'UPI', 'Card', 'Total Sales'],
+    ...reports.map(report => [
+      outletsById.get(report.outlet_id)?.name || 'OHHO Outlet',
+      new Date(report.opened_at).toLocaleString(),
+      new Date(report.closed_at).toLocaleString(),
+      report.order_count,
+      report.item_count,
+      Number(report.cash_sales || 0).toFixed(2),
+      Number(report.upi_sales || 0).toFixed(2),
+      Number(report.card_sales || 0).toFixed(2),
+      Number(report.gross_sales || 0).toFixed(2)
     ])
   ];
 
@@ -3164,7 +3190,7 @@ function exportLegacyReports() {
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `ohho-sales-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.download = `ohho-session-sales-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -3173,6 +3199,7 @@ function exportLegacyReports() {
 
 async function loadReports() {
   await Promise.all([loadLegacyReports(), loadSalesReports()]);
+  renderReportDashboard();
 }
 
 async function loadSalesReports() {
@@ -3196,60 +3223,45 @@ async function loadSalesReports() {
 
   if (error) {
     console.error('Unable to load sales reports:', error);
+    state.salesReports = [];
     list.innerHTML = '<div class="orders-empty"><strong>Sales reports are not ready yet</strong><span>Apply the outlet session database migration, then close an outlet session to generate the first report.</span></div>';
     return;
   }
 
   state.salesReports = data || [];
-  renderSalesReports();
 }
 
-function renderSalesReports() {
+function renderSalesReports(reports = filteredSessionReports()) {
   const list = $('#salesReportsList');
   if (!list) return;
 
   const outletsById = new Map(state.outlets.map(outlet => [outlet.id, outlet]));
-  const reports = state.salesReports || [];
-
-  const sessionCount = $('#reportsSessionCount');
-  const totalSales = $('#reportsTotalSales');
-  const totalOrders = $('#reportsTotalOrders');
-
-  const salesTotal = reports.reduce((sum, report) => sum + Number(report.gross_sales || 0), 0);
-  const orderTotal = reports.reduce((sum, report) => sum + Number(report.order_count || 0), 0);
-
-  if (sessionCount) sessionCount.textContent = String(reports.length);
-  if (totalSales) totalSales.textContent = `₹${salesTotal.toLocaleString('en-IN')}`;
-  if (totalOrders) totalOrders.textContent = String(orderTotal);
-
   if (!reports.length) {
-    list.innerHTML = '<div class="orders-empty"><strong>No closed sales sessions yet</strong><span>A report will be created automatically each time an outlet is turned OFF.</span></div>';
+    list.innerHTML = '<div class="report-empty"><div><strong>No closed sessions in this range</strong><span>A session appears here when an outlet is turned OFF.</span></div></div>';
     return;
   }
 
   list.innerHTML = reports.map(report => {
     const outlet = outletsById.get(report.outlet_id);
-    const opened = new Date(report.opened_at);
-    const closed = new Date(report.closed_at);
 
     return `
-      <article class="sales-report-card">
-        <div class="sales-report-top">
+      <article class="session-report-card">
+        <div class="session-report-main">
           <div>
             <h3>${escapeHtml(outlet?.name || 'OHHO Outlet')}</h3>
-            <div class="sales-report-window">
+            <div class="session-report-time">
               ${formatOrderDate(report.opened_at)} · ${formatOrderTime(report.opened_at)}
               → ${formatOrderDate(report.closed_at)} · ${formatOrderTime(report.closed_at)}
             </div>
           </div>
-          <div class="sales-report-total">₹${Number(report.gross_sales || 0).toLocaleString('en-IN')}</div>
+          <div class="session-report-total">${formatReportMoney(report.gross_sales)}</div>
         </div>
-        <div class="sales-report-grid">
+        <div class="session-report-metrics">
           <div><span>ORDERS</span><strong>${Number(report.order_count || 0)}</strong></div>
           <div><span>ITEMS</span><strong>${Number(report.item_count || 0)}</strong></div>
-          <div><span>CASH</span><strong>₹${Number(report.cash_sales || 0).toLocaleString('en-IN')}</strong></div>
-          <div><span>UPI</span><strong>₹${Number(report.upi_sales || 0).toLocaleString('en-IN')}</strong></div>
-          <div><span>CARD</span><strong>₹${Number(report.card_sales || 0).toLocaleString('en-IN')}</strong></div>
+          <div class="payment"><span>CASH</span><strong>${formatReportMoney(report.cash_sales)}</strong></div>
+          <div class="payment"><span>UPI</span><strong>${formatReportMoney(report.upi_sales)}</strong></div>
+          <div class="payment"><span>CARD</span><strong>${formatReportMoney(report.card_sales)}</strong></div>
         </div>
       </article>
     `;
