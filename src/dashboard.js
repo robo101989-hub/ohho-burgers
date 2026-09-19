@@ -13,6 +13,8 @@ const state = {
   profile: null,
   outlets: [],
   selectedOutlet: 'ALL',
+  orders: [],
+  salesReports: [],
   pos: {
     items: [],
     categories: [],
@@ -96,6 +98,7 @@ function injectStyles() {
     .order-action-btn:active{transform:translateY(0)}
     .order-action-done{margin-top:15px;padding:10px 12px;text-align:center;border:1px solid #242424;border-radius:9px;color:#555;font:800 8px var(--mono);letter-spacing:1px}
 
+    .orders-history-head,.reports-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:30px 0 12px;padding-top:20px;border-top:1px solid #242424}.orders-history-head h2,.reports-head h2{margin:3px 0 0;font-size:20px}.orders-history-head>span,.reports-head>span{color:#666;font-size:9px}.orders-history-board{opacity:.92}.reports-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.reports-summary>div{background:#0d0d0d;border:1px solid #242424;border-radius:12px;padding:15px 17px}.reports-summary span{display:block;color:#666;font:800 8px var(--mono);letter-spacing:1.5px;margin-bottom:7px}.reports-summary strong{font:900 24px var(--mono);color:#f5f5f0}.sales-reports-list{display:grid;gap:10px}.sales-report-card{background:#0d0d0d;border:1px solid #242424;border-radius:13px;padding:16px}.sales-report-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.sales-report-top h3{margin:0;font-size:16px}.sales-report-window{color:#777;font-size:9px;margin-top:5px}.sales-report-total{font:900 22px var(--mono);color:#ffd21c}.sales-report-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}.sales-report-grid div{background:#101010;border:1px solid #252525;border-radius:8px;padding:9px}.sales-report-grid span{display:block;color:#666;font:800 7px var(--mono);letter-spacing:1px}.sales-report-grid strong{display:block;margin-top:5px;font:900 11px var(--mono);color:#eee}@media(max-width:760px){.reports-summary{grid-template-columns:1fr}.sales-report-grid{grid-template-columns:repeat(2,1fr)}.orders-history-head,.reports-head{align-items:flex-start;flex-direction:column}}
     .orders-loading,.orders-empty{min-height:220px;grid-column:1/-1;display:grid;place-items:center;text-align:center;border:1px dashed #303030;border-radius:14px;color:#666;padding:30px}
     .orders-empty strong{display:block;color:#eee;font-size:15px}
     .orders-empty span{display:block;font-size:11px;margin-top:6px}
@@ -1666,6 +1669,8 @@ async function toggleOutletStatus(outletId) {
     renderOutletSelector();
     renderOverviewOutlets();
     updatePosOutletName();
+    await loadOrders();
+    await loadSalesReports();
     toast(`${payload.outlet.name} is now ${payload.outlet.status}.`, 'ok');
   } catch (error) {
     console.error('Unable to change outlet status:', error);
@@ -1748,6 +1753,7 @@ function renderOutletSelector() {
     try {
       await loadPosMenu();
       await loadOrders();
+      await loadSalesReports();
     } catch (error) {
       console.error('Unable to refresh POS menu:', error);
       toast(error.message || 'Unable to load POS menu.', 'bad');
@@ -2683,6 +2689,7 @@ function wireDashboardActions() {
   $('#staffSearch')?.addEventListener('input', renderStaffList);
   $('#staffRoleFilter')?.addEventListener('change', renderStaffList);
   $('#staffOutletFilter')?.addEventListener('change', renderStaffList);
+  $('#reportsRefreshBtn')?.addEventListener('click', loadSalesReports);
 
   wirePosActions();
   wireOrdersActions();
@@ -2777,70 +2784,47 @@ function formatOrderDate(value) {
   });
 }
 
-function renderOrders() {
-  const board = $('#ordersBoard');
-  if (!board) return;
+function orderMatchesSearch(order, search) {
+  if (!search) return true;
 
-  const search = ($('#ordersSearch')?.value || '').trim().toLowerCase();
-  const status = $('#ordersStatusFilter')?.value || 'ALL';
+  const orderNumber = String(order.order_number || '').toLowerCase();
+  const outletName = String(order.outlets?.name || '').toLowerCase();
+  const source = String(order.order_source || '').toLowerCase();
+  const type = String(order.order_type || '').toLowerCase();
+  const itemNames = (order.order_items || [])
+    .map(item => String(item.item_name || item.menu_items?.name || '').toLowerCase())
+    .join(' ');
 
-  const orders = (state.orders || []).filter(order => {
-    const matchesStatus = status === 'ALL' || order.order_status === status;
-    if (!matchesStatus) return false;
-
-    if (!search) return true;
-
-    const orderNumber = String(order.order_number || '').toLowerCase();
-    const outletName = String(order.outlets?.name || '').toLowerCase();
-    const source = String(order.order_source || '').toLowerCase();
-    const type = String(order.order_type || '').toLowerCase();
-    const itemNames = (order.order_items || [])
-      .map(item => String(item.item_name || item.menu_items?.name || '').toLowerCase())
-      .join(' ');
-
-    return (
-      orderNumber.includes(search) ||
-      outletName.includes(search) ||
-      source.includes(search) ||
-      type.includes(search) ||
-      itemNames.includes(search)
-    );
-  });
-
-  const todayKey = new Date().toDateString();
-
-  const todayOrders = (state.orders || []).filter(order =>
-    new Date(order.created_at).toDateString() === todayKey
+  return (
+    orderNumber.includes(search) ||
+    outletName.includes(search) ||
+    source.includes(search) ||
+    type.includes(search) ||
+    itemNames.includes(search)
   );
+}
 
-  const liveOrders = (state.orders || []).filter(order =>
-    ['NEW', 'ACCEPTED', 'PREPARING', 'READY'].includes(order.order_status)
-  );
+function isCurrentSessionOrder(order) {
+  const outlet = order.outlets;
+  if (!outlet || outlet.status !== 'ACTIVE') return false;
 
-  const todaySales = todayOrders.reduce(
-    (sum, order) => sum + Number(order.total_amount || 0),
-    0
-  );
+  const startedAt = outlet.current_session_started_at || outlet.updated_at;
+  if (!startedAt) return false;
 
-  const liveCount = $('#ordersLiveCount');
-  const todayCount = $('#ordersTodayCount');
-  const sales = $('#ordersTodaySales');
+  return new Date(order.created_at).getTime() >= new Date(startedAt).getTime();
+}
 
-  if (liveCount) liveCount.textContent = String(liveOrders.length);
-  if (todayCount) todayCount.textContent = String(todayOrders.length);
-  if (sales) sales.textContent = `₹${todaySales.toLocaleString('en-IN')}`;
-
+function renderOrderCards(orders, { archived = false } = {}) {
   if (!orders.length) {
-    board.innerHTML = `
+    return `
       <div class="orders-empty">
-        <strong>No orders found</strong>
-        <span>Try changing the filters or create a new POS order.</span>
+        <strong>${archived ? 'No order history yet' : 'No orders in the current session'}</strong>
+        <span>${archived ? 'Orders move here when an outlet session closes.' : 'New POS orders will appear here.'}</span>
       </div>
     `;
-    return;
   }
 
-  board.innerHTML = orders.map(order => {
+  return orders.map(order => {
     const items = order.order_items || [];
     const itemCount = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
     const statusClass = String(order.order_status || '').toLowerCase().replaceAll('_', '-');
@@ -2860,6 +2844,7 @@ function renderOrders() {
           <span>${escapeHtml(order.order_source || 'POS')}</span>
           <span>${escapeHtml(order.payment_method || 'CASH')}</span>
           ${order.table_number ? `<span>TABLE ${escapeHtml(order.table_number)}</span>` : ''}
+          ${archived ? '<span>HISTORY</span>' : ''}
         </div>
 
         <div class="order-items">
@@ -2879,7 +2864,7 @@ function renderOrders() {
           <strong class="order-total">₹${Number(order.total_amount || 0).toLocaleString('en-IN')}</strong>
         </div>
 
-        ${renderOrderAction(order)}
+        ${archived ? '' : renderOrderAction(order)}
         ${state.profile?.role === 'ADMIN' ? `
           <button
             type="button"
@@ -2888,6 +2873,127 @@ function renderOrders() {
             data-order-number="${escapeHtml(order.order_number || '')}"
           >REMOVE ORDER</button>
         ` : ''}
+      </article>
+    `;
+  }).join('');
+}
+
+function renderOrders() {
+  const board = $('#ordersBoard');
+  const historyBoard = $('#ordersHistoryBoard');
+  if (!board) return;
+
+  const search = ($('#ordersSearch')?.value || '').trim().toLowerCase();
+  const status = $('#ordersStatusFilter')?.value || 'ALL';
+
+  const matchesFilters = order =>
+    (status === 'ALL' || order.order_status === status) &&
+    orderMatchesSearch(order, search);
+
+  const currentSessionOrders = (state.orders || []).filter(isCurrentSessionOrder);
+  const historyOrders = (state.orders || []).filter(order => !isCurrentSessionOrder(order));
+
+  const filteredCurrent = currentSessionOrders.filter(matchesFilters);
+  const filteredHistory = historyOrders.filter(matchesFilters);
+
+  const liveOrders = currentSessionOrders.filter(order =>
+    ['NEW', 'ACCEPTED', 'PREPARING', 'READY'].includes(order.order_status)
+  );
+
+  const sessionSales = currentSessionOrders
+    .filter(order => order.payment_status === 'PAID' && order.order_status !== 'CANCELLED')
+    .reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+
+  const liveCount = $('#ordersLiveCount');
+  const sessionCount = $('#ordersTodayCount');
+  const sales = $('#ordersTodaySales');
+
+  if (liveCount) liveCount.textContent = String(liveOrders.length);
+  if (sessionCount) sessionCount.textContent = String(currentSessionOrders.length);
+  if (sales) sales.textContent = `₹${sessionSales.toLocaleString('en-IN')}`;
+
+  board.innerHTML = renderOrderCards(filteredCurrent);
+  if (historyBoard) {
+    historyBoard.innerHTML = renderOrderCards(filteredHistory, { archived: true });
+  }
+}
+
+async function loadSalesReports() {
+  const list = $('#salesReportsList');
+  if (!list) return;
+
+  list.innerHTML = '<div class="orders-loading">Loading sales reports…</div>';
+
+  let query = supabase
+    .from('outlet_sales_reports')
+    .select('id,outlet_id,opened_at,closed_at,order_count,item_count,gross_sales,cash_sales,upi_sales,card_sales,created_at')
+    .order('closed_at', { ascending: false })
+    .limit(180);
+
+  if (state.selectedOutlet !== 'ALL') {
+    const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
+    if (outlet?.id) query = query.eq('outlet_id', outlet.id);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Unable to load sales reports:', error);
+    list.innerHTML = '<div class="orders-empty"><strong>Sales reports are not ready yet</strong><span>Apply the outlet session database migration, then close an outlet session to generate the first report.</span></div>';
+    return;
+  }
+
+  state.salesReports = data || [];
+  renderSalesReports();
+}
+
+function renderSalesReports() {
+  const list = $('#salesReportsList');
+  if (!list) return;
+
+  const outletsById = new Map(state.outlets.map(outlet => [outlet.id, outlet]));
+  const reports = state.salesReports || [];
+
+  const sessionCount = $('#reportsSessionCount');
+  const totalSales = $('#reportsTotalSales');
+  const totalOrders = $('#reportsTotalOrders');
+
+  const salesTotal = reports.reduce((sum, report) => sum + Number(report.gross_sales || 0), 0);
+  const orderTotal = reports.reduce((sum, report) => sum + Number(report.order_count || 0), 0);
+
+  if (sessionCount) sessionCount.textContent = String(reports.length);
+  if (totalSales) totalSales.textContent = `₹${salesTotal.toLocaleString('en-IN')}`;
+  if (totalOrders) totalOrders.textContent = String(orderTotal);
+
+  if (!reports.length) {
+    list.innerHTML = '<div class="orders-empty"><strong>No closed sales sessions yet</strong><span>A report will be created automatically each time an outlet is turned OFF.</span></div>';
+    return;
+  }
+
+  list.innerHTML = reports.map(report => {
+    const outlet = outletsById.get(report.outlet_id);
+    const opened = new Date(report.opened_at);
+    const closed = new Date(report.closed_at);
+
+    return `
+      <article class="sales-report-card">
+        <div class="sales-report-top">
+          <div>
+            <h3>${escapeHtml(outlet?.name || 'OHHO Outlet')}</h3>
+            <div class="sales-report-window">
+              ${formatOrderDate(report.opened_at)} · ${formatOrderTime(report.opened_at)}
+              → ${formatOrderDate(report.closed_at)} · ${formatOrderTime(report.closed_at)}
+            </div>
+          </div>
+          <div class="sales-report-total">₹${Number(report.gross_sales || 0).toLocaleString('en-IN')}</div>
+        </div>
+        <div class="sales-report-grid">
+          <div><span>ORDERS</span><strong>${Number(report.order_count || 0)}</strong></div>
+          <div><span>ITEMS</span><strong>${Number(report.item_count || 0)}</strong></div>
+          <div><span>CASH</span><strong>₹${Number(report.cash_sales || 0).toLocaleString('en-IN')}</strong></div>
+          <div><span>UPI</span><strong>₹${Number(report.upi_sales || 0).toLocaleString('en-IN')}</strong></div>
+          <div><span>CARD</span><strong>₹${Number(report.card_sales || 0).toLocaleString('en-IN')}</strong></div>
+        </div>
       </article>
     `;
   }).join('');
@@ -2936,6 +3042,7 @@ async function startApp(session) {
     await loadMenuManagement();
     await loadPosMenu();
     await loadOrders();
+    await loadSalesReports();
   } catch (error) {
     await supabase.auth.signOut();
     setAuthError(error.message || 'Unable to authorize this account.');
