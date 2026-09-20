@@ -41,8 +41,8 @@ async function getOutlet(slug) {
   return data;
 }
 async function getSettings(outletId) {
-  const { data } = await supabase.from('outlet_spin_settings').select('enabled,prizes').eq('outlet_id', outletId).maybeSingle();
-  return { enabled: data?.enabled !== false, prizes: cleanPrizes(data?.prizes) };
+  const { data } = await supabase.from('outlet_spin_settings').select('enabled,prizes,minimum_order').eq('outlet_id', outletId).maybeSingle();
+  return { enabled: data?.enabled !== false, prizes: cleanPrizes(data?.prizes), minimumOrder: Math.max(0, Number(data?.minimum_order || 0)) };
 }
 function rewardCode() { return `OHHO-${Math.random().toString(36).slice(2, 6).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`; }
 
@@ -51,18 +51,19 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       if (req.query?.action === 'settings') {
         const auth = await staff(req, res, null, true); if (!auth) return;
-        const [{ data: outlets, error: outletError }, { data: settings, error: settingsError }] = await Promise.all([
+        const [{ data: outlets, error: outletError }, { data: settings, error: settingsError }, { data: history, error: historyError }] = await Promise.all([
           supabase.from('outlets').select('id,name,slug').order('created_at', { ascending: true }),
-          supabase.from('outlet_spin_settings').select('outlet_id,enabled,prizes')
+          supabase.from('outlet_spin_settings').select('outlet_id,enabled,prizes,minimum_order'),
+          supabase.from('spin_rewards').select('code,label,status,issued_at,expires_at,redeemed_at,outlets(name)').order('issued_at', { ascending: false }).limit(100)
         ]);
-        if (outletError || settingsError) return res.status(500).json({ error: 'Could not load Spin & Win settings.' });
-        return res.status(200).json({ outlets: outlets || [], settings: (settings || []).map(item => ({ ...item, prizes: cleanPrizes(item.prizes) })) });
+        if (outletError || settingsError || historyError) return res.status(500).json({ error: 'Could not load Spin & Win settings.' });
+        return res.status(200).json({ outlets: outlets || [], settings: (settings || []).map(item => ({ ...item, prizes: cleanPrizes(item.prizes) })), history: history || [] });
       }
       const outlet = await getOutlet(req.query?.outlet);
       if (!outlet || outlet.status !== 'ACTIVE') return res.status(404).json({ error: 'Spin & Win is not active at this outlet.' });
       const settings = await getSettings(outlet.id);
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(200).json({ outlet: { name: outlet.name, slug: outlet.slug }, enabled: settings.enabled, prizes: settings.prizes.map(publicPrize) });
+      return res.status(200).json({ outlet: { name: outlet.name, slug: outlet.slug }, enabled: settings.enabled, prizes: settings.prizes.map(publicPrize), minimumOrder: settings.minimumOrder });
     }
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     const body = req.body || {};
@@ -111,9 +112,10 @@ export default async function handler(req, res) {
     if (action === 'settings') {
       const outletId = String(body.outletId || '').trim();
       const auth = await staff(req, res, outletId, true); if (!auth) return;
-      const { data, error } = await supabase.from('outlet_spin_settings').upsert({ outlet_id: outletId, enabled: body.enabled !== false, prizes: cleanPrizes(body.prizes), updated_at: new Date().toISOString(), updated_by: auth.user.id }, { onConflict: 'outlet_id' }).select('enabled,prizes').single();
+      const minimumOrder = Math.max(0, Math.min(100000, Number(body.minimumOrder || 0)));
+      const { data, error } = await supabase.from('outlet_spin_settings').upsert({ outlet_id: outletId, enabled: body.enabled !== false, prizes: cleanPrizes(body.prizes), minimum_order: minimumOrder, updated_at: new Date().toISOString(), updated_by: auth.user.id }, { onConflict: 'outlet_id' }).select('enabled,prizes,minimum_order').single();
       if (error) return res.status(500).json({ error: 'Could not save Spin & Win settings.' });
-      return res.status(200).json({ settings: { enabled: data.enabled, prizes: cleanPrizes(data.prizes) } });
+      return res.status(200).json({ settings: { enabled: data.enabled, prizes: cleanPrizes(data.prizes), minimumOrder: Number(data.minimum_order || 0) } });
     }
     return res.status(400).json({ error: 'Unknown Spin & Win action.' });
   } catch (error) {

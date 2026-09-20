@@ -24,6 +24,7 @@ const state = {
   versionCheckTimer: null,
   versionUpdatePending: false,
   spinSettings: [],
+  spinHistory: [],
   orderEdit: {
     orderId: null,
     items: []
@@ -4253,6 +4254,22 @@ function renderSpinSettings() {
   select.innerHTML = state.outlets.map(outlet => `<option value="${escapeHtml(outlet.id)}">${escapeHtml(outlet.name)}</option>`).join('');
   select.value = state.outlets.some(outlet => outlet.id === current) ? current : (state.outlets[0]?.id || '');
   fillSpinSettingForm();
+  renderSpinHistory();
+}
+
+function renderSpinHistory() {
+  const panel = $('#spinHistoryPanel');
+  const target = $('#spinHistoryList');
+  if (!panel || !target) return;
+  const isAdmin = state.profile?.role === 'ADMIN';
+  panel.hidden = !isAdmin;
+  if (!isAdmin) return;
+  if (!state.spinHistory.length) { target.innerHTML = '<div class="settings-empty">No spins have been recorded yet.</div>'; return; }
+  target.innerHTML = state.spinHistory.map(item => {
+    const noWin = String(item.label || '').toUpperCase().includes('BETTER LUCK');
+    const status = noWin ? 'NO WIN' : item.status === 'REDEEMED' ? 'REDEEMED' : new Date(item.expires_at).getTime() < Date.now() ? 'EXPIRED' : 'ACTIVE';
+    return `<article class="spin-history-row"><div><strong>${escapeHtml(noWin ? '—' : item.code)}</strong><span>${escapeHtml(item.outlets?.name || 'OHHO OUTLET')} · ${new Date(item.issued_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div><div><b>${escapeHtml(item.label)}</b><em class="spin-status ${status.toLowerCase().replace(/\s+/g, '-')}">${status}</em></div></article>`;
+  }).join('');
 }
 
 function fillSpinSettingForm() {
@@ -4266,6 +4283,7 @@ function fillSpinSettingForm() {
   if ($('#spinPrizeTwo')) $('#spinPrizeTwo').value = prizes[1]?.label || '';
   if ($('#spinPrizeThree')) $('#spinPrizeThree').value = prizes[2]?.label || '';
   if ($('#spinPrizeFour')) $('#spinPrizeFour').value = prizes[3]?.label || '';
+  if ($('#spinMinimumOrder')) $('#spinMinimumOrder').value = Number(setting?.minimum_order || setting?.minimumOrder || 0);
   if ($('#spinEnabled')) $('#spinEnabled').checked = setting?.enabled !== false;
   if ($('#spinQrLink')) $('#spinQrLink').href = `/spin.html?outlet=${encodeURIComponent(outlet?.slug || '')}`;
 }
@@ -4278,6 +4296,7 @@ async function loadSpinSettings() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error);
     state.spinSettings = result.settings || [];
+    state.spinHistory = result.history || [];
     renderSpinSettings();
   } catch (error) {
     console.error('Unable to load Spin & Win settings:', error);
@@ -4292,7 +4311,7 @@ async function saveSpinSettings() {
   button.disabled = true;
   try {
     const { data: sessionData } = await supabase.auth.getSession();
-    const response = await fetch('/api/spin', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData?.session?.access_token || ''}` }, body: JSON.stringify({ action: 'settings', outletId, enabled: $('#spinEnabled')?.checked, prizes }) });
+    const response = await fetch('/api/spin', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData?.session?.access_token || ''}` }, body: JSON.stringify({ action: 'settings', outletId, enabled: $('#spinEnabled')?.checked, prizes, minimumOrder: $('#spinMinimumOrder')?.value }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error);
     state.spinSettings = state.spinSettings.filter(item => item.outlet_id !== outletId).concat([{ outlet_id: outletId, ...result.settings }]);

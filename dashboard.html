@@ -1193,10 +1193,15 @@ body{font-size:14px}
           <label class="spin-setting-field"><span>PRIZE 2</span><input id="spinPrizeTwo" value="10% OFF" maxlength="40"></label>
           <label class="spin-setting-field"><span>PRIZE 3</span><input id="spinPrizeThree" value="₹20 OFF" maxlength="40"></label>
           <label class="spin-setting-field"><span>PRIZE 4</span><input id="spinPrizeFour" value="₹30 OFF" maxlength="40"></label>
+          <label class="spin-setting-field"><span>MINIMUM ORDER FOR SPIN ELIGIBILITY (₹)</span><input id="spinMinimumOrder" type="number" min="0" step="1" value="0"></label>
           <label class="spin-settings-toggle"><input id="spinEnabled" type="checkbox" checked><span>Spin &amp; Win is active at this cart</span></label>
           <button id="saveSpinSettingsBtn" class="primary" type="button">SAVE SPIN SETTINGS</button>
           <p class="settings-spin-help">Customers choose their outlet and spin directly on the OHHO website. Their generated code is entered in POS when placing the order.</p>
         </div>
+      </article>
+      <article class="settings-panel" id="spinHistoryPanel">
+        <div class="settings-panel-head"><div><div class="eyebrow">Reward tracking</div><h2>Spin History</h2></div><span>Latest 100 spins</span></div>
+        <div id="spinHistoryList" class="spin-history-list"><div class="settings-empty">Loading spin history…</div></div>
       </article>
       <article class="settings-panel">
         <div class="settings-panel-head"><div><div class="eyebrow">POS configuration</div><h2>Order defaults</h2></div></div>
@@ -1219,3 +1224,4 @@ body{font-size:14px}
 <script type="module" src="/src/dashboard.js"></script></body>
 </html>
 .settings-spin-help{margin:12px 0 0;color:#777;font-size:9px;line-height:1.5}
+.spin-history-list{display:grid;gap:7px;max-height:420px;overflow:auto;padding-right:3px}.spin-history-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px;border:1px solid #282828;border-radius:8px;background:#101010}.spin-history-row>div{display:grid;gap:4px;min-width:0}.spin-history-row strong{color:#ffd21c;font:800 10px var(--mono);letter-spacing:.3px}.spin-history-row span{color:#777;font-size:8px}.spin-history-row b{color:#eee;font-size:9px;text-align:right}.spin-status{justify-self:end;padding:3px 6px;border-radius:99px;font:800 7px var(--mono);font-style:normal;letter-spacing:.6px}.spin-status.active{background:#192416;color:#a5e891}.spin-status.redeemed{background:#211c08;color:#ffd21c}.spin-status.expired,.spin-status.no-win{background:#242424;color:#999}@media(max-width:620px){.spin-history-row{align-items:flex-start}.spin-history-row b{text-align:left}.spin-status{justify-self:start}}

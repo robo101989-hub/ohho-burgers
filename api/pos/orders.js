@@ -546,6 +546,9 @@ export default async function handler(req, res) {
         .eq("code", spinRewardCode)
         .maybeSingle();
       if (rewardError || !reward || reward.status !== "ISSUED") return res.status(400).json({ error: "Spin & Win reward is not available" });
+      const { data: spinSettings } = await supabase.from("outlet_spin_settings").select("minimum_order").eq("outlet_id", outlet.id).maybeSingle();
+      const minimumOrder = Number(spinSettings?.minimum_order || 0);
+      if (minimumOrder > 0 && subtotal < minimumOrder) return res.status(400).json({ error: `Spin & Win requires a minimum order of ₹${minimumOrder.toFixed(0)}` });
       if (new Date(reward.expires_at).getTime() < Date.now()) {
         await supabase.from("spin_rewards").update({ status: "EXPIRED" }).eq("id", reward.id).eq("status", "ISSUED");
         return res.status(400).json({ error: "Spin & Win reward has expired" });

@@ -231,6 +231,7 @@ function spinDeviceKey() {
   return key;
 }
 function setHomeSpinMessage(message) { const target = $('#homeSpinMessage'); if (target) target.textContent = message; }
+function setHomeSpinEligibility(minimumOrder) { const target = $('#homeSpinEligibility'); if (target) target.textContent = minimumOrder > 0 ? `SPIN ELIGIBLE ON ORDERS ₹${Number(minimumOrder).toFixed(0)}+` : 'SPIN ELIGIBLE ON ALL ORDERS'; }
 function showHomeSpinReward(reward) {
   $('#homeSpinLabel').textContent = reward.label;
   $('#homeSpinCode').textContent = reward.code;
@@ -240,7 +241,7 @@ async function checkHomeSpinOutlet() {
   const button = $('#homeSpinButton');
   const reward = $('#homeSpinReward');
   if (reward) reward.hidden = true;
-  if (!homeSpinOutlet) { if (button) button.disabled = true; setHomeSpinMessage('Choose the cart where you are ordering.'); return; }
+  if (!homeSpinOutlet) { if (button) button.disabled = true; setHomeSpinMessage('Choose the cart where you are ordering.'); setHomeSpinEligibility(-1); return; }
   if (button) button.disabled = true;
   setHomeSpinMessage('Checking today’s OHHO rewards…');
   try {
@@ -248,6 +249,7 @@ async function checkHomeSpinOutlet() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Spin & Win is unavailable at this outlet.');
     if (button) button.disabled = !data.enabled;
+    setHomeSpinEligibility(data.minimumOrder);
     setHomeSpinMessage(data.enabled ? 'Ready. Start the spinner and show your code at the POS.' : 'Spin & Win is paused at this outlet.');
   } catch (error) {
     setHomeSpinMessage(error.message || 'Spin & Win is unavailable right now.');
