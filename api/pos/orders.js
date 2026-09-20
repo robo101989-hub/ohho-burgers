@@ -532,7 +532,7 @@ export default async function handler(req, res) {
       Number(sessionCountResult.count || 0),
       Number(latestTokenResult.data?.[0]?.token_number || 0)
     ) + 1;
-    const customerNote = customerName || customerPhone
+    let customerNote = customerName || customerPhone
       ? JSON.stringify({ customerName, customerPhone })
       : null;
 
@@ -557,6 +557,14 @@ export default async function handler(req, res) {
       if (reward.reward_type === "FLAT") spinDiscount = Number(reward.reward_value || 0);
       spinDiscount = Math.max(0, Math.min(subtotal, spinDiscount));
       spinReward = reward;
+    }
+
+    if (spinReward) {
+      customerNote = JSON.stringify({
+        customerName,
+        customerPhone,
+        spinReward: { code: spinReward.code, label: spinReward.label, discount: spinDiscount }
+      });
     }
 
     const { data: order, error: orderError } = await supabase

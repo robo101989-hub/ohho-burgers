@@ -105,6 +105,8 @@ function injectStyles() {
     .order-item-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;color:#bbb;font-size:11px}
     .order-item-row strong{color:#ffd21c;font-family:var(--mono)}
     .order-item-row+ .order-item-row{border-top:1px solid #1b1b1b}
+    .order-spin-discount{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:10px 11px;border:1px solid #574711;border-radius:8px;background:#191509}
+    .order-spin-discount span{display:block;color:#ffd21c;font:900 8px var(--mono);letter-spacing:.75px}.order-spin-discount small{display:block;margin-top:4px;color:#aaa;font-size:8px}.order-spin-discount strong{color:#ffd21c;font:900 14px var(--mono);white-space:nowrap}
     .order-card-bottom{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-top:14px}
     .order-time,.order-count{display:block;color:#666;font:800 8px var(--mono);letter-spacing:.4px}
     .order-count{margin-top:4px;color:#888}
@@ -3196,7 +3198,7 @@ async function loadOrders({ silent = false } = {}) {
 
   let query = supabase
     .from('orders')
-    .select('id, order_number, token_number, order_type, status, payment_method, payment_status, order_source, table_number, customer_note, subtotal, total, created_at, outlet_id')
+    .select('id, order_number, token_number, order_type, status, payment_method, payment_status, order_source, table_number, customer_note, subtotal, discount, total, created_at, outlet_id')
     .order('created_at', { ascending: false })
     .limit(1000);
 
@@ -3280,15 +3282,18 @@ function formatOrderDate(value) {
 }
 
 function parsePosCustomer(value) {
-  if (!value) return { customer_name: '', customer_phone: '' };
+  if (!value) return { customer_name: '', customer_phone: '', spin_reward: null };
   try {
     const customer = JSON.parse(value);
     return {
       customer_name: String(customer?.customerName || '').trim(),
-      customer_phone: String(customer?.customerPhone || '').trim()
+      customer_phone: String(customer?.customerPhone || '').trim(),
+      spin_reward: customer?.spinReward && typeof customer.spinReward === 'object'
+        ? { code: String(customer.spinReward.code || '').trim(), label: String(customer.spinReward.label || '').trim(), discount: Number(customer.spinReward.discount || 0) }
+        : null
     };
   } catch {
-    return { customer_name: '', customer_phone: '' };
+    return { customer_name: '', customer_phone: '', spin_reward: null };
   }
 }
 
@@ -3352,6 +3357,8 @@ function renderOrderCards(orders, { archived = false } = {}) {
     const items = order.order_items || [];
     const itemCount = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
     const statusClass = String(order.order_status || '').toLowerCase().replaceAll('_', '-');
+    const spinDiscount = Math.max(0, Number(order.discount || 0));
+    const spinTrace = order.spin_reward || null;
 
     return `
       <article class="order-card">
@@ -3381,6 +3388,13 @@ function renderOrderCards(orders, { archived = false } = {}) {
             </div>
           `).join('')}
         </div>
+
+        ${spinDiscount > 0 ? `
+          <div class="order-spin-discount">
+            <div><span>OHHO SPIN &amp; WIN APPLIED</span><small>${escapeHtml(spinTrace?.label || 'Reward discount')}${spinTrace?.code ? ` · ${escapeHtml(spinTrace.code)}` : ''}</small></div>
+            <strong>−₹${spinDiscount.toLocaleString('en-IN')}</strong>
+          </div>
+        ` : ''}
 
         <div class="order-card-bottom">
           <div>
