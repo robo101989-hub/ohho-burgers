@@ -148,7 +148,7 @@ function whatsappOrderUrl(outlet) {
 }
 
 function renderPublicOutlets(outlets) {
-  const activeOutlets = outlets.filter(outlet => outlet.status !== 'INACTIVE');
+  const activeOutlets = outlets.filter(outlet => outlet.website_enabled === true);
   render('#locationGrid', activeOutlets.map((outlet, index) => {
     const address = outlet.address || '';
     const hours = outlet.hours || [formatOutletTime(outlet.opening_time), formatOutletTime(outlet.closing_time)].filter(Boolean).join(' – ');
@@ -181,7 +181,7 @@ function renderPublicOutlets(outlets) {
         </div>
       </div>
     </article>`;
-  }).join(''));
+  }).join('') || '<p class="location-error">No outlets are currently available on the website.</p>');
 
   renderOrderOutletPicker(activeOutlets);
 }
@@ -223,19 +223,19 @@ function renderOrderOutletPicker(outlets) {
   showOutlet(0);
 }
 
-renderPublicOutlets(siteData.locations);
+render('#locationGrid', '<p class="location-error">Loading outlets…</p>');
 
 async function loadPublicOutlets() {
   const { data, error } = await supabase
     .from('outlets')
-    .select('name,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,created_at')
-    .eq('status', 'ACTIVE')
+    .select('name,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,website_enabled,created_at')
+    .eq('website_enabled', true)
     .order('created_at', { ascending: true });
 
-  if (!error && data?.length) {
+  if (!error) {
     // Preserve already-published marketplace links while their dashboard
     // fields are being filled in. Newly saved dashboard values always win.
-    const outletsWithKnownLinks = data.map(outlet => {
+    const outletsWithKnownLinks = (data || []).map(outlet => {
       const fallback = siteData.locations.find(item =>
         item.name.toLowerCase() === String(outlet.name || '').toLowerCase()
       );
@@ -246,6 +246,9 @@ async function loadPublicOutlets() {
       };
     });
     renderPublicOutlets(outletsWithKnownLinks);
+  } else {
+    render('#locationGrid', '<p class="location-error">Unable to load outlets right now. Please refresh to try again.</p>');
+    render('#whatsAppOutletChoices', '<small>Unable to load ordering outlets right now.</small>');
   }
 }
 
