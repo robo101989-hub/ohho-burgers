@@ -1623,7 +1623,7 @@ function wirePosActions() {
       const response = await fetch('/api/spin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session.access_token}` },
-        body: JSON.stringify({ action: 'verify', outletId: outlet.id, code })
+        body: JSON.stringify({ action: 'verify', outletId: outlet.id, code, orderSubtotal: state.pos.cart.reduce((sum, item) => sum + item.price * item.quantity, 0) })
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Reward could not be verified.');
@@ -4250,9 +4250,9 @@ function renderSpinSettings() {
   if (!isAdmin) return;
   const select = $('#spinSettingsOutlet');
   if (!select) return;
-  const current = select.value || state.outlets[0]?.id || '';
-  select.innerHTML = state.outlets.map(outlet => `<option value="${escapeHtml(outlet.id)}">${escapeHtml(outlet.name)}</option>`).join('');
-  select.value = state.outlets.some(outlet => outlet.id === current) ? current : (state.outlets[0]?.id || '');
+  const current = select.value || '__all__';
+  select.innerHTML = `<option value="__all__">ALL OUTLETS</option>${state.outlets.map(outlet => `<option value="${escapeHtml(outlet.id)}">${escapeHtml(outlet.name)}</option>`).join('')}`;
+  select.value = current === '__all__' || state.outlets.some(outlet => outlet.id === current) ? current : '__all__';
   fillSpinSettingForm();
   renderSpinHistory();
 }
@@ -4274,8 +4274,9 @@ function renderSpinHistory() {
 
 function fillSpinSettingForm() {
   const outletId = $('#spinSettingsOutlet')?.value;
+  const isAllOutlets = outletId === '__all__';
   const outlet = state.outlets.find(item => item.id === outletId);
-  const setting = state.spinSettings.find(item => item.outlet_id === outletId);
+  const setting = isAllOutlets ? state.spinSettings[0] : state.spinSettings.find(item => item.outlet_id === outletId);
   const prizes = setting?.prizes || [
     { label: '5% OFF' }, { label: '10% OFF' }, { label: '₹20 OFF' }
   ];
@@ -4285,7 +4286,7 @@ function fillSpinSettingForm() {
   if ($('#spinPrizeFour')) $('#spinPrizeFour').value = prizes[3]?.label || '';
   if ($('#spinMinimumOrder')) $('#spinMinimumOrder').value = Number(setting?.minimum_order || setting?.minimumOrder || 0);
   if ($('#spinEnabled')) $('#spinEnabled').checked = setting?.enabled !== false;
-  if ($('#spinQrLink')) $('#spinQrLink').href = `/spin.html?outlet=${encodeURIComponent(outlet?.slug || '')}`;
+  if ($('#spinQrLink')) $('#spinQrLink').href = isAllOutlets ? '/#spin-win' : `/spin.html?outlet=${encodeURIComponent(outlet?.slug || '')}`;
 }
 
 async function loadSpinSettings() {
@@ -4305,18 +4306,21 @@ async function loadSpinSettings() {
 
 async function saveSpinSettings() {
   const outletId = $('#spinSettingsOutlet')?.value;
+  const allOutlets = outletId === '__all__';
   const prizes = [$('#spinPrizeOne')?.value, $('#spinPrizeTwo')?.value, $('#spinPrizeThree')?.value, $('#spinPrizeFour')?.value].map(prizeFromText).filter(Boolean);
-  if (!outletId || prizes.length !== 4) return toast('Use four discount prizes, such as 5% OFF or ₹20 OFF.', 'bad');
+  if ((!outletId && !allOutlets) || prizes.length !== 4) return toast('Use four discount prizes, such as 5% OFF or ₹20 OFF.', 'bad');
   const button = $('#saveSpinSettingsBtn');
   button.disabled = true;
   try {
     const { data: sessionData } = await supabase.auth.getSession();
-    const response = await fetch('/api/spin', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData?.session?.access_token || ''}` }, body: JSON.stringify({ action: 'settings', outletId, enabled: $('#spinEnabled')?.checked, prizes, minimumOrder: $('#spinMinimumOrder')?.value }) });
+    const response = await fetch('/api/spin', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData?.session?.access_token || ''}` }, body: JSON.stringify({ action: 'settings', outletId: allOutlets ? '' : outletId, allOutlets, enabled: $('#spinEnabled')?.checked, prizes, minimumOrder: $('#spinMinimumOrder')?.value }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error);
-    state.spinSettings = state.spinSettings.filter(item => item.outlet_id !== outletId).concat([{ outlet_id: outletId, ...result.settings }]);
+    const saved = Array.isArray(result.settings) ? result.settings : [{ outlet_id: outletId, ...result.settings }];
+    const savedIds = new Set(saved.map(item => item.outlet_id));
+    state.spinSettings = state.spinSettings.filter(item => !savedIds.has(item.outlet_id)).concat(saved);
     fillSpinSettingForm();
-    toast('Spin & Win settings saved.', 'ok');
+    toast(allOutlets ? 'Spin & Win settings saved for all outlets.' : 'Spin & Win settings saved.', 'ok');
   } catch (error) {
     toast(error.message || 'Could not save Spin & Win settings.', 'bad');
   } finally { button.disabled = false; }

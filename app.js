@@ -232,6 +232,13 @@ function spinDeviceKey() {
 }
 function setHomeSpinMessage(message) { const target = $('#homeSpinMessage'); if (target) target.textContent = message; }
 function setHomeSpinEligibility(minimumOrder) { const target = $('#homeSpinEligibility'); if (target) target.textContent = minimumOrder > 0 ? `SPIN ELIGIBLE ON ORDERS ₹${Number(minimumOrder).toFixed(0)}+` : 'SPIN ELIGIBLE ON ALL ORDERS'; }
+function setHomeSpinPrizes(prizes) {
+  const labels = [prizes?.[0]?.label, 'BETTER LUCK', prizes?.[1]?.label, prizes?.[2]?.label, 'BETTER LUCK', prizes?.[3]?.label];
+  labels.forEach((label, index) => {
+    const slice = document.querySelector(`.slice-${index + 1}`);
+    if (slice) slice.textContent = String(label || (index === 1 || index === 4 ? 'BETTER LUCK' : 'OHHO REWARD')).toUpperCase();
+  });
+}
 function showHomeSpinReward(reward) {
   $('#homeSpinLabel').textContent = reward.label;
   $('#homeSpinCode').textContent = reward.code;
@@ -250,6 +257,7 @@ async function checkHomeSpinOutlet() {
     if (!response.ok) throw new Error(data.error || 'Spin & Win is unavailable at this outlet.');
     if (button) button.disabled = !data.enabled;
     setHomeSpinEligibility(data.minimumOrder);
+    setHomeSpinPrizes(data.prizes);
     setHomeSpinMessage(data.enabled ? 'Ready. Start the spinner and show your code at the POS.' : 'Spin & Win is paused at this outlet.');
   } catch (error) {
     setHomeSpinMessage(error.message || 'Spin & Win is unavailable right now.');

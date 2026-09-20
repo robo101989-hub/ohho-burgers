@@ -103,6 +103,11 @@ export default async function handler(req, res) {
       const outletId = String(body.outletId || '').trim();
       if (!outletId) return res.status(400).json({ error: 'Select an outlet first.' });
       if (!await staff(req, res, outletId)) return;
+      const orderSubtotal = Math.max(0, Number(body.orderSubtotal || 0));
+      const settings = await getSettings(outletId);
+      if (settings.minimumOrder > 0 && orderSubtotal < settings.minimumOrder) {
+        return res.status(400).json({ error: `Spin & Win requires a minimum order of ₹${settings.minimumOrder.toFixed(0)}.` });
+      }
       const { data: reward } = await supabase.from('spin_rewards').select('code,label,reward_type,reward_value,status,expires_at').eq('outlet_id', outletId).eq('code', cleanCode(body.code)).maybeSingle();
       if (!reward || reward.status !== 'ISSUED') return res.status(404).json({ error: 'This reward is not available.' });
       if (new Date(reward.expires_at).getTime() < Date.now()) return res.status(410).json({ error: 'This reward has expired.' });
@@ -110,12 +115,21 @@ export default async function handler(req, res) {
     }
 
     if (action === 'settings') {
+      const allOutlets = body.allOutlets === true;
       const outletId = String(body.outletId || '').trim();
-      const auth = await staff(req, res, outletId, true); if (!auth) return;
+      const auth = await staff(req, res, allOutlets ? null : outletId, true); if (!auth) return;
       const minimumOrder = Math.max(0, Math.min(100000, Number(body.minimumOrder || 0)));
-      const { data, error } = await supabase.from('outlet_spin_settings').upsert({ outlet_id: outletId, enabled: body.enabled !== false, prizes: cleanPrizes(body.prizes), minimum_order: minimumOrder, updated_at: new Date().toISOString(), updated_by: auth.user.id }, { onConflict: 'outlet_id' }).select('enabled,prizes,minimum_order').single();
+      let outletIds = [outletId];
+      if (allOutlets) {
+        const { data: outlets, error: outletError } = await supabase.from('outlets').select('id').order('created_at', { ascending: true });
+        if (outletError) return res.status(500).json({ error: 'Could not load outlets for Spin & Win settings.' });
+        outletIds = (outlets || []).map(outlet => outlet.id);
+      }
+      if (!outletIds.length || outletIds.some(id => !id)) return res.status(400).json({ error: 'Choose an outlet to save Spin & Win settings.' });
+      const values = outletIds.map(id => ({ outlet_id: id, enabled: body.enabled !== false, prizes: cleanPrizes(body.prizes), minimum_order: minimumOrder, updated_at: new Date().toISOString(), updated_by: auth.user.id }));
+      const { data, error } = await supabase.from('outlet_spin_settings').upsert(values, { onConflict: 'outlet_id' }).select('outlet_id,enabled,prizes,minimum_order');
       if (error) return res.status(500).json({ error: 'Could not save Spin & Win settings.' });
-      return res.status(200).json({ settings: { enabled: data.enabled, prizes: cleanPrizes(data.prizes), minimumOrder: Number(data.minimum_order || 0) } });
+      return res.status(200).json({ settings: (data || []).map(item => ({ ...item, prizes: cleanPrizes(item.prizes), minimumOrder: Number(item.minimum_order || 0) })) });
     }
     return res.status(400).json({ error: 'Unknown Spin & Win action.' });
   } catch (error) {
