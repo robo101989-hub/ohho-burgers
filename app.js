@@ -223,12 +223,70 @@ function renderOrderOutletPicker(outlets) {
   showOutlet(0);
 }
 
+let homeSpinBusy = false;
+let homeSpinOutlet = '';
+function spinDeviceKey() {
+  let key = localStorage.getItem('ohho_spin_device');
+  if (!key) { key = crypto.randomUUID(); localStorage.setItem('ohho_spin_device', key); }
+  return key;
+}
+function setHomeSpinMessage(message) { const target = $('#homeSpinMessage'); if (target) target.textContent = message; }
+function showHomeSpinReward(reward) {
+  $('#homeSpinLabel').textContent = reward.label;
+  $('#homeSpinCode').textContent = reward.code;
+  $('#homeSpinReward').hidden = false;
+}
+async function checkHomeSpinOutlet() {
+  const button = $('#homeSpinButton');
+  const reward = $('#homeSpinReward');
+  if (reward) reward.hidden = true;
+  if (!homeSpinOutlet) { if (button) button.disabled = true; setHomeSpinMessage('Choose the cart where you are ordering.'); return; }
+  if (button) button.disabled = true;
+  setHomeSpinMessage('Checking today’s OHHO rewards…');
+  try {
+    const response = await fetch(`/api/spin?outlet=${encodeURIComponent(homeSpinOutlet)}`, { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Spin & Win is unavailable at this outlet.');
+    if (button) button.disabled = !data.enabled;
+    setHomeSpinMessage(data.enabled ? 'Ready. Start the spinner and show your code at the POS.' : 'Spin & Win is paused at this outlet.');
+  } catch (error) {
+    setHomeSpinMessage(error.message || 'Spin & Win is unavailable right now.');
+  }
+}
+function renderHomeSpinnerOutlets(outlets) {
+  const select = $('#homeSpinOutlet');
+  if (!select) return;
+  select.disabled = false;
+  select.innerHTML = `<option value="">CHOOSE YOUR OUTLET</option>${outlets.filter(outlet => outlet.slug).map(outlet => `<option value="${escapeHtml(outlet.slug)}">${escapeHtml(outlet.name).toUpperCase()}</option>`).join('')}`;
+  select.addEventListener('change', () => { homeSpinOutlet = select.value; void checkHomeSpinOutlet(); });
+  $('#homeSpinButton')?.addEventListener('click', async () => {
+    if (homeSpinBusy || !homeSpinOutlet) return;
+    homeSpinBusy = true;
+    const button = $('#homeSpinButton');
+    button.disabled = true;
+    $('#homeSpinReward').hidden = true;
+    setHomeSpinMessage('Spinning your OHHO reward…');
+    $('#homeSpinWheel').style.transform = `rotate(${1440 + Math.floor(Math.random() * 720)}deg)`;
+    try {
+      const response = await fetch('/api/spin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'spin', outlet: homeSpinOutlet, deviceKey: spinDeviceKey() }) });
+      const data = await response.json();
+      await new Promise(resolve => setTimeout(resolve, 2800));
+      if (!response.ok && !data.reward) throw new Error(data.error || 'Could not create your reward.');
+      showHomeSpinReward(data.reward);
+      setHomeSpinMessage(data.reward.status === 'REDEEMED' ? 'This code was already redeemed.' : 'Reward ready — give this code to the team before payment.');
+    } catch (error) {
+      setHomeSpinMessage(error.message || 'Could not spin right now. Please try again.');
+      button.disabled = false;
+    } finally { homeSpinBusy = false; }
+  });
+}
+
 render('#locationGrid', '<p class="location-error">Loading outlets…</p>');
 
 async function loadPublicOutlets() {
   const { data, error } = await supabase
     .from('outlets')
-    .select('name,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,website_enabled,created_at')
+    .select('name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,website_enabled,created_at')
     .eq('website_enabled', true)
     .order('created_at', { ascending: true });
 
@@ -246,9 +304,11 @@ async function loadPublicOutlets() {
       };
     });
     renderPublicOutlets(outletsWithKnownLinks);
+    renderHomeSpinnerOutlets(outletsWithKnownLinks.filter(outlet => outlet.website_enabled === true));
   } else {
     render('#locationGrid', '<p class="location-error">Unable to load outlets right now. Please refresh to try again.</p>');
     render('#whatsAppOutletChoices', '<small>Unable to load ordering outlets right now.</small>');
+    setHomeSpinMessage('Unable to load outlets right now. Please refresh to try again.');
   }
 }
 

@@ -56,7 +56,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ outlets: outlets || [], settings: (settings || []).map(item => ({ ...item, prizes: cleanPrizes(item.prizes) })) });
       }
       const outlet = await getOutlet(req.query?.outlet);
-      if (!outlet || outlet.status !== 'ACTIVE') return res.status(404).json({ error: 'This Spin & Win QR is not active.' });
+      if (!outlet || outlet.status !== 'ACTIVE') return res.status(404).json({ error: 'Spin & Win is not active at this outlet.' });
       const settings = await getSettings(outlet.id);
       res.setHeader('Cache-Control', 'no-store');
       return res.status(200).json({ outlet: { name: outlet.name, slug: outlet.slug }, enabled: settings.enabled, prizes: settings.prizes.map(publicPrize) });
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
     if (action === 'spin') {
       const outlet = await getOutlet(body.outlet);
       const deviceKey = String(body.deviceKey || '').trim().slice(0, 120);
-      if (!outlet || outlet.status !== 'ACTIVE' || !deviceKey) return res.status(400).json({ error: 'Open this page from an active OHHO cart QR.' });
+      if (!outlet || outlet.status !== 'ACTIVE' || !deviceKey) return res.status(400).json({ error: 'Choose an active OHHO outlet to spin.' });
       const settings = await getSettings(outlet.id);
       if (!settings.enabled) return res.status(403).json({ error: 'Spin & Win is paused at this cart.' });
       const today = new Date(); today.setHours(0, 0, 0, 0);
