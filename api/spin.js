@@ -4,8 +4,10 @@ const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABAS
 const DEFAULT_PRIZES = [
   { label: '5% OFF', type: 'PERCENT', value: 5 },
   { label: '10% OFF', type: 'PERCENT', value: 10 },
-  { label: '₹20 OFF', type: 'FLAT', value: 20 }
+  { label: '₹20 OFF', type: 'FLAT', value: 20 },
+  { label: '₹30 OFF', type: 'FLAT', value: 30 }
 ];
+const NO_REWARD = { label: 'BETTER LUCK NEXT TIME', type: 'FREE_ITEM', value: 0 };
 
 const tokenFrom = req => (req.headers?.authorization || '').replace(/^Bearer\s+/i, '') || null;
 const cleanCode = value => String(value || '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
@@ -17,8 +19,9 @@ function cleanPrizes(value) {
     type: ['PERCENT', 'FLAT', 'FREE_ITEM'].includes(item?.type) ? item.type : 'PERCENT',
     value: Math.max(0, Math.min(1000, Number(item?.value || 0)))
   })).filter(item => item.label && (item.type === 'FREE_ITEM' || item.value > 0));
-  return prizes.length ? prizes : DEFAULT_PRIZES;
+  return [...prizes, ...DEFAULT_PRIZES.slice(prizes.length)].slice(0, 4);
 }
+const noReward = prize => String(prize?.label || '').toUpperCase().includes('BETTER LUCK');
 async function staff(req, res, outletId, adminOnly = false) {
   const token = tokenFrom(req);
   if (!token) { res.status(401).json({ error: 'Sign in to use POS rewards.' }); return null; }
@@ -73,16 +76,26 @@ export default async function handler(req, res) {
       if (!settings.enabled) return res.status(403).json({ error: 'Spin & Win is paused at this cart.' });
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const { data: existing } = await supabase.from('spin_rewards').select('code,label,reward_type,reward_value,status,expires_at').eq('outlet_id', outlet.id).eq('device_key', deviceKey).gte('issued_at', today.toISOString()).order('issued_at', { ascending: false }).limit(1).maybeSingle();
-      if (existing) return res.status(409).json({ error: 'You have already spun today.', reward: { code: existing.code, label: existing.label, type: existing.reward_type, value: Number(existing.reward_value), status: existing.status, expiresAt: existing.expires_at } });
-      const prize = settings.prizes[Math.floor(Math.random() * settings.prizes.length)];
+      if (existing) {
+        if (noReward(existing)) return res.status(409).json({ error: 'You have already spun today.', outcome: 'NO_REWARD' });
+        return res.status(409).json({ error: 'You have already spun today.', outcome: 'REWARD', reward: { code: existing.code, label: existing.label, type: existing.reward_type, value: Number(existing.reward_value), status: existing.status, expiresAt: existing.expires_at } });
+      }
+      const slots = [...settings.prizes.slice(0, 4), NO_REWARD, NO_REWARD];
+      const segment = Math.floor(Math.random() * slots.length);
+      const prize = slots[segment];
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+      if (noReward(prize)) {
+        const { error } = await supabase.from('spin_rewards').insert({ outlet_id: outlet.id, code: rewardCode(), device_key: deviceKey, label: prize.label, reward_type: prize.type, reward_value: 0, status: 'REDEEMED', expires_at: expiresAt, redeemed_at: new Date().toISOString() });
+        if (error) return res.status(500).json({ error: 'Could not record this spin. Please try again.' });
+        return res.status(201).json({ outcome: 'NO_REWARD', segment });
+      }
       let reward = null;
       for (let attempt = 0; attempt < 3 && !reward; attempt += 1) {
         const { data, error } = await supabase.from('spin_rewards').insert({ outlet_id: outlet.id, code: rewardCode(), device_key: deviceKey, label: prize.label, reward_type: prize.type, reward_value: prize.value, expires_at: expiresAt }).select('code,label,reward_type,reward_value,expires_at').maybeSingle();
         if (!error) reward = data;
       }
       if (!reward) return res.status(500).json({ error: 'Could not create your reward. Please try once more.' });
-      return res.status(201).json({ reward: { code: reward.code, label: reward.label, type: reward.reward_type, value: Number(reward.reward_value), expiresAt: reward.expires_at } });
+      return res.status(201).json({ outcome: 'REWARD', segment, reward: { code: reward.code, label: reward.label, type: reward.reward_type, value: Number(reward.reward_value), expiresAt: reward.expires_at } });
     }
 
     if (action === 'verify') {

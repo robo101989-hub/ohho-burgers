@@ -4265,6 +4265,7 @@ function fillSpinSettingForm() {
   if ($('#spinPrizeOne')) $('#spinPrizeOne').value = prizes[0]?.label || '';
   if ($('#spinPrizeTwo')) $('#spinPrizeTwo').value = prizes[1]?.label || '';
   if ($('#spinPrizeThree')) $('#spinPrizeThree').value = prizes[2]?.label || '';
+  if ($('#spinPrizeFour')) $('#spinPrizeFour').value = prizes[3]?.label || '';
   if ($('#spinEnabled')) $('#spinEnabled').checked = setting?.enabled !== false;
   if ($('#spinQrLink')) $('#spinQrLink').href = `/spin.html?outlet=${encodeURIComponent(outlet?.slug || '')}`;
 }
@@ -4285,8 +4286,8 @@ async function loadSpinSettings() {
 
 async function saveSpinSettings() {
   const outletId = $('#spinSettingsOutlet')?.value;
-  const prizes = [$('#spinPrizeOne')?.value, $('#spinPrizeTwo')?.value, $('#spinPrizeThree')?.value].map(prizeFromText).filter(Boolean);
-  if (!outletId || prizes.length !== 3) return toast('Use three discount prizes, such as 5% OFF or ₹20 OFF.', 'bad');
+  const prizes = [$('#spinPrizeOne')?.value, $('#spinPrizeTwo')?.value, $('#spinPrizeThree')?.value, $('#spinPrizeFour')?.value].map(prizeFromText).filter(Boolean);
+  if (!outletId || prizes.length !== 4) return toast('Use four discount prizes, such as 5% OFF or ₹20 OFF.', 'bad');
   const button = $('#saveSpinSettingsBtn');
   button.disabled = true;
   try {

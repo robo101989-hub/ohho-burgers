@@ -266,12 +266,17 @@ function renderHomeSpinnerOutlets(outlets) {
     button.disabled = true;
     $('#homeSpinReward').hidden = true;
     setHomeSpinMessage('Spinning your OHHO reward…');
-    $('#homeSpinWheel').style.transform = `rotate(${1440 + Math.floor(Math.random() * 720)}deg)`;
     try {
       const response = await fetch('/api/spin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'spin', outlet: homeSpinOutlet, deviceKey: spinDeviceKey() }) });
       const data = await response.json();
+      if (!response.ok && !data.reward && !data.outcome) throw new Error(data.error || 'Could not create your reward.');
+      const segment = Number.isInteger(data.segment) ? data.segment : Math.floor(Math.random() * 6);
+      $('#homeSpinWheel').style.transform = `rotate(${1800 + 30 - (segment * 60)}deg)`;
       await new Promise(resolve => setTimeout(resolve, 2800));
-      if (!response.ok && !data.reward) throw new Error(data.error || 'Could not create your reward.');
+      if (data.outcome === 'NO_REWARD') {
+        setHomeSpinMessage(data.error ? 'You have already used today’s spin at this outlet.' : 'Better luck next time — come back tomorrow for another OHHO spin.');
+        return;
+      }
       showHomeSpinReward(data.reward);
       setHomeSpinMessage(data.reward.status === 'REDEEMED' ? 'This code was already redeemed.' : 'Reward ready — give this code to the team before payment.');
     } catch (error) {
