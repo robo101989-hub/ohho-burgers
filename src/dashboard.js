@@ -3377,7 +3377,7 @@ function updateSupplyDefaultPrice() {
 function renderSupplyLines() {
   const list = $('#supplyBillLines');
   const total = state.inventory.billLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
-  if (list) list.innerHTML = state.inventory.billLines.length ? state.inventory.billLines.map((line, index) => `<div class="supply-line"><div><strong>${escapeHtml(line.name)}</strong><small>${inventoryQty(line.quantity)} ${escapeHtml(line.unit)} × ${formatReportMoney(line.unitPrice)}</small></div><b>${formatReportMoney(line.quantity * line.unitPrice)}</b><button type="button" data-supply-remove="${index}">×</button></div>`).join('') : '<div class="supply-empty">Add stock items to build this bill.</div>';
+  if (list) list.innerHTML = state.inventory.billLines.length ? state.inventory.billLines.map((line, index) => `<div class="supply-line"><div><strong>${escapeHtml(line.name)}</strong><small>${line.requestedQuantity ? `Requested ${inventoryQty(line.requestedQuantity)} ${escapeHtml(line.unit)} · ` : ''}${formatReportMoney(line.unitPrice)} / ${escapeHtml(line.unit)}</small></div><div class="supply-line-actual"><input type="number" min="0.001" step="${line.unit === 'EACH' ? '1' : '0.001'}" value="${Number(line.quantity)}" data-supply-quantity="${index}" aria-label="Actual supplied quantity"><span>${escapeHtml(line.unit === 'EACH' ? 'pcs' : line.unit)}</span></div><b>${formatReportMoney(line.quantity * line.unitPrice)}</b><button type="button" data-supply-remove="${index}">×</button></div>`).join('') : '<div class="supply-empty">Add stock items to build this bill.</div>';
   if ($('#supplyBillTotal')) $('#supplyBillTotal').textContent = formatReportMoney(total);
 }
 
@@ -3449,7 +3449,7 @@ async function submitStockRequirement() {
 function useStockRequest(request) {
   state.inventory.activeRequestId = request.id;
   state.inventory.billLines = (request.franchise_stock_request_items || []).map(row => ({
-    itemId: row.item_id, name: row.item_name, unit: row.unit, quantity: Number(row.quantity), unitPrice: Number(inventoryItem(row.item_id)?.default_supply_price || row.fixed_unit_price || 0)
+    itemId: row.item_id, name: row.item_name, unit: row.unit, quantity: Number(row.quantity), requestedQuantity: Number(row.quantity), unitPrice: Number(inventoryItem(row.item_id)?.default_supply_price || row.fixed_unit_price || 0)
   }));
   if ($('#supplyOutlet')) $('#supplyOutlet').value = request.outlet_id;
   if ($('#supplyNotes')) $('#supplyNotes').value = `From franchise requirement for ${request.required_for}${request.notes ? ` · ${request.notes}` : ''}`;
@@ -3545,6 +3545,7 @@ function wireInventoryActions() {
   $('#inventoryMasterList')?.addEventListener('click', event => { const button = event.target.closest('[data-inventory-edit-item]'); const item = button && inventoryItem(button.dataset.inventoryEditItem); if (item) editInventoryItemPrice(item); });
   $('#posSupplyNotice')?.addEventListener('click', event => { const view = event.target.closest('[data-supply-notice-view]'); const dismiss = event.target.closest('[data-supply-notice-dismiss]'); if (view) markSupplyNotification(view.dataset.supplyNoticeView, true); if (dismiss) markSupplyNotification(dismiss.dataset.supplyNoticeDismiss, false); });
   $('#supplyBillLines')?.addEventListener('click', event => { const button = event.target.closest('[data-supply-remove]'); if (!button) return; state.inventory.billLines.splice(Number(button.dataset.supplyRemove), 1); renderSupplyLines(); });
+  $('#supplyBillLines')?.addEventListener('change', event => { const input = event.target.closest('[data-supply-quantity]'); if (!input) return; const line = state.inventory.billLines[Number(input.dataset.supplyQuantity)]; const quantity = Number(input.value); if (!line || !(quantity > 0)) { toast('Actual supplied quantity must be greater than zero, or remove the item.', 'bad'); renderSupplyLines(); return; } line.quantity = line.unit === 'EACH' ? Math.max(1, Math.round(quantity)) : quantity; renderSupplyLines(); });
   $('#inventoryBillsList')?.addEventListener('click', event => {
     const button = event.target.closest('button'); if (!button) return;
     const id = button.dataset.inventoryPrint || button.dataset.inventoryBillCsv || button.dataset.inventoryPay;
