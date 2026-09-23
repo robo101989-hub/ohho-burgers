@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import inventoryHandler from "../lib/inventory.js";
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
@@ -69,6 +70,7 @@ async function requireOutletManager(req, res, outletId = null) {
 }
 
 export default async function handler(req, res) {
+  if (req.query?.resource === "inventory") return inventoryHandler(req, res);
   if (!["GET", "POST", "PATCH"].includes(req.method)) {
     return res.status(405).json({ error: "Method not allowed" });
   }

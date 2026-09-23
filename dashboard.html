@@ -760,6 +760,7 @@ body{font-size:14px}
     <button class="nav-btn" data-section="pos"><span class="nav-ico">＋</span>POS</button>
     <button class="nav-btn" data-section="orders"><span class="nav-ico">≡</span>Orders</button>
     <button class="nav-btn" data-section="menu"><span class="nav-ico">▦</span>Menu</button>
+    <button class="nav-btn" data-section="inventory"><span class="nav-ico">▤</span>Inventory</button>
     <button class="nav-btn" data-section="outlets"><span class="nav-ico">⌖</span>Outlets</button>
     <button class="nav-btn" data-section="staff"><span class="nav-ico">◎</span>Staff</button>
     <button class="nav-btn" data-section="reports"><span class="nav-ico">▥</span>Reports</button>
@@ -1056,6 +1057,73 @@ body{font-size:14px}
       </form>
     </div>
   </div>
+</section>
+<section id="inventory" class="section">
+  <div class="page-head inventory-page-head">
+    <div><div class="eyebrow">Franchise supply</div><h1 id="inventoryPageTitle">Supply &amp; Inventory</h1><p>One stock entry creates the bill, updates outlet inventory and appears in the outlet account.</p></div>
+    <div class="inventory-head-actions"><button id="inventoryDownloadBtn" class="secondary" type="button">DOWNLOAD REPORT</button><button id="inventoryRefreshBtn" class="primary" type="button">REFRESH</button></div>
+  </div>
+  <div class="inventory-filterbar">
+    <label><span>OUTLET</span><select id="inventoryOutletFilter"></select></label>
+    <label><span>FROM</span><input id="inventoryFrom" type="date"></label>
+    <label><span>TO</span><input id="inventoryTo" type="date"></label>
+    <button id="inventoryApplyFilter" class="secondary" type="button">VIEW RECORDS</button>
+    <button id="inventoryAllRecords" class="secondary" type="button">SEE ALL</button>
+  </div>
+  <div class="inventory-summary">
+    <article><span>CURRENT STOCK VALUE</span><strong id="inventoryStockValue">₹0</strong><small>At latest supply price</small></article>
+    <article><span>LOW / OUT OF STOCK</span><strong id="inventoryLowCount">0</strong><small>Needs attention</small></article>
+    <article><span>SUPPLY AMOUNT DUE</span><strong id="inventoryDue">₹0</strong><small>Unpaid balance</small></article>
+    <article><span>STOCK RECEIVED TODAY</span><strong id="inventoryToday">0</strong><small>Supply entries</small></article>
+  </div>
+  <div id="inventoryAdminWorkspace" class="inventory-admin-grid">
+    <article class="inventory-panel">
+      <div class="inventory-panel-head"><div><div class="eyebrow">Central billing</div><h2>Generate stock bill</h2></div></div>
+      <div class="inventory-form-grid">
+        <label><span>OUTLET</span><select id="supplyOutlet"></select></label>
+        <label><span>ITEM</span><select id="supplyItem"></select></label>
+        <label><span>QUANTITY</span><input id="supplyQuantity" type="number" min="0.001" step="0.001" placeholder="0"></label>
+        <label><span>PRICE / UNIT</span><input id="supplyPrice" type="number" min="0" step="0.01" placeholder="₹0"></label>
+      </div>
+      <button id="supplyAddLine" class="secondary inventory-wide-btn" type="button">＋ ADD ITEM TO BILL</button>
+      <div id="supplyBillLines" class="supply-lines"></div>
+      <label class="inventory-notes"><span>NOTES</span><input id="supplyNotes" type="text" maxlength="500" placeholder="Delivery or payment note"></label>
+      <div class="supply-total"><span>BILL TOTAL</span><strong id="supplyBillTotal">₹0</strong></div>
+      <button id="supplyGenerateBill" class="primary inventory-wide-btn" type="button">GENERATE BILL &amp; ADD STOCK</button>
+    </article>
+    <article class="inventory-panel">
+      <div class="inventory-panel-head"><div><div class="eyebrow">Master items</div><h2>Add stock item</h2></div></div>
+      <div class="inventory-form-grid item-create-grid">
+        <label><span>ITEM NAME</span><input id="inventoryItemName" type="text" placeholder="Chicken"></label>
+        <label><span>SKU</span><input id="inventoryItemSku" type="text" placeholder="CHICKEN"></label>
+        <label><span>UNIT</span><select id="inventoryItemUnit"><option value="KG">KG</option><option value="G">G</option><option value="L">L</option><option value="ML">ML</option><option value="EACH">EACH</option></select></label>
+        <label><span>LOW STOCK AT</span><input id="inventoryItemThreshold" type="number" min="0" step="0.001" placeholder="2"></label>
+        <label><span>DEFAULT PRICE</span><input id="inventoryItemPrice" type="number" min="0" step="0.01" placeholder="₹0"></label>
+      </div>
+      <button id="inventoryCreateItem" class="secondary inventory-wide-btn" type="button">CREATE STOCK ITEM</button>
+      <div class="inventory-panel-head adjustment-head"><div><div class="eyebrow">Usage &amp; correction</div><h2>Stock adjustment</h2></div></div>
+      <div class="inventory-form-grid">
+        <label><span>OUTLET</span><select id="adjustOutlet"></select></label>
+        <label><span>ITEM</span><select id="adjustItem"></select></label>
+        <label><span>TYPE</span><select id="adjustType"><option value="USAGE">Used</option><option value="WASTE">Wastage</option><option value="ADJUSTMENT">Add / remove</option></select></label>
+        <label><span>QUANTITY</span><input id="adjustQuantity" type="number" step="0.001" placeholder="0"></label>
+      </div>
+      <label class="inventory-notes"><span>REASON / NOTES</span><input id="adjustNotes" type="text" maxlength="500" placeholder="Required for audit history"></label>
+      <button id="inventoryAdjustStock" class="secondary inventory-wide-btn" type="button">SAVE ADJUSTMENT</button>
+    </article>
+  </div>
+  <article class="inventory-panel inventory-table-panel">
+    <div class="inventory-panel-head"><div><div class="eyebrow">Live balances</div><h2>Outlet stock</h2></div><span id="inventoryStockCount">0 items</span></div>
+    <div class="inventory-table-wrap"><div class="inventory-table-head"><span>ITEM</span><span>OUTLET</span><span>RECEIVED TODAY</span><span>USED / WASTE</span><span>CLOSING STOCK</span><span>STATUS</span></div><div id="inventoryStockList"></div></div>
+  </article>
+  <article class="inventory-panel inventory-table-panel">
+    <div class="inventory-panel-head"><div><div class="eyebrow">Billing history</div><h2>Supply bills</h2></div><span id="inventoryBillCount">0 bills</span></div>
+    <div id="inventoryBillsList" class="inventory-bills-list"></div>
+  </article>
+  <article class="inventory-panel inventory-table-panel">
+    <div class="inventory-panel-head"><div><div class="eyebrow">Audit trail</div><h2>Stock history</h2></div><span>Every receipt, usage and adjustment</span></div>
+    <div id="inventoryMovementList" class="inventory-movement-list"></div>
+  </article>
 </section>
 <section id="outlets" class="section"><div class="page-head"><div><div class="eyebrow">Network</div><h1>Outlets</h1><p>Build the OHHO network with one operating system.</p></div><button id="addNewOutletBtn" class="primary" type="button">＋ ADD NEW OUTLET</button></div><div class="cards"><article class="card"><div class="card-kicker">Active outlet</div><h2>Shamli</h2><p>ACTIVE · 5:00 PM – 1:00 AM · 17 menu items configured</p></article><article class="card"><div class="card-kicker">Active outlet</div><h2>Kairana</h2><p>ACTIVE · 5:00 PM – 1:00 AM · 17 menu items configured</p></article></div></section>
 <section id="staff" class="section">

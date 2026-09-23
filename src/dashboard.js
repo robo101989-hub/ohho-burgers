@@ -1,9 +1,9 @@
 import { supabase } from './supabase.js';
 
 const ROLE_PERMISSIONS = {
-  ADMIN: ['overview', 'pos', 'orders', 'menu', 'outlets', 'staff', 'reports', 'settings'],
-  OWNER: ['overview', 'pos', 'orders', 'menu', 'outlets', 'reports'],
-  MANAGER: ['overview', 'pos', 'orders', 'menu', 'reports'],
+  ADMIN: ['overview', 'pos', 'orders', 'menu', 'inventory', 'outlets', 'staff', 'reports', 'settings'],
+  OWNER: ['overview', 'pos', 'orders', 'menu', 'inventory', 'outlets', 'reports'],
+  MANAGER: ['overview', 'pos', 'orders', 'menu', 'inventory', 'reports'],
   STAFF: ['overview', 'pos', 'orders', 'menu']
 };
 
@@ -30,6 +30,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
+  inventory: { items: [], outlets: [], balances: [], bills: [], movements: [], billLines: [], loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -285,6 +286,9 @@ function injectStyles() {
       .order-action-btn{min-height:44px;padding:12px;font-size:9px}
     }
     @media(max-width:1050px){.outlet-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.outlet-grid,.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.modal-head,.outlet-form{padding:18px}.outlet-card{min-height:0}.outlet-links{flex-wrap:wrap}}
+    .inventory-head-actions{display:flex;gap:8px;flex-wrap:wrap}.inventory-filterbar{display:grid;grid-template-columns:minmax(180px,1fr) 150px 150px auto auto;gap:9px;align-items:end;margin-bottom:13px}.inventory-filterbar label,.inventory-form-grid label,.inventory-notes{display:grid;gap:6px}.inventory-filterbar label span,.inventory-form-grid label span,.inventory-notes span{color:#777;font:900 7px var(--mono);letter-spacing:1px}.inventory-filterbar input,.inventory-filterbar select,.inventory-form-grid input,.inventory-form-grid select,.inventory-notes input{height:40px;width:100%;border:1px solid #303030;border-radius:8px;background:#0d0d0d;color:#eee;padding:0 11px;outline:0;color-scheme:dark}.inventory-filterbar input:focus,.inventory-filterbar select:focus,.inventory-form-grid input:focus,.inventory-form-grid select:focus,.inventory-notes input:focus{border-color:#ffd21c}.inventory-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:13px}.inventory-summary article{background:#0d0d0d;border:1px solid #252525;border-radius:13px;padding:16px}.inventory-summary span{display:block;color:#777;font:900 7px var(--mono);letter-spacing:1px}.inventory-summary strong{display:block;margin-top:7px;color:#f5f5f0;font:950 24px var(--mono)}.inventory-summary small{display:block;margin-top:5px;color:#5f5f5f;font-size:9px}.inventory-admin-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:12px;margin-bottom:12px}.inventory-panel{background:#0d0d0d;border:1px solid #252525;border-radius:14px;padding:17px}.inventory-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}.inventory-panel-head h2{margin:3px 0 0;font-size:18px}.inventory-panel-head>span{color:#777;font:800 8px var(--mono)}.inventory-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.item-create-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.inventory-wide-btn{width:100%;margin-top:10px}.inventory-notes{margin-top:10px}.supply-lines{display:grid;gap:7px;margin-top:11px}.supply-line{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:9px 10px;border:1px solid #282828;border-radius:8px;background:#101010}.supply-line strong{font-size:10px}.supply-line small{display:block;color:#777;margin-top:3px;font-size:8px}.supply-line b{color:#ffd21c;font:900 10px var(--mono)}.supply-line button{border:1px solid #492525;background:#1a0d0d;color:#ff8c8c;border-radius:6px;padding:6px 8px}.supply-empty{padding:18px;text-align:center;border:1px dashed #303030;border-radius:8px;color:#666;font-size:9px}.supply-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #272727}.supply-total span{color:#777;font:900 8px var(--mono)}.supply-total strong{color:#ffd21c;font:950 22px var(--mono)}.adjustment-head{margin-top:25px;padding-top:18px;border-top:1px solid #292929}.inventory-table-panel{margin-top:12px}.inventory-table-wrap{overflow-x:auto}.inventory-table-head,.inventory-stock-row{display:grid;grid-template-columns:minmax(160px,1.2fr) minmax(120px,1fr) 110px 110px 120px 105px;gap:10px;align-items:center;min-width:760px}.inventory-table-head{padding:9px 11px;color:#5e5e5e;font:900 7px var(--mono);letter-spacing:.8px;border-bottom:1px solid #282828}.inventory-stock-row{padding:12px 11px;border-bottom:1px solid #202020;color:#aaa;font-size:10px}.inventory-stock-row:last-child{border-bottom:0}.inventory-stock-row strong{color:#eee}.inventory-qty{color:#ffd21c;font:900 11px var(--mono)}.inventory-status{width:max-content;border-radius:6px;padding:5px 7px;font:900 7px var(--mono);letter-spacing:.5px}.inventory-status.in{color:#72d56b;background:#0d170d;border:1px solid #253b25}.inventory-status.low{color:#ffd21c;background:#191509;border:1px solid #4c411b}.inventory-status.out{color:#ff8c8c;background:#1c0d0d;border:1px solid #482121}.inventory-bills-list,.inventory-movement-list{display:grid;gap:8px}.inventory-bill{border:1px solid #292929;border-radius:10px;padding:13px;background:#101010}.inventory-bill-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.inventory-bill h3{margin:0;font-size:13px}.inventory-bill-meta{color:#777;font-size:8px;margin-top:5px}.inventory-bill-total{text-align:right}.inventory-bill-total strong{display:block;color:#ffd21c;font:950 17px var(--mono)}.inventory-bill-total span{display:block;margin-top:3px;color:#888;font:900 7px var(--mono)}.inventory-bill-items{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}.inventory-bill-items span{border:1px solid #2c2c2c;border-radius:6px;padding:6px 8px;color:#aaa;font-size:8px}.inventory-bill-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.inventory-bill-actions button{padding:8px 10px;font:900 7px var(--mono)}.inventory-movement{display:grid;grid-template-columns:120px minmax(130px,1fr) 130px 100px minmax(140px,1fr);gap:10px;padding:11px;border-bottom:1px solid #202020;align-items:center;color:#888;font-size:9px}.inventory-movement strong{color:#eee}.inventory-movement .positive{color:#72d56b}.inventory-movement .negative{color:#ff8c8c}.inventory-empty{padding:35px;text-align:center;border:1px dashed #303030;border-radius:10px;color:#666;font-size:10px}.inventory-admin-grid.owner-view{grid-template-columns:1fr}.inventory-admin-grid.owner-view>article:first-child{display:none}
+    @media(max-width:1000px){.inventory-filterbar{grid-template-columns:1fr 1fr 1fr}.inventory-admin-grid{grid-template-columns:1fr}.inventory-summary{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:650px){.inventory-head-actions{width:100%}.inventory-head-actions button{flex:1}.inventory-filterbar{grid-template-columns:1fr 1fr}.inventory-filterbar label:first-child{grid-column:1/-1}.inventory-summary{grid-template-columns:1fr 1fr}.inventory-summary article{padding:13px}.inventory-summary strong{font-size:19px}.inventory-form-grid,.item-create-grid{grid-template-columns:1fr}.inventory-panel{padding:13px}.inventory-movement{grid-template-columns:1fr 1fr}.inventory-movement span:last-child{grid-column:1/-1}.inventory-bill-top{display:block}.inventory-bill-total{text-align:left;margin-top:9px}}
   `;
   document.head.appendChild(style);
 }
@@ -3146,6 +3150,275 @@ async function toggleMenuOutletAvailability(outletId, menuItemId, outletName) {
   toast(`${outletName} · ${next ? 'item enabled' : 'item disabled'}.`, 'ok');
 }
 
+async function inventoryApi(method = 'GET', body = null, params = {}) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('Your session has expired. Please sign in again.');
+  const url = new URL('/api/outlets', window.location.origin);
+  url.searchParams.set('resource', 'inventory');
+  Object.entries(params).forEach(([key, value]) => { if (value) url.searchParams.set(key, value); });
+  const response = await fetch(url, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || 'Unable to complete inventory request.');
+  return payload;
+}
+
+function inventoryItem(id) { return state.inventory.items.find(item => item.id === id); }
+function inventoryOutlet(id) { return state.inventory.outlets.find(outlet => outlet.id === id); }
+function inventoryDisplayQuantity(item, baseQuantity) {
+  const value = Number(baseQuantity || 0);
+  if (item?.base_unit === 'G' && item?.display_unit === 'KG') return value / 1000;
+  if (item?.base_unit === 'ML' && item?.display_unit === 'L') return value / 1000;
+  return value;
+}
+function inventoryBaseQuantity(item, displayQuantity) {
+  const value = Number(displayQuantity);
+  if (item?.base_unit === 'G' && item?.display_unit === 'KG') return value * 1000;
+  if (item?.base_unit === 'ML' && item?.display_unit === 'L') return value * 1000;
+  return value;
+}
+function inventoryQty(value) {
+  return Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 3 });
+}
+function inventoryDate(value) {
+  return value ? new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+}
+function inventorySelectedOutletId() { return $('#inventoryOutletFilter')?.value || ''; }
+function datePlusOne(value) {
+  if (!value) return '';
+  const date = new Date(`${value}T00:00:00`);
+  date.setDate(date.getDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function inventorySelectOptions(select, items, selected = '') {
+  if (!select) return;
+  select.innerHTML = items.map(item => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`).join('');
+  if (selected && [...select.options].some(option => option.value === selected)) select.value = selected;
+}
+
+function fillInventoryControls() {
+  const previousFilter = $('#inventoryOutletFilter')?.value || '';
+  const outletOptions = state.inventory.outlets.map(outlet => ({ value: outlet.id, label: outlet.name }));
+  inventorySelectOptions($('#inventoryOutletFilter'), state.profile?.role === 'ADMIN' ? [{ value: '', label: 'All outlets' }, ...outletOptions] : outletOptions, previousFilter);
+  inventorySelectOptions($('#supplyOutlet'), outletOptions, $('#supplyOutlet')?.value);
+  inventorySelectOptions($('#adjustOutlet'), outletOptions, $('#adjustOutlet')?.value);
+  const itemOptions = state.inventory.items.filter(item => item.active !== false).map(item => ({ value: item.id, label: `${item.name} · ${item.display_unit}` }));
+  inventorySelectOptions($('#supplyItem'), itemOptions, $('#supplyItem')?.value);
+  inventorySelectOptions($('#adjustItem'), itemOptions, $('#adjustItem')?.value);
+  updateSupplyDefaultPrice();
+  const admin = state.profile?.role === 'ADMIN';
+  $('#inventoryAdminWorkspace')?.classList.toggle('owner-view', !admin);
+  const adjustmentPanel = $('#inventoryAdminWorkspace article:nth-child(2)');
+  if (adjustmentPanel) {
+    const children = [...adjustmentPanel.children];
+    children.slice(0, 3).forEach(node => { node.style.display = admin ? '' : 'none'; });
+  }
+  if ($('#inventoryPageTitle')) $('#inventoryPageTitle').textContent = admin ? 'Supply & Inventory' : 'My Inventory';
+}
+
+function inventoryMovementTotals(outletId, itemId) {
+  const today = new Date().toLocaleDateString('en-CA');
+  const rows = state.inventory.movements.filter(row => row.outlet_id === outletId && row.item_id === itemId && new Date(row.occurred_at).toLocaleDateString('en-CA') === today);
+  return {
+    received: rows.filter(row => row.movement_type === 'STOCK_RECEIVED').reduce((sum, row) => sum + Number(row.quantity_delta || 0), 0),
+    used: Math.abs(rows.filter(row => ['USAGE', 'WASTE', 'SALE_DEDUCTION'].includes(row.movement_type)).reduce((sum, row) => sum + Number(row.quantity_delta || 0), 0))
+  };
+}
+
+function renderInventory() {
+  fillInventoryControls();
+  const outletId = inventorySelectedOutletId();
+  const balances = state.inventory.balances.filter(row => !outletId || row.outlet_id === outletId);
+  const bills = state.inventory.bills.filter(row => !outletId || row.outlet_id === outletId);
+  const movements = state.inventory.movements.filter(row => !outletId || row.outlet_id === outletId);
+  const priceByItem = new Map();
+  state.inventory.items.forEach(item => priceByItem.set(item.id, Number(item.default_supply_price || 0)));
+  bills.forEach(bill => (bill.supply_bill_items || []).forEach(line => priceByItem.set(line.item_id, Number(line.unit_price || 0))));
+  const stockValue = balances.reduce((sum, row) => {
+    const item = inventoryItem(row.item_id);
+    return sum + inventoryDisplayQuantity(item, row.quantity_on_hand) * (priceByItem.get(row.item_id) || 0);
+  }, 0);
+  const lowCount = balances.filter(row => {
+    const item = inventoryItem(row.item_id);
+    return inventoryDisplayQuantity(item, row.quantity_on_hand) <= Number(item?.low_stock_threshold || 0);
+  }).length;
+  const due = bills.reduce((sum, bill) => sum + Math.max(0, Number(bill.total_amount || 0) - Number(bill.paid_amount || 0)), 0);
+  const today = new Date().toLocaleDateString('en-CA');
+  const todayReceived = movements.filter(row => row.movement_type === 'STOCK_RECEIVED' && new Date(row.occurred_at).toLocaleDateString('en-CA') === today).length;
+  if ($('#inventoryStockValue')) $('#inventoryStockValue').textContent = formatReportMoney(stockValue);
+  if ($('#inventoryLowCount')) $('#inventoryLowCount').textContent = String(lowCount);
+  if ($('#inventoryDue')) $('#inventoryDue').textContent = formatReportMoney(due);
+  if ($('#inventoryToday')) $('#inventoryToday').textContent = String(todayReceived);
+  if ($('#inventoryStockCount')) $('#inventoryStockCount').textContent = `${balances.length} item${balances.length === 1 ? '' : 's'}`;
+  if ($('#inventoryBillCount')) $('#inventoryBillCount').textContent = `${bills.length} bill${bills.length === 1 ? '' : 's'}`;
+
+  const stockList = $('#inventoryStockList');
+  if (stockList) stockList.innerHTML = balances.length ? balances.map(row => {
+    const item = inventoryItem(row.item_id) || {};
+    const outlet = inventoryOutlet(row.outlet_id) || {};
+    const quantity = inventoryDisplayQuantity(item, row.quantity_on_hand);
+    const threshold = Number(item.low_stock_threshold || 0);
+    const status = quantity <= 0 ? ['OUT OF STOCK', 'out'] : quantity <= threshold ? ['LOW STOCK', 'low'] : ['IN STOCK', 'in'];
+    const totals = inventoryMovementTotals(row.outlet_id, row.item_id);
+    return `<div class="inventory-stock-row"><strong>${escapeHtml(item.name || 'Item')}</strong><span>${escapeHtml(outlet.name || 'Outlet')}</span><span>${inventoryQty(inventoryDisplayQuantity(item, totals.received))} ${escapeHtml(item.display_unit || '')}</span><span>${inventoryQty(inventoryDisplayQuantity(item, totals.used))} ${escapeHtml(item.display_unit || '')}</span><span class="inventory-qty">${inventoryQty(quantity)} ${escapeHtml(item.display_unit || '')}</span><span class="inventory-status ${status[1]}">${status[0]}</span></div>`;
+  }).join('') : '<div class="inventory-empty">No stock balances yet. Generate the first supply bill to add stock.</div>';
+
+  const billsList = $('#inventoryBillsList');
+  if (billsList) billsList.innerHTML = bills.length ? bills.map(bill => {
+    const outstanding = Math.max(0, Number(bill.total_amount || 0) - Number(bill.paid_amount || 0));
+    return `<div class="inventory-bill"><div class="inventory-bill-top"><div><h3>${escapeHtml(bill.bill_number)}</h3><div class="inventory-bill-meta">${escapeHtml(inventoryOutlet(bill.outlet_id)?.name || 'Outlet')} · ${inventoryDate(bill.supplied_at)}</div></div><div class="inventory-bill-total"><strong>${formatReportMoney(bill.total_amount)}</strong><span>${escapeHtml(bill.payment_status)} · DUE ${formatReportMoney(outstanding)}</span></div></div><div class="inventory-bill-items">${(bill.supply_bill_items || []).map(line => `<span>${escapeHtml(line.item_name)} · ${inventoryQty(line.quantity)} ${escapeHtml(line.unit)} × ${formatReportMoney(line.unit_price)}</span>`).join('')}</div><div class="inventory-bill-actions"><button class="secondary" data-inventory-print="${bill.id}">PRINT INVOICE</button><button class="secondary" data-inventory-bill-csv="${bill.id}">DOWNLOAD CSV</button>${state.profile?.role === 'ADMIN' && outstanding > 0 ? `<button class="primary" data-inventory-pay="${bill.id}">RECORD PAYMENT</button>` : ''}</div></div>`;
+  }).join('') : '<div class="inventory-empty">No supply bills in this period.</div>';
+
+  const movementList = $('#inventoryMovementList');
+  if (movementList) movementList.innerHTML = movements.length ? movements.slice(0, 300).map(row => {
+    const item = inventoryItem(row.item_id) || {};
+    const delta = inventoryDisplayQuantity(item, row.quantity_delta);
+    return `<div class="inventory-movement"><span>${inventoryDate(row.occurred_at)}</span><strong>${escapeHtml(item.name || 'Item')}</strong><span>${escapeHtml(inventoryOutlet(row.outlet_id)?.name || 'Outlet')}</span><span class="${delta >= 0 ? 'positive' : 'negative'}">${delta >= 0 ? '+' : ''}${inventoryQty(delta)} ${escapeHtml(item.display_unit || '')}</span><span>${escapeHtml(row.movement_type.replaceAll('_', ' '))}${row.notes ? ` · ${escapeHtml(row.notes)}` : ''}</span></div>`;
+  }).join('') : '<div class="inventory-empty">No stock movements in this period.</div>';
+  renderSupplyLines();
+}
+
+async function loadInventory({ all = false } = {}) {
+  const params = {};
+  const outletId = inventorySelectedOutletId();
+  if (outletId) params.outletId = outletId;
+  if (!all) {
+    if ($('#inventoryFrom')?.value) params.from = $('#inventoryFrom').value;
+    if ($('#inventoryTo')?.value) params.to = datePlusOne($('#inventoryTo').value);
+  }
+  const payload = await inventoryApi('GET', null, params);
+  state.inventory.items = payload.items || [];
+  state.inventory.outlets = payload.outlets || [];
+  state.inventory.balances = payload.inventory || [];
+  state.inventory.bills = payload.bills || [];
+  state.inventory.movements = payload.movements || [];
+  state.inventory.loaded = true;
+  renderInventory();
+}
+
+function updateSupplyDefaultPrice() {
+  const item = inventoryItem($('#supplyItem')?.value);
+  if (item && $('#supplyPrice') && !$('#supplyPrice').value) $('#supplyPrice').value = Number(item.default_supply_price || 0).toFixed(2);
+}
+
+function renderSupplyLines() {
+  const list = $('#supplyBillLines');
+  const total = state.inventory.billLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+  if (list) list.innerHTML = state.inventory.billLines.length ? state.inventory.billLines.map((line, index) => `<div class="supply-line"><div><strong>${escapeHtml(line.name)}</strong><small>${inventoryQty(line.quantity)} ${escapeHtml(line.unit)} × ${formatReportMoney(line.unitPrice)}</small></div><b>${formatReportMoney(line.quantity * line.unitPrice)}</b><button type="button" data-supply-remove="${index}">×</button></div>`).join('') : '<div class="supply-empty">Add stock items to build this bill.</div>';
+  if ($('#supplyBillTotal')) $('#supplyBillTotal').textContent = formatReportMoney(total);
+}
+
+function addSupplyLine() {
+  const item = inventoryItem($('#supplyItem')?.value);
+  const quantity = Number($('#supplyQuantity')?.value);
+  const unitPrice = Number($('#supplyPrice')?.value);
+  if (!item || !(quantity > 0) || !(unitPrice >= 0)) return toast('Select an item and enter a valid quantity and price.', 'bad');
+  const existing = state.inventory.billLines.find(line => line.itemId === item.id);
+  if (existing) { existing.quantity += quantity; existing.unitPrice = unitPrice; }
+  else state.inventory.billLines.push({ itemId: item.id, name: item.name, unit: item.display_unit, quantity, unitPrice });
+  if ($('#supplyQuantity')) $('#supplyQuantity').value = '';
+  renderSupplyLines();
+}
+
+async function generateSupplyBill() {
+  const button = $('#supplyGenerateBill');
+  const outletId = $('#supplyOutlet')?.value;
+  if (!outletId || !state.inventory.billLines.length) return toast('Select an outlet and add at least one item.', 'bad');
+  button.disabled = true;
+  try {
+    await inventoryApi('POST', { action: 'issue_bill', outletId, items: state.inventory.billLines, notes: $('#supplyNotes')?.value || '' });
+    state.inventory.billLines = [];
+    if ($('#supplyNotes')) $('#supplyNotes').value = '';
+    await loadInventory({ all: true });
+    toast('Supply bill generated and outlet stock updated.', 'ok');
+  } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
+}
+
+async function createInventoryItem() {
+  const displayUnit = $('#inventoryItemUnit')?.value || 'EACH';
+  const baseUnit = displayUnit === 'KG' ? 'G' : displayUnit === 'L' ? 'ML' : displayUnit;
+  const button = $('#inventoryCreateItem'); button.disabled = true;
+  try {
+    await inventoryApi('POST', { action: 'create_item', name: $('#inventoryItemName')?.value, sku: $('#inventoryItemSku')?.value, baseUnit, displayUnit, lowStockThreshold: $('#inventoryItemThreshold')?.value, defaultSupplyPrice: $('#inventoryItemPrice')?.value });
+    ['inventoryItemName','inventoryItemSku','inventoryItemThreshold','inventoryItemPrice'].forEach(id => { if ($(`#${id}`)) $(`#${id}`).value = ''; });
+    await loadInventory({ all: true }); toast('Stock item created.', 'ok');
+  } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
+}
+
+async function adjustInventoryStock() {
+  const item = inventoryItem($('#adjustItem')?.value);
+  const displayQuantity = Number($('#adjustQuantity')?.value);
+  const type = $('#adjustType')?.value;
+  if (!item || !Number.isFinite(displayQuantity) || displayQuantity === 0) return toast('Select an item and enter a quantity.', 'bad');
+  const button = $('#inventoryAdjustStock'); button.disabled = true;
+  try {
+    await inventoryApi('POST', { action: 'adjust_stock', outletId: $('#adjustOutlet')?.value, itemId: item.id, movementType: type, quantity: inventoryBaseQuantity(item, displayQuantity), notes: $('#adjustNotes')?.value || '' });
+    if ($('#adjustQuantity')) $('#adjustQuantity').value = '';
+    if ($('#adjustNotes')) $('#adjustNotes').value = '';
+    await loadInventory({ all: true }); toast('Stock adjustment saved.', 'ok');
+  } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
+}
+
+function downloadCsv(filename, rows) {
+  const csv = rows.map(row => row.map(csvCell).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a'); link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+}
+
+function downloadInventoryReport() {
+  const rows = [['Date','Outlet','Type','Item','Quantity','Unit','Balance','Notes'], ...state.inventory.movements.map(row => { const item = inventoryItem(row.item_id) || {}; return [inventoryDate(row.occurred_at), inventoryOutlet(row.outlet_id)?.name || '', row.movement_type, item.name || '', inventoryDisplayQuantity(item, row.quantity_delta), item.display_unit || '', inventoryDisplayQuantity(item, row.balance_after), row.notes || '']; })];
+  downloadCsv(`ohho-inventory-${new Date().toISOString().slice(0,10)}.csv`, rows);
+}
+
+function downloadSupplyBillCsv(bill) {
+  downloadCsv(`${bill.bill_number}.csv`, [['Bill Number',bill.bill_number],['Outlet',inventoryOutlet(bill.outlet_id)?.name || ''],['Supplied At',inventoryDate(bill.supplied_at)],['Payment Status',bill.payment_status],[],['Item','Quantity','Unit','Rate','Total'],...(bill.supply_bill_items || []).map(line => [line.item_name,line.quantity,line.unit,line.unit_price,line.line_total]),[],['Bill Total',bill.total_amount],['Paid',bill.paid_amount],['Due',Number(bill.total_amount)-Number(bill.paid_amount)]]);
+}
+
+function printSupplyBill(bill) {
+  const outlet = inventoryOutlet(bill.outlet_id);
+  const popup = window.open('', '_blank', 'width=760,height=850');
+  if (!popup) return toast('Allow pop-ups to print the invoice.', 'bad');
+  popup.document.write(`<!doctype html><html><head><title>${escapeHtml(bill.bill_number)}</title><style>body{font-family:Arial,sans-serif;padding:36px;color:#111}h1{margin:0}.brand{font-weight:900;font-size:26px}.brand span{color:#d4a900}.meta{margin:20px 0;line-height:1.7}table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}th:last-child,td:last-child{text-align:right}.total{text-align:right;font-size:20px;font-weight:900;margin-top:20px}.status{margin-top:8px;text-align:right}</style></head><body><div class="brand">OHHO <span>BURGERS</span></div><h1>Franchise Supply Invoice</h1><div class="meta"><strong>${escapeHtml(bill.bill_number)}</strong><br>${escapeHtml(outlet?.name || 'Outlet')}<br>${inventoryDate(bill.supplied_at)}</div><table><thead><tr><th>Item</th><th>Quantity</th><th>Rate</th><th>Total</th></tr></thead><tbody>${(bill.supply_bill_items || []).map(line => `<tr><td>${escapeHtml(line.item_name)}</td><td>${inventoryQty(line.quantity)} ${escapeHtml(line.unit)}</td><td>${formatReportMoney(line.unit_price)}</td><td>${formatReportMoney(line.line_total)}</td></tr>`).join('')}</tbody></table><div class="total">Total: ${formatReportMoney(bill.total_amount)}</div><div class="status">Paid: ${formatReportMoney(bill.paid_amount)} · Due: ${formatReportMoney(Number(bill.total_amount)-Number(bill.paid_amount))}</div><script>window.onload=()=>window.print()<\/script></body></html>`);
+  popup.document.close();
+}
+
+async function recordInventoryPayment(bill) {
+  const due = Math.max(0, Number(bill.total_amount) - Number(bill.paid_amount));
+  const amount = Number(window.prompt(`Enter payment amount (due ${formatReportMoney(due)}):`, due.toFixed(2)));
+  if (!(amount > 0)) return;
+  const method = String(window.prompt('Payment method: CASH, UPI, BANK or OTHER', 'UPI') || '').toUpperCase();
+  if (!['CASH','UPI','BANK','OTHER'].includes(method)) return toast('Use CASH, UPI, BANK or OTHER.', 'bad');
+  try { await inventoryApi('POST', { action: 'record_payment', billId: bill.id, amount, method }); await loadInventory({ all: true }); toast('Payment recorded.', 'ok'); }
+  catch (error) { toast(error.message, 'bad'); }
+}
+
+function wireInventoryActions() {
+  $('#inventoryRefreshBtn')?.addEventListener('click', () => loadInventory().catch(error => toast(error.message, 'bad')));
+  $('#inventoryApplyFilter')?.addEventListener('click', () => loadInventory().catch(error => toast(error.message, 'bad')));
+  $('#inventoryAllRecords')?.addEventListener('click', () => { if ($('#inventoryFrom')) $('#inventoryFrom').value = ''; if ($('#inventoryTo')) $('#inventoryTo').value = ''; loadInventory({ all: true }).catch(error => toast(error.message, 'bad')); });
+  $('#inventoryOutletFilter')?.addEventListener('change', () => loadInventory().catch(error => toast(error.message, 'bad')));
+  $('#inventoryDownloadBtn')?.addEventListener('click', downloadInventoryReport);
+  $('#supplyItem')?.addEventListener('change', () => { if ($('#supplyPrice')) $('#supplyPrice').value = ''; updateSupplyDefaultPrice(); });
+  $('#supplyAddLine')?.addEventListener('click', addSupplyLine);
+  $('#supplyGenerateBill')?.addEventListener('click', generateSupplyBill);
+  $('#inventoryCreateItem')?.addEventListener('click', createInventoryItem);
+  $('#inventoryAdjustStock')?.addEventListener('click', adjustInventoryStock);
+  $('#supplyBillLines')?.addEventListener('click', event => { const button = event.target.closest('[data-supply-remove]'); if (!button) return; state.inventory.billLines.splice(Number(button.dataset.supplyRemove), 1); renderSupplyLines(); });
+  $('#inventoryBillsList')?.addEventListener('click', event => {
+    const button = event.target.closest('button'); if (!button) return;
+    const id = button.dataset.inventoryPrint || button.dataset.inventoryBillCsv || button.dataset.inventoryPay;
+    const bill = state.inventory.bills.find(row => row.id === id); if (!bill) return;
+    if (button.dataset.inventoryPrint) printSupplyBill(bill);
+    if (button.dataset.inventoryBillCsv) downloadSupplyBillCsv(bill);
+    if (button.dataset.inventoryPay) recordInventoryPayment(bill);
+  });
+}
+
 
 function wireDashboardActions() {
   const sections = $$('.section');
@@ -3173,6 +3446,7 @@ function wireDashboardActions() {
         toast(error.message || 'Unable to refresh reports.', 'bad');
       });
     }
+    if (id === 'inventory') loadInventory().catch(error => { console.error('Unable to load inventory:', error); toast(error.message || 'Unable to load inventory.', 'bad'); });
   }));
 
   $$('#overview [data-section]').forEach(button => button.addEventListener('click', () => {
@@ -3265,6 +3539,7 @@ function wireDashboardActions() {
   wirePosActions();
   wireOrdersActions();
   wireMenuManagementActions();
+  wireInventoryActions();
 }
 
 
@@ -4447,6 +4722,7 @@ function startLiveDashboardRefresh() {
       await loadOutlets();
       await loadOrders({ silent: true });
       if (state.selectedSection === 'reports') await loadReports();
+      if (state.selectedSection === 'inventory') await loadInventory();
     } catch (error) {
       console.error('Unable to refresh live dashboard feed:', error);
     } finally {
