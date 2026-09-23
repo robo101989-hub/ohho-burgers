@@ -3186,17 +3186,7 @@ function wireDashboardActions() {
   $('#staffOutletFilter')?.addEventListener('change', renderStaffList);
   $('#reportsRefreshBtn')?.addEventListener('click', loadReports);
   $$('[data-report-range]').forEach(button => {
-    button.addEventListener('click', () => {
-      state.reportRange = button.dataset.reportRange || 'SESSION';
-      $$('[data-report-range]').forEach(rangeButton => {
-        const active = rangeButton === button;
-        rangeButton.classList.toggle('active', active);
-        rangeButton.setAttribute('aria-pressed', String(active));
-      });
-      $('#customDatePanel')?.classList.toggle('hidden', state.reportRange !== 'CUSTOM');
-      if (state.reportRange === 'CUSTOM') setDefaultCustomReportDates();
-      renderReportDashboard();
-    });
+    button.addEventListener('click', () => activateReportRange(button.dataset.reportRange || 'SESSION'));
   });
   $('#applyCustomDateBtn')?.addEventListener('click', () => {
     const from = $('#reportDateFrom')?.value;
@@ -3211,6 +3201,32 @@ function wireDashboardActions() {
     }
     renderReportDashboard();
   });
+  $('#sessionHistoryCustomToggle')?.addEventListener('click', () => {
+    const panel = $('#sessionHistoryCustomPanel');
+    const button = $('#sessionHistoryCustomToggle');
+    const willOpen = panel?.classList.contains('hidden');
+    panel?.classList.toggle('hidden', !willOpen);
+    button?.setAttribute('aria-expanded', String(Boolean(willOpen)));
+    if (willOpen) {
+      const today = localDateInputValue();
+      if ($('#sessionHistoryDateFrom') && !$('#sessionHistoryDateFrom').value) $('#sessionHistoryDateFrom').value = today;
+      if ($('#sessionHistoryDateTo') && !$('#sessionHistoryDateTo').value) $('#sessionHistoryDateTo').value = today;
+    }
+  });
+  $('#sessionHistoryApplyBtn')?.addEventListener('click', applySessionHistoryDates);
+  $('#sessionHistoryShowAllBtn')?.addEventListener('click', () => {
+    activateReportRange('ALL');
+    $('#sessionHistoryCustomPanel')?.classList.add('hidden');
+    $('#sessionHistoryCustomToggle')?.setAttribute('aria-expanded', 'false');
+  });
+  $('#sessionHistoryClearBtn')?.addEventListener('click', () => {
+    if ($('#sessionHistoryDateFrom')) $('#sessionHistoryDateFrom').value = '';
+    if ($('#sessionHistoryDateTo')) $('#sessionHistoryDateTo').value = '';
+    $('#sessionHistoryCustomPanel')?.classList.add('hidden');
+    $('#sessionHistoryCustomToggle')?.setAttribute('aria-expanded', 'false');
+    activateReportRange('SESSION');
+  });
+  $('#sessionHistoryDownloadBtn')?.addEventListener('click', downloadCombinedSessionHistoryCsv);
   $('#reportsExportBtn')?.addEventListener('click', exportSessionReports);
   $('#reportsClearLogBtn')?.addEventListener('click', clearSelectedReportLogs);
 
@@ -3698,6 +3714,34 @@ function setDefaultCustomReportDates() {
   if (to && !to.value) to.value = today;
 }
 
+function activateReportRange(range) {
+  state.reportRange = range;
+  $$('[data-report-range]').forEach(button => {
+    const active = button.dataset.reportRange === range;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+  $('#customDatePanel')?.classList.toggle('hidden', range !== 'CUSTOM');
+  if (range === 'CUSTOM') setDefaultCustomReportDates();
+  renderReportDashboard();
+}
+
+function applySessionHistoryDates() {
+  const from = $('#sessionHistoryDateFrom')?.value;
+  const to = $('#sessionHistoryDateTo')?.value;
+  if (!from || !to) {
+    toast('Select both From and To dates.', 'bad');
+    return;
+  }
+  if (from > to) {
+    toast('From date must be before To date.', 'bad');
+    return;
+  }
+  if ($('#reportDateFrom')) $('#reportDateFrom').value = from;
+  if ($('#reportDateTo')) $('#reportDateTo').value = to;
+  activateReportRange('CUSTOM');
+}
+
 function reportDateBounds() {
   const range = state.reportRange || 'SESSION';
   if (range === 'SESSION') return { start: null, end: null, session: true };
@@ -3837,6 +3881,8 @@ function renderReportDashboard() {
   const mostGifted = freeItemTotals[0];
   const paidSales = sumOrders(paidOrders);
   const averageOrder = paidOrders.length ? paidSales / paidOrders.length : 0;
+  const historyRangeLabel = $('#sessionHistoryRangeLabel');
+  if (historyRangeLabel) historyRangeLabel.textContent = reportExportScope().rangeLabel;
 
   if ($('#reportsSessionCount')) $('#reportsSessionCount').textContent = String(reports.length);
   if ($('#reportsTotalSales')) $('#reportsTotalSales').textContent = formatReportMoney(paidSales);
@@ -4050,6 +4096,53 @@ function exportSessionReports() {
   URL.revokeObjectURL(url);
 }
 
+function downloadCombinedSessionHistoryCsv() {
+  const reports = filteredSessionReports();
+  if (!reports.length) {
+    toast('There are no session records to download for this range.', 'bad');
+    return;
+  }
+  const { rangeLabel, outletLabel, fileScope } = reportExportScope();
+  const total = reports.reduce((sum, report) => sum + Number(report.gross_sales || 0), 0);
+  const rows = [
+    ['OHHO BURGERS SESSION HISTORY'],
+    ['Outlet', outletLabel],
+    ['Range', rangeLabel],
+    ['Generated At', new Date().toLocaleString('en-IN')],
+    ['Sessions', reports.length],
+    ['Combined Sales', total.toFixed(2)],
+    [],
+    ['Outlet', 'Opened', 'Closed', 'Orders', 'Items', 'Average Order', 'Cash', 'UPI', 'Card', 'Total Sales'],
+    ...reports.map(report => {
+      const outlet = state.outlets.find(item => item.id === report.outlet_id);
+      const orderCount = Number(report.order_count || 0);
+      const grossSales = Number(report.gross_sales || 0);
+      return [
+        outlet?.name || 'OHHO Outlet',
+        new Date(report.opened_at).toLocaleString('en-IN'),
+        new Date(report.closed_at).toLocaleString('en-IN'),
+        orderCount,
+        Number(report.item_count || 0),
+        (orderCount ? grossSales / orderCount : 0).toFixed(2),
+        Number(report.cash_sales || 0).toFixed(2),
+        Number(report.upi_sales || 0).toFixed(2),
+        Number(report.card_sales || 0).toFixed(2),
+        grossSales.toFixed(2)
+      ];
+    })
+  ];
+  const csv = `\uFEFF${rows.map(row => row.map(csvCell).join(',')).join('\n')}`;
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  const rangeSlug = String(rangeLabel).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  link.href = url;
+  link.download = `ohho-${fileScope}-session-history-${rangeSlug || 'records'}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 async function clearSelectedReportLogs() {
   if (state.profile?.role !== 'ADMIN') {
     toast('Admin access required.', 'bad');
@@ -4138,27 +4231,30 @@ async function loadSalesReports() {
 
   list.innerHTML = '<div class="orders-loading">Loading sales reports…</div>';
 
-  let query = supabase
-    .from('outlet_sales_reports')
-    .select('id,outlet_id,opened_at,closed_at,order_count,item_count,gross_sales,cash_sales,upi_sales,card_sales,created_at')
-    .order('closed_at', { ascending: false })
-    .limit(180);
-
-  if (state.selectedOutlet !== 'ALL') {
-    const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
-    if (outlet?.id) query = query.eq('outlet_id', outlet.id);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
+  try {
+    const pageSize = 1000;
+    const reports = [];
+    for (let offset = 0; ; offset += pageSize) {
+      let query = supabase
+        .from('outlet_sales_reports')
+        .select('id,outlet_id,opened_at,closed_at,order_count,item_count,gross_sales,cash_sales,upi_sales,card_sales,created_at')
+        .order('closed_at', { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      if (state.selectedOutlet !== 'ALL') {
+        const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
+        if (outlet?.id) query = query.eq('outlet_id', outlet.id);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      reports.push(...(data || []));
+      if (!data || data.length < pageSize) break;
+    }
+    state.salesReports = reports;
+  } catch (error) {
     console.error('Unable to load sales reports:', error);
     state.salesReports = [];
     list.innerHTML = '<div class="orders-empty"><strong>Sales reports are not ready yet</strong><span>Apply the outlet session database migration, then close an outlet session to generate the first report.</span></div>';
-    return;
   }
-
-  state.salesReports = data || [];
 }
 
 function renderSalesReports(reports = filteredSessionReports()) {

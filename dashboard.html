@@ -1181,6 +1181,18 @@ body{font-size:14px}
     </div>
     <div class="report-panel">
       <div class="report-section-head"><div><div class="eyebrow">Opening to closing</div><h2>Session history <span id="reportsSessionCount" class="session-count-pill">0</span></h2></div><div class="report-section-actions"><span>Each row is one complete outlet session</span><button class="secondary report-clear-btn" id="reportsClearLogBtn" type="button">CLEAR LOG</button></div></div>
+      <div class="orders-history-toolbar session-history-toolbar">
+        <button id="sessionHistoryCustomToggle" class="secondary" type="button" aria-expanded="false">CUSTOM DATE</button>
+        <button id="sessionHistoryShowAllBtn" class="secondary" type="button">SEE ALL RECORDS</button>
+        <button id="sessionHistoryDownloadBtn" class="primary" type="button">DOWNLOAD CSV</button>
+        <span id="sessionHistoryRangeLabel">Current session range</span>
+      </div>
+      <div id="sessionHistoryCustomPanel" class="orders-custom-date-panel hidden">
+        <label><span>FROM DATE</span><input id="sessionHistoryDateFrom" type="date"></label>
+        <label><span>TO DATE</span><input id="sessionHistoryDateTo" type="date"></label>
+        <button id="sessionHistoryApplyBtn" class="primary" type="button">VIEW RECORDS</button>
+        <button id="sessionHistoryClearBtn" class="secondary" type="button">CLEAR</button>
+      </div>
       <div id="salesReportsList" class="sales-reports-list"><div class="orders-loading">Loading sales reports…</div></div>
     </div>
   </div>
