@@ -112,26 +112,39 @@ async function loadInstagramReels() {
     const refreshMinute = Math.floor(Date.now() / 60000);
     const response = await fetch(`/api/instagram/reels?refresh=${refreshMinute}`, { cache: 'no-store' });
     const payload = await response.json();
-    if (!response.ok || !Array.isArray(payload.reels) || !payload.reels.length) throw new Error('No reels');
-    const reelsMarkup = payload.reels.map((reel, index) => {
-      const caption = escapeHtml(reel.caption || "Fresh from OHHO Burgers");
-      const thumbnail = escapeHtml(reel.thumbnailUrl);
-      const player = reel.videoUrl
-        ? `<video class="reel-video" autoplay muted loop playsinline preload="metadata" poster="${thumbnail}" aria-label="OHHO Instagram reel ${index + 1}"><source src="${escapeHtml(reel.videoUrl)}" type="video/mp4"></video>`
-        : `<img loading="lazy" src="${thumbnail}" alt="${caption}"/>`;
-      return `<article class="reel-card reveal in-view">${player}<div><small>Instagram Reel</small><p>${caption}</p><a href="${escapeHtml(reel.permalink)}" target="_blank" rel="noopener">View on Instagram ↗</a></div></article>`;
+    const media = Array.isArray(payload.media) ? payload.media : [];
+    if (!response.ok || !media.length) throw new Error('No Instagram media');
+    const cards = media.map((item, index) => {
+      const caption = escapeHtml(item.caption || 'Fresh from OHHO Burgers');
+      const thumbnail = escapeHtml(item.thumbnailUrl);
+      const isVideo = Boolean(item.videoUrl);
+      const player = isVideo
+        ? `<video class="reel-video" autoplay muted loop playsinline preload="metadata" poster="${thumbnail}" aria-label="OHHO Instagram reel ${index + 1}"><source src="${escapeHtml(item.videoUrl)}" type="video/mp4"></video>`
+        : `<img loading="lazy" src="${thumbnail}" alt="${caption}">`;
+      return `<article class="reel-card reveal in-view">${player}<div><small>${isVideo ? 'Instagram Reel' : 'Instagram Post'}</small><p>${caption}</p><a href="${escapeHtml(item.permalink)}" target="_blank" rel="noopener">View on Instagram ↗</a></div></article>`;
     }).join('');
-    const posts = Array.isArray(payload.posts) ? payload.posts : [];
-    const postsMarkup = posts.map((post, index) => {
-      const caption = escapeHtml(post.caption || "Fresh from OHHO Burgers");
-      return `<a class="instagram-post-card" href="${escapeHtml(post.permalink)}" target="_blank" rel="noopener" aria-label="Open OHHO Instagram post ${index + 1}"><img loading="lazy" src="${escapeHtml(post.thumbnailUrl)}" alt="${caption}"><span>POST ↗</span></a>`;
-    }).join('');
-    target.innerHTML = `<section class="social-feed-group"><div class="social-feed-label"><span>01</span><h3>LATEST <em>REELS.</em></h3><p>Daily bites and customer reactions — playing right here.</p></div><div class="reels-grid">${reelsMarkup}</div></section>${postsMarkup ? `<section class="social-feed-group social-posts-group"><div class="social-feed-label"><span>02</span><h3>LATEST <em>POSTS.</em></h3><p>Photos and carousel moments from OHHO.</p></div><div class="instagram-post-grid">${postsMarkup}</div></section>` : ''}`;
+    target.innerHTML = `<div class="social-feed-label"><span>01</span><h3>LATEST <em>FROM OHHO.</em></h3><p>New reels and posts, together in one live feed.</p></div><div class="reels-grid" tabindex="0" role="region" aria-label="Latest Instagram reels and posts. Scroll for more.">${cards}</div>`;
   } catch {
     target.innerHTML = `<a class="reels-fallback" href="https://www.instagram.com/ohhoburgers/" target="_blank" rel="noopener"><span>◎</span><strong>See the latest from @ohhoburgers</strong><small>Open Instagram to watch our newest reels ↗</small></a>`;
   }
 }
 loadInstagramReels();
+
+async function loadCustomerReviews() {
+  const target = $('#customerReviewGrid');
+  if (!target) return;
+  try {
+    const response = await fetch('/api/reviews', { cache: 'no-store' });
+    const payload = await response.json();
+    const reviews = Array.isArray(payload.reviews) ? payload.reviews : [];
+    if (!response.ok) throw new Error('Unable to load reviews');
+    if (!reviews.length) { target.innerHTML = '<p class="customer-review-empty">Customer reviews will appear here soon.</p>'; return; }
+    target.innerHTML = reviews.map(review => `<article class="customer-review-card"><span>${'★'.repeat(Math.max(1, Math.min(5, Number(review.rating || 5))))}</span><p>“${escapeHtml(review.review_text)}”</p><small>${escapeHtml(review.customer_name)}${review.location ? ` · ${escapeHtml(review.location)}` : ''}</small></article>`).join('');
+  } catch {
+    target.innerHTML = '<p class="customer-review-empty">Customer reviews are temporarily unavailable. Please try again later.</p>';
+  }
+}
+loadCustomerReviews();
 function formatOutletTime(value) {
   const [hour, minute] = String(value || '').split(':').map(Number);
   if (!Number.isFinite(hour) || !Number.isFinite(minute)) return '';

@@ -61,18 +61,15 @@ export default async function handler(req, res) {
     const mediaItems = (body.data || [])
       .map(toMediaItem)
       .filter(Boolean);
-    const reels = mediaItems
-      .filter((media) => ["REELS", "VIDEO"].includes(media.mediaType))
-      .slice(0, 4);
-    const posts = mediaItems
-      .filter((media) => ["IMAGE", "CAROUSEL_ALBUM"].includes(media.mediaType))
-      .slice(0, 4);
+    const media = [...mediaItems]
+      .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
+      .slice(0, 8);
     const stories = storiesResponse.ok
       ? (storiesBody.data || []).map(toStory).filter(Boolean).slice(0, 4)
       : [];
 
     res.setHeader("Cache-Control", "public, s-maxage=60, must-revalidate");
-    const payload = { stories, reels, posts };
+    const payload = { stories, media };
     // Only expose the non-sensitive API message when explicitly diagnosing a connection.
     if (req.query.debug === "stories") {
       payload.storiesDebug = {

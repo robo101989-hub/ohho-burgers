@@ -25,6 +25,8 @@ const state = {
   versionUpdatePending: false,
   spinSettings: [],
   spinHistory: [],
+  customerReviews: [],
+  customerReviewsError: '',
   orderEdit: {
     orderId: null,
     items: []
@@ -3095,6 +3097,12 @@ function wireDashboardActions() {
   const sections = $$('.section');
   $('#spinSettingsOutlet')?.addEventListener('change', fillSpinSettingForm);
   $('#saveSpinSettingsBtn')?.addEventListener('click', saveSpinSettings);
+  $('#addCustomerReviewBtn')?.addEventListener('click', addCustomerReview);
+  $('#customerReviewList')?.addEventListener('click', event => {
+    const button = event.target.closest('[data-review-delete]');
+    if (button && !button.disabled) void deleteCustomerReview(button.dataset.reviewDelete, button);
+    if (event.target.closest('[data-review-retry]')) void loadCustomerReviews();
+  });
   $$('.nav-btn[data-section]').forEach(button => button.addEventListener('click', () => {
     let id = button.dataset.section;
     const role = state.profile?.role || '';
@@ -4198,6 +4206,7 @@ function startDashboardVersionCheck() {
 }
 
 function renderSettings() {
+  renderCustomerReviews();
   const userName = $('#settingsUserName');
   const userRole = $('#settingsUserRole');
   const userEmail = $('#settingsUserEmail');
@@ -4286,6 +4295,81 @@ function renderSpinHistory() {
   }).join('');
 }
 
+function renderCustomerReviews() {
+  const panel = $('#customerReviewsPanel');
+  const target = $('#customerReviewList');
+  if (!panel || !target) return;
+  const isAdmin = state.profile?.role === 'ADMIN';
+  panel.hidden = !isAdmin;
+  if (!isAdmin) return;
+  if (state.customerReviewsError) { target.innerHTML = `<div class="settings-empty">${escapeHtml(state.customerReviewsError)} <button type="button" data-review-retry>Retry</button></div>`; return; }
+  if (!state.customerReviews.length) { target.innerHTML = '<div class="settings-empty">No customer reviews added yet.</div>'; return; }
+  target.innerHTML = state.customerReviews.map(review => `<article class="review-settings-row"><div><strong>${escapeHtml(review.customer_name)} · ${'★'.repeat(Math.max(1, Math.min(5, Number(review.rating || 5))))}</strong><span>${escapeHtml(review.review_text)}${review.location ? ` · ${escapeHtml(review.location)}` : ''}</span></div><button class="review-delete-btn" type="button" data-review-delete="${escapeHtml(review.id)}">DELETE</button></article>`).join('');
+}
+
+async function loadCustomerReviews() {
+  state.customerReviews = [];
+  state.customerReviewsError = '';
+  renderCustomerReviews();
+  if (state.profile?.role !== 'ADMIN') return;
+  $('#customerReviewList').innerHTML = '<div class="settings-empty">Loading reviews…</div>';
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const response = await fetch('/api/reviews?admin=1', { headers: { Authorization: `Bearer ${sessionData?.session?.access_token || ''}` } });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error);
+    state.customerReviews = result.reviews || [];
+    renderCustomerReviews();
+  } catch (error) {
+    console.error('Unable to load customer reviews:', error);
+    state.customerReviewsError = 'Could not load reviews. Please try again.';
+    renderCustomerReviews();
+  }
+}
+
+async function addCustomerReview() {
+  if (state.profile?.role !== 'ADMIN') return;
+  const customerName = $('#reviewCustomerName')?.value.trim();
+  const location = $('#reviewLocation')?.value.trim();
+  const reviewText = $('#reviewText')?.value.trim();
+  const rating = $('#reviewRating')?.value;
+  if (!customerName || !reviewText) return toast('Add the customer name and review first.', 'bad');
+  const button = $('#addCustomerReviewBtn');
+  button.disabled = true;
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const response = await fetch('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData?.session?.access_token || ''}` }, body: JSON.stringify({ customerName, location, reviewText, rating }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error);
+    state.customerReviewsError = '';
+    state.customerReviews.unshift(result.review);
+    $('#reviewCustomerName').value = '';
+    $('#reviewLocation').value = '';
+    $('#reviewText').value = '';
+    $('#reviewRating').value = '5';
+    renderCustomerReviews();
+    toast('Customer review added.', 'ok');
+  } catch (error) {
+    toast(error.message || 'Could not add review.', 'bad');
+  } finally { button.disabled = false; }
+}
+
+async function deleteCustomerReview(id, button) {
+  if (!id || state.profile?.role !== 'ADMIN') return;
+  if (button) button.disabled = true;
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const response = await fetch('/api/reviews', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData?.session?.access_token || ''}` }, body: JSON.stringify({ id }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error);
+    state.customerReviews = state.customerReviews.filter(review => review.id !== id);
+    renderCustomerReviews();
+    toast('Customer review deleted.', 'ok');
+  } catch (error) {
+    toast(error.message || 'Could not delete review.', 'bad');
+  } finally { if (button) button.disabled = false; }
+}
+
 function fillSpinSettingForm() {
   const outletId = $('#spinSettingsOutlet')?.value;
   const isAllOutlets = outletId === '__all__';
@@ -4357,6 +4441,7 @@ async function startApp(session) {
     await loadReports();
     renderSettings();
     await loadSpinSettings();
+    await loadCustomerReviews();
     updateDashboardContext();
     renderOverview();
     startLiveDashboardRefresh();
