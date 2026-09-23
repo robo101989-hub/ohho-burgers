@@ -894,6 +894,18 @@ body{font-size:14px}
     </button>
     <div id="ordersArchivePanel" class="orders-archive-panel hidden">
       <p class="orders-archive-search-hint">Search previous orders by order number, customer name, mobile, item, date or time.</p>
+      <div class="orders-history-toolbar">
+        <button id="ordersCustomDateToggle" class="secondary" type="button" aria-expanded="false">CUSTOM DATE</button>
+        <button id="ordersShowAllBtn" class="secondary" type="button">SEE ALL RECORDS</button>
+        <button id="ordersHistoryDownloadBtn" class="primary" type="button">DOWNLOAD CSV</button>
+        <span id="ordersHistoryRangeLabel">Latest order history</span>
+      </div>
+      <div id="ordersCustomDatePanel" class="orders-custom-date-panel hidden">
+        <label><span>FROM DATE</span><input id="ordersDateFrom" type="date"></label>
+        <label><span>TO DATE</span><input id="ordersDateTo" type="date"></label>
+        <button id="ordersApplyDateBtn" class="primary" type="button">VIEW RECORDS</button>
+        <button id="ordersClearDateBtn" class="secondary" type="button">CLEAR</button>
+      </div>
       <div id="ordersHistoryBoard" class="orders-board orders-history-board"></div>
     </div>
   </div>

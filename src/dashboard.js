@@ -19,6 +19,8 @@ const state = {
   reportItems: [],
   reportRange: 'SESSION',
   ordersArchiveOpen: false,
+  orderHistoryRecords: null,
+  orderHistoryRangeLabel: 'Latest order history',
   liveRefreshTimer: null,
   liveRefreshBusy: false,
   versionCheckTimer: null,
@@ -124,11 +126,12 @@ function injectStyles() {
 
     .orders-history-head,.reports-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:30px 0 12px;padding-top:20px;border-top:1px solid #242424}.orders-history-head h2,.reports-head h2{margin:3px 0 0;font-size:20px}.orders-history-head>span,.reports-head>span{color:#666;font-size:9px}.orders-history-board{opacity:.92}.reports-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.reports-summary>div{background:#0d0d0d;border:1px solid #242424;border-radius:12px;padding:15px 17px}.reports-summary span{display:block;color:#666;font:800 8px var(--mono);letter-spacing:1.5px;margin-bottom:7px}.reports-summary strong{font:900 24px var(--mono);color:#f5f5f0}.sales-reports-list{display:grid;gap:10px}.sales-report-card{background:#0d0d0d;border:1px solid #242424;border-radius:13px;padding:16px}.sales-report-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.sales-report-top h3{margin:0;font-size:16px}.sales-report-window{color:#777;font-size:9px;margin-top:5px}.sales-report-total{font:900 22px var(--mono);color:#ffd21c}.sales-report-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}.sales-report-grid div{background:#101010;border:1px solid #252525;border-radius:8px;padding:9px}.sales-report-grid span{display:block;color:#666;font:800 7px var(--mono);letter-spacing:1px}.sales-report-grid strong{display:block;margin-top:5px;font:900 11px var(--mono);color:#eee}@media(max-width:760px){.reports-summary{grid-template-columns:1fr}.sales-report-grid{grid-template-columns:repeat(2,1fr)}.orders-history-head,.reports-head{align-items:flex-start;flex-direction:column}}
     .orders-archive{margin-top:18px}.orders-archive-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;border:1px solid #292929;border-radius:12px;background:#0d0d0d;color:#eee;text-align:left}.orders-archive-toggle:hover{border-color:#444;background:#101010}.orders-archive-title{display:flex;align-items:center;gap:12px}.orders-archive-icon{width:38px;height:34px;display:grid;place-items:center;border:1px solid #3b3417;border-radius:8px;background:#171407;color:#ffd21c;font-size:17px}.orders-archive-copy strong{display:block;font-size:13px}.orders-archive-copy span{display:block;margin-top:4px;color:#666;font-size:9px}.orders-archive-action{display:flex;align-items:center;gap:10px}.orders-archive-count{color:#888;font:800 8px var(--mono);letter-spacing:.5px}.orders-archive-open{min-width:58px;color:#ffd21c;font:900 8px var(--mono);text-align:right}.orders-archive-panel{margin-top:10px;padding:14px;border:1px solid #292929;border-radius:12px;background:#090909}.orders-archive-search-hint{margin:0 0 12px;color:#666;font-size:9px}.orders-history-board{opacity:.94}
+    .orders-history-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}.orders-history-toolbar button{height:38px;padding:0 12px;font:900 8px var(--mono);letter-spacing:.5px;white-space:nowrap}.orders-history-toolbar>span{margin-left:auto;color:#888;font:800 8px var(--mono);letter-spacing:.4px}.orders-custom-date-panel{display:flex;align-items:flex-end;gap:9px;flex-wrap:wrap;margin:0 0 13px;padding:12px;border:1px solid #2d2d2d;border-radius:10px;background:#0d0d0d}.orders-custom-date-panel.hidden{display:none}.orders-custom-date-panel label{display:grid;gap:6px}.orders-custom-date-panel label span{color:#777;font:800 7px var(--mono);letter-spacing:.8px}.orders-custom-date-panel input{height:38px;min-width:155px;padding:0 10px;border:1px solid #303030;border-radius:8px;background:#101010;color:#eee;color-scheme:dark}.orders-custom-date-panel button{height:38px;padding:0 12px;font:900 8px var(--mono)}
     .orders-loading,.orders-empty{min-height:220px;grid-column:1/-1;display:grid;place-items:center;text-align:center;border:1px dashed #303030;border-radius:14px;color:#666;padding:30px}
     .orders-empty strong{display:block;color:#eee;font-size:15px}
     .orders-empty span{display:block;font-size:11px;margin-top:6px}
     @media(max-width:1050px){.orders-board{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:760px){.orders-page-head{align-items:flex-start}.orders-actions{width:100%}.orders-actions .search{flex:1;min-width:0}.orders-filter{flex:1}.orders-summary{grid-template-columns:1fr}.orders-board{grid-template-columns:1fr}.orders-archive-toggle{padding:12px}.orders-archive-count{display:none}.orders-archive-panel{padding:10px}}
+    @media(max-width:760px){.orders-page-head{align-items:flex-start}.orders-actions{width:100%}.orders-actions .search{flex:1;min-width:0}.orders-filter{flex:1}.orders-summary{grid-template-columns:1fr}.orders-board{grid-template-columns:1fr}.orders-archive-toggle{padding:12px}.orders-archive-count{display:none}.orders-archive-panel{padding:10px}.orders-history-toolbar{display:grid;grid-template-columns:1fr 1fr}.orders-history-toolbar button{width:100%}.orders-history-toolbar>span{grid-column:1/-1;margin:2px 0 0}.orders-custom-date-panel{display:grid;grid-template-columns:1fr 1fr}.orders-custom-date-panel label{grid-column:1/-1}.orders-custom-date-panel input{width:100%}}
 
     .menu-page-head{align-items:flex-end}
     .menu-management-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 16px}
@@ -1936,6 +1939,8 @@ function renderOutletSelector() {
   state.selectedOutlet = selector.value;
   selector.onchange = async () => {
     state.selectedOutlet = selector.value;
+    state.orderHistoryRecords = null;
+    state.orderHistoryRangeLabel = 'Latest order history';
     renderOverviewOutlets();
     updateDashboardContext();
     try {
@@ -2381,6 +2386,23 @@ function wireOrdersActions() {
     state.ordersArchiveOpen = !state.ordersArchiveOpen;
     renderOrders();
   });
+
+  $('#ordersCustomDateToggle')?.addEventListener('click', () => {
+    const panel = $('#ordersCustomDatePanel');
+    const button = $('#ordersCustomDateToggle');
+    const willOpen = panel?.classList.contains('hidden');
+    panel?.classList.toggle('hidden', !willOpen);
+    button?.setAttribute('aria-expanded', String(Boolean(willOpen)));
+    if (willOpen) {
+      const today = localDateInputValue();
+      if ($('#ordersDateFrom') && !$('#ordersDateFrom').value) $('#ordersDateFrom').value = today;
+      if ($('#ordersDateTo') && !$('#ordersDateTo').value) $('#ordersDateTo').value = today;
+    }
+  });
+  $('#ordersApplyDateBtn')?.addEventListener('click', () => loadCompleteOrderHistory({ custom: true }));
+  $('#ordersShowAllBtn')?.addEventListener('click', () => loadCompleteOrderHistory({ custom: false }));
+  $('#ordersClearDateBtn')?.addEventListener('click', clearCompleteOrderHistory);
+  $('#ordersHistoryDownloadBtn')?.addEventListener('click', downloadOrderHistoryCsv);
 
   $('#ordersBoard')?.addEventListener('click', event => {
     const editButton = event.target.closest('[data-order-edit]');
@@ -3272,6 +3294,101 @@ async function loadOrders({ silent = false } = {}) {
   renderOverview();
 }
 
+async function hydrateOrderHistoryRows(orders) {
+  const orderIds = orders.map(order => order.id);
+  const items = [];
+  for (let index = 0; index < orderIds.length; index += 200) {
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('id, order_id, menu_item_id, quantity, item_name, unit_price, line_total')
+      .in('order_id', orderIds.slice(index, index + 200));
+    if (error) throw error;
+    items.push(...(data || []));
+  }
+
+  const itemsByOrder = new Map();
+  items.forEach(item => {
+    if (!itemsByOrder.has(item.order_id)) itemsByOrder.set(item.order_id, []);
+    itemsByOrder.get(item.order_id).push(item);
+  });
+  const outletsById = new Map(state.outlets.map(outlet => [outlet.id, outlet]));
+  return orders.map(order => ({
+    ...order,
+    database_order_number: order.order_number,
+    order_number: order.token_number || order.order_number,
+    ...parsePosCustomer(order.customer_note),
+    order_status: order.status,
+    total_amount: order.total,
+    outlets: outletsById.get(order.outlet_id) || null,
+    order_items: itemsByOrder.get(order.id) || []
+  }));
+}
+
+async function loadCompleteOrderHistory({ custom }) {
+  const fromValue = $('#ordersDateFrom')?.value || '';
+  const toValue = $('#ordersDateTo')?.value || '';
+  if (custom && (!fromValue || !toValue || fromValue > toValue)) {
+    toast('Choose a valid From and To date.', 'bad');
+    return;
+  }
+
+  const buttons = ['#ordersApplyDateBtn', '#ordersShowAllBtn', '#ordersHistoryDownloadBtn']
+    .map(selector => $(selector)).filter(Boolean);
+  buttons.forEach(button => { button.disabled = true; });
+  state.ordersArchiveOpen = true;
+  const board = $('#ordersHistoryBoard');
+  if (board) board.innerHTML = '<div class="orders-loading">Loading complete order history…</div>';
+
+  try {
+    const pageSize = 1000;
+    const orders = [];
+    const start = custom ? new Date(`${fromValue}T00:00:00`) : null;
+    const end = custom ? new Date(`${toValue}T00:00:00`) : null;
+    if (end) end.setDate(end.getDate() + 1);
+
+    for (let offset = 0; ; offset += pageSize) {
+      let query = supabase
+        .from('orders')
+        .select('id, order_number, token_number, order_type, status, payment_method, payment_status, order_source, table_number, customer_note, subtotal, discount, total, created_at, outlet_id')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      if (state.selectedOutlet !== 'ALL') {
+        const outlet = state.outlets.find(item => item.slug === state.selectedOutlet);
+        if (outlet?.id) query = query.eq('outlet_id', outlet.id);
+      }
+      if (start) query = query.gte('created_at', start.toISOString());
+      if (end) query = query.lt('created_at', end.toISOString());
+      const { data, error } = await query;
+      if (error) throw error;
+      orders.push(...(data || []));
+      if (!data || data.length < pageSize) break;
+    }
+
+    state.orderHistoryRecords = await hydrateOrderHistoryRows(orders);
+    state.orderHistoryRangeLabel = custom
+      ? `${new Date(`${fromValue}T00:00:00`).toLocaleDateString('en-IN')} – ${new Date(`${toValue}T00:00:00`).toLocaleDateString('en-IN')}`
+      : 'All records';
+    renderOrders();
+    toast(`${orders.length} order record${orders.length === 1 ? '' : 's'} loaded.`, 'ok');
+  } catch (error) {
+    console.error('Unable to load complete order history:', error);
+    toast(error.message || 'Unable to load complete order history.', 'bad');
+    renderOrders();
+  } finally {
+    buttons.forEach(button => { button.disabled = false; });
+  }
+}
+
+function clearCompleteOrderHistory() {
+  state.orderHistoryRecords = null;
+  state.orderHistoryRangeLabel = 'Latest order history';
+  if ($('#ordersDateFrom')) $('#ordersDateFrom').value = '';
+  if ($('#ordersDateTo')) $('#ordersDateTo').value = '';
+  $('#ordersCustomDatePanel')?.classList.add('hidden');
+  $('#ordersCustomDateToggle')?.setAttribute('aria-expanded', 'false');
+  renderOrders();
+}
+
 
 function formatOrderTime(value) {
   if (!value) return '—';
@@ -3429,6 +3546,19 @@ function renderOrderCards(orders, { archived = false } = {}) {
   }).join('');
 }
 
+function orderHistoryRows({ filtered = true } = {}) {
+  const rows = Array.isArray(state.orderHistoryRecords)
+    ? state.orderHistoryRecords
+    : (state.orders || []).filter(order => !isCurrentSessionOrder(order));
+  if (!filtered) return rows;
+  const search = ($('#ordersSearch')?.value || '').trim().toLowerCase();
+  const status = $('#ordersStatusFilter')?.value || 'ALL';
+  return rows.filter(order =>
+    (status === 'ALL' || order.order_status === status) &&
+    orderMatchesSearch(order, search)
+  );
+}
+
 function renderOrders() {
   const board = $('#ordersBoard');
   const historyBoard = $('#ordersHistoryBoard');
@@ -3442,10 +3572,10 @@ function renderOrders() {
     orderMatchesSearch(order, search);
 
   const currentSessionOrders = (state.orders || []).filter(isCurrentSessionOrder);
-  const historyOrders = (state.orders || []).filter(order => !isCurrentSessionOrder(order));
+  const historyOrders = orderHistoryRows({ filtered: false });
 
   const filteredCurrent = currentSessionOrders.filter(matchesFilters);
-  const filteredHistory = historyOrders.filter(matchesFilters);
+  const filteredHistory = orderHistoryRows();
 
   const liveOrders = currentSessionOrders.filter(order =>
     ['NEW', 'ACCEPTED', 'PREPARING', 'READY'].includes(order.order_status)
@@ -3473,6 +3603,7 @@ function renderOrders() {
   const archiveToggle = $('#ordersArchiveToggle');
   const archiveCount = $('#ordersArchiveCount');
   const archiveOpenLabel = $('#ordersArchiveOpenLabel');
+  const historyRangeLabel = $('#ordersHistoryRangeLabel');
   archivePanel?.classList.toggle('hidden', !state.ordersArchiveOpen);
   archiveToggle?.setAttribute('aria-expanded', String(state.ordersArchiveOpen));
   if (archiveCount) {
@@ -3480,11 +3611,61 @@ function renderOrders() {
     archiveCount.textContent = `${count} ORDER${count === 1 ? '' : 'S'}`;
   }
   if (archiveOpenLabel) archiveOpenLabel.textContent = state.ordersArchiveOpen ? 'CLOSE ↑' : 'OPEN ↓';
+  if (historyRangeLabel) historyRangeLabel.textContent = state.orderHistoryRangeLabel;
   if (historyBoard) {
     historyBoard.innerHTML = state.ordersArchiveOpen
       ? renderOrderCards(filteredHistory, { archived: true })
       : '';
   }
+}
+
+function downloadOrderHistoryCsv() {
+  const orders = orderHistoryRows();
+  if (!orders.length) {
+    toast('There are no matching order records to download.', 'bad');
+    return;
+  }
+
+  const outlet = state.selectedOutlet === 'ALL'
+    ? null
+    : state.outlets.find(item => item.slug === state.selectedOutlet);
+  const rows = [
+    ['OHHO BURGERS ORDER HISTORY'],
+    ['Outlet', outlet?.name || 'All Outlets'],
+    ['Range', state.orderHistoryRangeLabel],
+    ['Generated At', new Date().toLocaleString('en-IN')],
+    [],
+    ['Order Number', 'Database Order', 'Date', 'Time', 'Outlet', 'Customer', 'Mobile', 'Order Type', 'Source', 'Status', 'Payment', 'Payment Status', 'Items', 'Subtotal', 'Discount', 'Total'],
+    ...orders.map(order => [
+      order.order_number || '',
+      order.database_order_number || '',
+      new Date(order.created_at).toLocaleDateString('en-IN'),
+      new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+      order.outlets?.name || 'OHHO Outlet',
+      order.customer_name || '',
+      order.customer_phone || '',
+      order.order_type || '',
+      order.order_source || '',
+      order.order_status || '',
+      order.payment_method || '',
+      order.payment_status || '',
+      (order.order_items || []).map(item => `${Number(item.quantity || 0)} x ${item.item_name || 'Menu Item'}`).join(' | '),
+      Number(order.subtotal || 0).toFixed(2),
+      Number(order.discount || 0).toFixed(2),
+      Number(order.total_amount || 0).toFixed(2)
+    ])
+  ];
+  const csv = `\uFEFF${rows.map(row => row.map(csvCell).join(',')).join('\n')}`;
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  const rangeSlug = String(state.orderHistoryRangeLabel || 'history')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  link.href = url;
+  link.download = `ohho-order-history-${rangeSlug || 'records'}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function isFamilyFriendsOrder(order) {
