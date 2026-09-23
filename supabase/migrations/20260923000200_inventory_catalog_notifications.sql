@@ -14,15 +14,11 @@ create index if not exists inventory_notifications_outlet_date_idx
 
 alter table public.inventory_notifications enable row level security;
 revoke all on public.inventory_notifications from anon,authenticated;
-grant select,update on public.inventory_notifications to authenticated;
+grant select on public.inventory_notifications to authenticated;
 
 drop policy if exists inventory_notifications_read on public.inventory_notifications;
 create policy inventory_notifications_read on public.inventory_notifications for select to authenticated
   using (public.inventory_scope_allowed(outlet_id));
-drop policy if exists inventory_notifications_update on public.inventory_notifications;
-create policy inventory_notifications_update on public.inventory_notifications for update to authenticated
-  using (public.inventory_scope_allowed(outlet_id)) with check (public.inventory_scope_allowed(outlet_id));
-
 create or replace function public.notify_supply_bill()
 returns trigger language plpgsql security definer set search_path=public as $$
 begin

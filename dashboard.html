@@ -1059,6 +1059,7 @@ body{font-size:14px}
     </div>
   </div>
 </section>
+<style>.inventory-master-groups{display:grid;gap:16px}</style>
 <section id="inventory" class="section">
   <div class="page-head inventory-page-head">
     <div><div class="eyebrow">Franchise supply</div><h1 id="inventoryPageTitle">Supply &amp; Inventory</h1><p>One stock entry creates the bill, updates outlet inventory and appears in the outlet account.</p></div>
@@ -1076,6 +1077,33 @@ body{font-size:14px}
     <article><span>LOW / OUT OF STOCK</span><strong id="inventoryLowCount">0</strong><small>Needs attention</small></article>
     <article><span>SUPPLY AMOUNT DUE</span><strong id="inventoryDue">₹0</strong><small>Unpaid balance</small></article>
     <article><span>STOCK RECEIVED TODAY</span><strong id="inventoryToday">0</strong><small>Supply entries</small></article>
+  </div>
+  <article id="stockRequestCreatePanel" class="inventory-panel inventory-table-panel">
+    <div class="inventory-panel-head"><div><div class="eyebrow">Tomorrow's requirement</div><h2>Request stock from OHHO</h2></div><span>Enter only the items you need</span></div>
+    <div class="request-date-row"><label><span>OUTLET</span><select id="stockRequestOutlet"></select></label><label><span>NEEDED ON</span><input id="stockRequestDate" type="date"></label><label><span>NOTE</span><input id="stockRequestNotes" type="text" maxlength="500" placeholder="Delivery timing or special note"></label></div>
+    <div id="stockRequestCatalogue" class="request-catalogue"></div>
+    <button id="submitStockRequest" class="primary inventory-wide-btn" type="button">SEND REQUIREMENT TO ADMIN</button>
+  </article>
+  <article id="stockRequestAdminPanel" class="inventory-panel inventory-table-panel">
+    <div class="inventory-panel-head"><div><div class="eyebrow">Franchise demand</div><h2>Stock requirements</h2></div><span>Use a request to prepare its supply bill</span></div>
+    <div id="stockRequestList" class="stock-request-list"></div>
+  </article>
+  <div class="inventory-expense-grid">
+    <article class="inventory-panel">
+      <div class="inventory-panel-head"><div><div class="eyebrow">Owner expense book</div><h2>Add daily expense</h2></div></div>
+      <div class="inventory-form-grid">
+        <label><span>OUTLET</span><select id="expenseOutlet"></select></label>
+        <label><span>CATEGORY</span><select id="expenseCategory"><option value="LOCAL_STOCK">Local stock purchase</option><option value="TRANSPORT">Transport</option><option value="UTILITIES">Utilities</option><option value="SALARY">Salary / labour</option><option value="MAINTENANCE">Maintenance</option><option value="OTHER">Other</option></select></label>
+        <label><span>DESCRIPTION</span><input id="expenseDescription" type="text" maxlength="200" placeholder="What was paid for?"></label>
+        <label><span>AMOUNT</span><input id="expenseAmount" type="number" min="0.01" step="0.01" placeholder="₹0"></label>
+        <label><span>PAYMENT</span><select id="expensePayment"><option value="CASH">Cash</option><option value="UPI">UPI</option><option value="BANK">Bank</option><option value="CARD">Card</option><option value="OTHER">Other</option></select></label>
+      </div>
+      <button id="saveDailyExpense" class="secondary inventory-wide-btn" type="button">SAVE DAILY EXPENSE</button>
+    </article>
+    <article class="inventory-panel">
+      <div class="inventory-panel-head"><div><div class="eyebrow">Expense book</div><h2 id="dailyExpenseHeading">Today's expenses</h2></div><strong id="expenseTodayTotal">₹0</strong></div>
+      <div id="dailyExpenseList" class="daily-expense-list"></div>
+    </article>
   </div>
   <div id="inventoryAdminWorkspace" class="inventory-admin-grid">
     <article class="inventory-panel">
@@ -1097,7 +1125,7 @@ body{font-size:14px}
       <div class="inventory-form-grid item-create-grid">
         <label><span>ITEM NAME</span><input id="inventoryItemName" type="text" placeholder="Chicken"></label>
         <label><span>SKU</span><input id="inventoryItemSku" type="text" placeholder="CHICKEN"></label>
-        <label><span>UNIT</span><select id="inventoryItemUnit"><option value="KG">KG</option><option value="G">G</option><option value="L">L</option><option value="ML">ML</option><option value="EACH">EACH</option></select></label>
+        <label><span>MEASUREMENT</span><select id="inventoryItemUnit"><option value="KG">Per KG</option><option value="EACH">Per piece</option></select></label>
         <label><span>LOW STOCK AT</span><input id="inventoryItemThreshold" type="number" min="0" step="0.001" placeholder="2"></label>
         <label><span>DEFAULT PRICE</span><input id="inventoryItemPrice" type="number" min="0" step="0.01" placeholder="₹0"></label>
       </div>
@@ -1115,7 +1143,7 @@ body{font-size:14px}
   </div>
   <article id="inventoryMasterPanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">One-time setup</div><h2>Item &amp; fixed price list</h2></div><span>Billing always uses these rates</span></div>
-    <div id="inventoryMasterList" class="inventory-master-list"></div>
+    <div id="inventoryMasterList" class="inventory-master-groups"></div>
   </article>
   <article class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Live balances</div><h2>Outlet stock</h2></div><span id="inventoryStockCount">0 items</span></div>

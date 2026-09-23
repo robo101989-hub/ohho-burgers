@@ -305,6 +305,18 @@ export default async function handler(req, res) {
             { gross: 0, cash: 0, upi: 0, card: 0 }
           );
 
+          const [stockBillsResult, expensesResult] = await Promise.all([
+            supabase.from("supply_bills").select("total_amount").eq("outlet_id", id).eq("status", "ISSUED").gte("supplied_at", openedAt).lt("supplied_at", now),
+            supabase.from("daily_expenses").select("amount").eq("outlet_id", id).gte("occurred_at", openedAt).lt("occurred_at", now)
+          ]);
+          if (stockBillsResult.error || expensesResult.error) {
+            console.error("Unable to load session expenses", stockBillsResult.error || expensesResult.error);
+            return res.status(500).json({ error: "Unable to close outlet expense book" });
+          }
+          const stockReceivedAmount = (stockBillsResult.data || []).reduce((sum, row) => sum + Number(row.total_amount || 0), 0);
+          const otherExpenseAmount = (expensesResult.data || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+          const totalExpenseAmount = stockReceivedAmount + otherExpenseAmount;
+
           const { error: reportError } = await supabase
             .from("outlet_sales_reports")
             .upsert(
@@ -317,7 +329,11 @@ export default async function handler(req, res) {
                 gross_sales: totals.gross,
                 cash_sales: totals.cash,
                 upi_sales: totals.upi,
-                card_sales: totals.card
+                card_sales: totals.card,
+                stock_received_amount: stockReceivedAmount,
+                other_expense_amount: otherExpenseAmount,
+                total_expense_amount: totalExpenseAmount,
+                net_after_expenses: totals.gross - totalExpenseAmount
               },
               { onConflict: "outlet_id,opened_at" }
             );

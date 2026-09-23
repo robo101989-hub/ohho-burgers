@@ -30,7 +30,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
-  inventory: { items: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], billLines: [], loaded: false },
+  inventory: { items: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], billLines: [], activeRequestId: null, loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -287,9 +287,9 @@ function injectStyles() {
     }
     @media(max-width:1050px){.outlet-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.outlet-grid,.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.modal-head,.outlet-form{padding:18px}.outlet-card{min-height:0}.outlet-links{flex-wrap:wrap}}
     .inventory-head-actions{display:flex;gap:8px;flex-wrap:wrap}.inventory-filterbar{display:grid;grid-template-columns:minmax(180px,1fr) 150px 150px auto auto;gap:9px;align-items:end;margin-bottom:13px}.inventory-filterbar label,.inventory-form-grid label,.inventory-notes{display:grid;gap:6px}.inventory-filterbar label span,.inventory-form-grid label span,.inventory-notes span{color:#777;font:900 7px var(--mono);letter-spacing:1px}.inventory-filterbar input,.inventory-filterbar select,.inventory-form-grid input,.inventory-form-grid select,.inventory-notes input{height:40px;width:100%;border:1px solid #303030;border-radius:8px;background:#0d0d0d;color:#eee;padding:0 11px;outline:0;color-scheme:dark}.inventory-filterbar input:focus,.inventory-filterbar select:focus,.inventory-form-grid input:focus,.inventory-form-grid select:focus,.inventory-notes input:focus{border-color:#ffd21c}.inventory-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:13px}.inventory-summary article{background:#0d0d0d;border:1px solid #252525;border-radius:13px;padding:16px}.inventory-summary span{display:block;color:#777;font:900 7px var(--mono);letter-spacing:1px}.inventory-summary strong{display:block;margin-top:7px;color:#f5f5f0;font:950 24px var(--mono)}.inventory-summary small{display:block;margin-top:5px;color:#5f5f5f;font-size:9px}.inventory-admin-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:12px;margin-bottom:12px}.inventory-panel{background:#0d0d0d;border:1px solid #252525;border-radius:14px;padding:17px}.inventory-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}.inventory-panel-head h2{margin:3px 0 0;font-size:18px}.inventory-panel-head>span{color:#777;font:800 8px var(--mono)}.inventory-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.item-create-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.inventory-wide-btn{width:100%;margin-top:10px}.inventory-notes{margin-top:10px}.supply-lines{display:grid;gap:7px;margin-top:11px}.supply-line{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:9px 10px;border:1px solid #282828;border-radius:8px;background:#101010}.supply-line strong{font-size:10px}.supply-line small{display:block;color:#777;margin-top:3px;font-size:8px}.supply-line b{color:#ffd21c;font:900 10px var(--mono)}.supply-line button{border:1px solid #492525;background:#1a0d0d;color:#ff8c8c;border-radius:6px;padding:6px 8px}.supply-empty{padding:18px;text-align:center;border:1px dashed #303030;border-radius:8px;color:#666;font-size:9px}.supply-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #272727}.supply-total span{color:#777;font:900 8px var(--mono)}.supply-total strong{color:#ffd21c;font:950 22px var(--mono)}.adjustment-head{margin-top:25px;padding-top:18px;border-top:1px solid #292929}.inventory-table-panel{margin-top:12px}.inventory-table-wrap{overflow-x:auto}.inventory-table-head,.inventory-stock-row{display:grid;grid-template-columns:minmax(160px,1.2fr) minmax(120px,1fr) 110px 110px 120px 105px;gap:10px;align-items:center;min-width:760px}.inventory-table-head{padding:9px 11px;color:#5e5e5e;font:900 7px var(--mono);letter-spacing:.8px;border-bottom:1px solid #282828}.inventory-stock-row{padding:12px 11px;border-bottom:1px solid #202020;color:#aaa;font-size:10px}.inventory-stock-row:last-child{border-bottom:0}.inventory-stock-row strong{color:#eee}.inventory-qty{color:#ffd21c;font:900 11px var(--mono)}.inventory-status{width:max-content;border-radius:6px;padding:5px 7px;font:900 7px var(--mono);letter-spacing:.5px}.inventory-status.in{color:#72d56b;background:#0d170d;border:1px solid #253b25}.inventory-status.low{color:#ffd21c;background:#191509;border:1px solid #4c411b}.inventory-status.out{color:#ff8c8c;background:#1c0d0d;border:1px solid #482121}.inventory-bills-list,.inventory-movement-list{display:grid;gap:8px}.inventory-bill{border:1px solid #292929;border-radius:10px;padding:13px;background:#101010}.inventory-bill-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.inventory-bill h3{margin:0;font-size:13px}.inventory-bill-meta{color:#777;font-size:8px;margin-top:5px}.inventory-bill-total{text-align:right}.inventory-bill-total strong{display:block;color:#ffd21c;font:950 17px var(--mono)}.inventory-bill-total span{display:block;margin-top:3px;color:#888;font:900 7px var(--mono)}.inventory-bill-items{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}.inventory-bill-items span{border:1px solid #2c2c2c;border-radius:6px;padding:6px 8px;color:#aaa;font-size:8px}.inventory-bill-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.inventory-bill-actions button{padding:8px 10px;font:900 7px var(--mono)}.inventory-movement{display:grid;grid-template-columns:120px minmax(130px,1fr) 130px 100px minmax(140px,1fr);gap:10px;padding:11px;border-bottom:1px solid #202020;align-items:center;color:#888;font-size:9px}.inventory-movement strong{color:#eee}.inventory-movement .positive{color:#72d56b}.inventory-movement .negative{color:#ff8c8c}.inventory-empty{padding:35px;text-align:center;border:1px dashed #303030;border-radius:10px;color:#666;font-size:10px}.inventory-admin-grid.owner-view{grid-template-columns:1fr}.inventory-admin-grid.owner-view>article:first-child{display:none}
-    .inventory-master-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.inventory-master-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px;border:1px solid #292929;border-radius:9px;background:#101010}.inventory-master-item strong{display:block;font-size:10px}.inventory-master-item small{display:block;margin-top:4px;color:#777;font-size:8px}.inventory-master-rate{text-align:right}.inventory-master-rate b{display:block;color:#ffd21c;font:900 11px var(--mono)}.inventory-master-rate button{margin-top:5px;border:0;background:transparent;color:#aaa;font:900 7px var(--mono);cursor:pointer}.inventory-master-rate button:hover{color:#ffd21c}.pos-supply-notice{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:13px;padding:14px 16px;border:1px solid #5b4a0f;border-radius:12px;background:linear-gradient(105deg,#211b05,#111);box-shadow:0 10px 30px rgba(0,0,0,.25)}.pos-supply-notice.hidden{display:none}.pos-supply-notice strong{display:block;color:#ffd21c;font-size:12px}.pos-supply-notice span{display:block;margin-top:4px;color:#bbb;font-size:9px}.pos-supply-notice-actions{display:flex;gap:7px;flex-shrink:0}.pos-supply-notice button{padding:9px 11px;font:900 7px var(--mono)}
-    @media(max-width:1000px){.inventory-filterbar{grid-template-columns:1fr 1fr 1fr}.inventory-admin-grid{grid-template-columns:1fr}.inventory-summary{grid-template-columns:repeat(2,1fr)}.inventory-master-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:650px){.inventory-head-actions{width:100%}.inventory-head-actions button{flex:1}.inventory-filterbar{grid-template-columns:1fr 1fr}.inventory-filterbar label:first-child{grid-column:1/-1}.inventory-summary{grid-template-columns:1fr 1fr}.inventory-summary article{padding:13px}.inventory-summary strong{font-size:19px}.inventory-form-grid,.item-create-grid{grid-template-columns:1fr}.inventory-panel{padding:13px}.inventory-movement{grid-template-columns:1fr 1fr}.inventory-movement span:last-child{grid-column:1/-1}.inventory-bill-top{display:block}.inventory-bill-total{text-align:left;margin-top:9px}.inventory-master-list{grid-template-columns:1fr}.pos-supply-notice{align-items:flex-start;flex-direction:column}.pos-supply-notice-actions{width:100%}.pos-supply-notice button{flex:1}}
+    .inventory-master-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.inventory-master-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px;border:1px solid #292929;border-radius:9px;background:#101010}.inventory-master-item strong{display:block;font-size:10px}.inventory-master-item small{display:block;margin-top:4px;color:#777;font-size:8px}.inventory-master-rate{text-align:right}.inventory-master-rate b{display:block;color:#ffd21c;font:900 11px var(--mono)}.inventory-master-rate button{margin-top:5px;border:0;background:transparent;color:#aaa;font:900 7px var(--mono);cursor:pointer}.inventory-master-rate button:hover{color:#ffd21c}.pos-supply-notice{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:13px;padding:14px 16px;border:1px solid #5b4a0f;border-radius:12px;background:linear-gradient(105deg,#211b05,#111);box-shadow:0 10px 30px rgba(0,0,0,.25)}.pos-supply-notice.hidden{display:none}.pos-supply-notice strong{display:block;color:#ffd21c;font-size:12px}.pos-supply-notice span{display:block;margin-top:4px;color:#bbb;font-size:9px}.pos-supply-notice-actions{display:flex;gap:7px;flex-shrink:0}.pos-supply-notice button{padding:9px 11px;font:900 7px var(--mono)}.request-date-row{display:grid;grid-template-columns:180px 180px 1fr;gap:9px;margin-bottom:13px}.request-date-row label{display:grid;gap:6px}.request-date-row span{color:#777;font:900 7px var(--mono);letter-spacing:1px}.request-date-row input,.request-date-row select{height:40px;border:1px solid #303030;border-radius:8px;background:#101010;color:#eee;padding:0 11px;color-scheme:dark}.request-group+.request-group{margin-top:16px}.request-group h3{margin:0 0 8px;color:#ffd21c;font:900 9px var(--mono);letter-spacing:1px}.request-items{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.request-item{display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:9px;align-items:center;padding:11px;border:1px solid #292929;border-radius:9px;background:#101010}.request-item strong{display:block;font-size:10px}.request-item small{display:block;margin-top:4px;color:#777;font-size:8px}.request-item input{width:100%;height:36px;border:1px solid #343434;border-radius:7px;background:#080808;color:#fff;padding:0 9px}.stock-request-list,.daily-expense-list{display:grid;gap:8px}.stock-request-card{padding:13px;border:1px solid #292929;border-radius:10px;background:#101010}.stock-request-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.stock-request-top strong{display:block;font-size:12px}.stock-request-top span{display:block;margin-top:4px;color:#777;font-size:8px}.stock-request-items{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.stock-request-items span{padding:6px 8px;border:1px solid #303030;border-radius:6px;color:#bbb;font-size:8px}.stock-request-card button{margin-top:10px;padding:8px 10px;font:900 7px var(--mono)}.inventory-expense-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.daily-expense-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:10px;border-bottom:1px solid #242424}.daily-expense-row strong{display:block;font-size:10px}.daily-expense-row span{display:block;margin-top:4px;color:#777;font-size:8px}.daily-expense-row b{color:#ffcf2c;font:900 11px var(--mono)}
+    @media(max-width:1000px){.inventory-filterbar{grid-template-columns:1fr 1fr 1fr}.inventory-admin-grid,.inventory-expense-grid{grid-template-columns:1fr}.inventory-summary{grid-template-columns:repeat(2,1fr)}.inventory-master-list,.request-items{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:650px){.inventory-head-actions{width:100%}.inventory-head-actions button{flex:1}.inventory-filterbar{grid-template-columns:1fr 1fr}.inventory-filterbar label:first-child{grid-column:1/-1}.inventory-summary{grid-template-columns:1fr 1fr}.inventory-summary article{padding:13px}.inventory-summary strong{font-size:19px}.inventory-form-grid,.item-create-grid,.request-date-row{grid-template-columns:1fr}.inventory-panel{padding:13px}.inventory-movement{grid-template-columns:1fr 1fr}.inventory-movement span:last-child{grid-column:1/-1}.inventory-bill-top{display:block}.inventory-bill-total{text-align:left;margin-top:9px}.inventory-master-list,.request-items{grid-template-columns:1fr}.pos-supply-notice{align-items:flex-start;flex-direction:column}.pos-supply-notice-actions{width:100%}.pos-supply-notice button{flex:1}}
   `;
   document.head.appendChild(style);
 }
@@ -3208,6 +3208,8 @@ function fillInventoryControls() {
   inventorySelectOptions($('#inventoryOutletFilter'), state.profile?.role === 'ADMIN' ? [{ value: '', label: 'All outlets' }, ...outletOptions] : outletOptions, previousFilter);
   inventorySelectOptions($('#supplyOutlet'), outletOptions, $('#supplyOutlet')?.value);
   inventorySelectOptions($('#adjustOutlet'), outletOptions, $('#adjustOutlet')?.value);
+  inventorySelectOptions($('#expenseOutlet'), outletOptions, $('#expenseOutlet')?.value);
+  inventorySelectOptions($('#stockRequestOutlet'), outletOptions, $('#stockRequestOutlet')?.value);
   const itemOptions = state.inventory.items.filter(item => item.active !== false).map(item => ({ value: item.id, label: `${item.name} · ${item.display_unit} · ${Number(item.default_supply_price) > 0 ? formatReportMoney(item.default_supply_price) : 'SET PRICE'}` }));
   inventorySelectOptions($('#supplyItem'), itemOptions, $('#supplyItem')?.value);
   inventorySelectOptions($('#adjustItem'), itemOptions, $('#adjustItem')?.value);
@@ -3221,6 +3223,47 @@ function fillInventoryControls() {
   }
   if ($('#inventoryPageTitle')) $('#inventoryPageTitle').textContent = admin ? 'Supply & Inventory' : 'My Inventory';
   if ($('#inventoryMasterPanel')) $('#inventoryMasterPanel').style.display = admin ? '' : 'none';
+  if ($('#stockRequestCreatePanel')) $('#stockRequestCreatePanel').style.display = admin ? 'none' : '';
+  if ($('#stockRequestAdminPanel')) $('#stockRequestAdminPanel').style.display = admin ? '' : 'none';
+  if ($('#stockRequestDate') && !$('#stockRequestDate').value) {
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    $('#stockRequestDate').value = tomorrow.toLocaleDateString('en-CA');
+  }
+}
+
+function renderStockRequestCatalogue() {
+  const list = $('#stockRequestCatalogue');
+  if (!list) return;
+  const groups = [
+    ['KG ITEMS', state.inventory.items.filter(item => item.active !== false && item.display_unit !== 'EACH')],
+    ['PIECE ITEMS', state.inventory.items.filter(item => item.active !== false && item.display_unit === 'EACH')]
+  ];
+  list.innerHTML = groups.map(([label, items]) => `<div class="request-group"><h3>${label}</h3><div class="request-items">${items.map(item => `<label class="request-item"><span><strong>${escapeHtml(item.name)}</strong><small>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${item.display_unit === 'EACH' ? 'PIECE' : 'KG'}` : 'PRICE PENDING'}</small></span><input type="number" min="0" step="${item.display_unit === 'EACH' ? '1' : '0.001'}" placeholder="0 ${item.display_unit === 'EACH' ? 'pcs' : 'kg'}" data-request-qty="${item.id}"></label>`).join('')}</div></div>`).join('');
+}
+
+function renderStockRequests() {
+  const list = $('#stockRequestList');
+  if (!list) return;
+  const requests = state.inventory.requests || [];
+  list.innerHTML = requests.length ? requests.map(request => `<div class="stock-request-card"><div class="stock-request-top"><div><strong>${escapeHtml(inventoryOutlet(request.outlet_id)?.name || 'Outlet')} · Needed ${new Date(`${request.required_for}T00:00:00`).toLocaleDateString('en-IN',{dateStyle:'medium'})}</strong><span>Requested ${inventoryDate(request.created_at)}${request.notes ? ` · ${escapeHtml(request.notes)}` : ''}</span></div><span class="inventory-status ${request.status === 'FULFILLED' ? 'in' : request.status === 'CANCELLED' ? 'out' : 'low'}">${escapeHtml(request.status)}</span></div><div class="stock-request-items">${(request.franchise_stock_request_items || []).map(item => `<span>${escapeHtml(item.item_name)} · ${inventoryQty(item.quantity)} ${item.unit === 'EACH' ? 'pcs' : 'kg'}</span>`).join('')}</div>${state.profile?.role === 'ADMIN' && request.status === 'SUBMITTED' ? `<button class="primary" type="button" data-use-stock-request="${request.id}">PREPARE SUPPLY BILL</button>` : ''}</div>`).join('') : '<div class="inventory-empty">No stock requirements submitted yet.</div>';
+}
+
+function renderDailyExpenses() {
+  const list = $('#dailyExpenseList');
+  if (!list) return;
+  const outletId = inventorySelectedOutletId();
+  const today = new Date().toLocaleDateString('en-CA');
+  const admin = state.profile?.role === 'ADMIN';
+  const expenses = state.inventory.expenses.filter(row => (!outletId || row.outlet_id === outletId) && (admin || new Date(row.occurred_at).toLocaleDateString('en-CA') === today));
+  const stockBills = state.inventory.bills.filter(row => (!outletId || row.outlet_id === outletId) && (admin || new Date(row.supplied_at).toLocaleDateString('en-CA') === today));
+  const rows = [
+    ...stockBills.map(row => ({ date: row.supplied_at, outlet_id: row.outlet_id, description: `OHHO stock · ${row.bill_number}`, category: 'OHHO STOCK', payment_method: row.payment_status, amount: row.total_amount })),
+    ...expenses.map(row => ({ date: row.occurred_at, ...row }))
+  ].sort((a,b) => new Date(b.date || b.occurred_at) - new Date(a.date || a.occurred_at));
+  const total = rows.reduce((sum,row) => sum + Number(row.amount || 0), 0);
+  if ($('#expenseTodayTotal')) $('#expenseTodayTotal').textContent = formatReportMoney(total);
+  if ($('#dailyExpenseHeading')) $('#dailyExpenseHeading').textContent = admin ? 'Expense history' : "Today's expenses";
+  list.innerHTML = rows.length ? rows.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.description)}</strong><span>${escapeHtml(inventoryOutlet(row.outlet_id)?.name || 'Outlet')} · ${escapeHtml(row.category.replaceAll('_',' '))} · ${escapeHtml(row.payment_method)} · ${inventoryDate(row.date || row.occurred_at)}</span></div><b>${formatReportMoney(row.amount)}</b></div>`).join('') : `<div class="inventory-empty">No expenses recorded${admin ? ' in this period' : ' today'}.</div>`;
 }
 
 function renderSupplyNotification() {
@@ -3270,7 +3313,10 @@ function renderInventory() {
   if ($('#inventoryBillCount')) $('#inventoryBillCount').textContent = `${bills.length} bill${bills.length === 1 ? '' : 's'}`;
 
   const masterList = $('#inventoryMasterList');
-  if (masterList) masterList.innerHTML = state.inventory.items.length ? state.inventory.items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · PER ${escapeHtml(item.display_unit)} · LOW AT ${inventoryQty(item.low_stock_threshold)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? formatReportMoney(item.default_supply_price) : 'SET RATE'}</b><button type="button" data-inventory-edit-item="${item.id}">EDIT PRICE</button></div></div>`).join('') : '<div class="inventory-empty">No stock items configured.</div>';
+  if (masterList) {
+    const masterGroups = [['PER KG', state.inventory.items.filter(item => item.display_unit !== 'EACH')], ['PER PIECE', state.inventory.items.filter(item => item.display_unit === 'EACH')]];
+    masterList.innerHTML = state.inventory.items.length ? masterGroups.map(([label, items]) => `<div class="request-group"><h3>${label}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · LOW AT ${inventoryQty(item.low_stock_threshold)} ${item.display_unit === 'EACH' ? 'pcs' : 'kg'}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? formatReportMoney(item.default_supply_price) : 'SET RATE'}</b><button type="button" data-inventory-edit-item="${item.id}">EDIT PRICE</button></div></div>`).join('')}</div></div>`).join('') : '<div class="inventory-empty">No stock items configured.</div>';
+  }
 
   const stockList = $('#inventoryStockList');
   if (stockList) stockList.innerHTML = balances.length ? balances.map(row => {
@@ -3297,6 +3343,9 @@ function renderInventory() {
   }).join('') : '<div class="inventory-empty">No stock movements in this period.</div>';
   renderSupplyLines();
   renderSupplyNotification();
+  renderStockRequestCatalogue();
+  renderStockRequests();
+  renderDailyExpenses();
 }
 
 async function loadInventory({ all = false } = {}) {
@@ -3314,6 +3363,8 @@ async function loadInventory({ all = false } = {}) {
   state.inventory.bills = payload.bills || [];
   state.inventory.movements = payload.movements || [];
   state.inventory.notifications = payload.notifications || [];
+  state.inventory.requests = payload.requests || [];
+  state.inventory.expenses = payload.expenses || [];
   state.inventory.loaded = true;
   renderInventory();
 }
@@ -3371,11 +3422,51 @@ async function generateSupplyBill() {
   if (!outletId || !state.inventory.billLines.length) return toast('Select an outlet and add at least one item.', 'bad');
   button.disabled = true;
   try {
-    await inventoryApi('POST', { action: 'issue_bill', outletId, items: state.inventory.billLines, notes: $('#supplyNotes')?.value || '' });
+    await inventoryApi('POST', { action: 'issue_bill', outletId, items: state.inventory.billLines, notes: $('#supplyNotes')?.value || '', requestId: state.inventory.activeRequestId });
     state.inventory.billLines = [];
+    state.inventory.activeRequestId = null;
     if ($('#supplyNotes')) $('#supplyNotes').value = '';
     await loadInventory({ all: true });
     toast('Supply bill generated and outlet stock updated.', 'ok');
+  } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
+}
+
+async function submitStockRequirement() {
+  const outletId = $('#stockRequestOutlet')?.value;
+  const items = $$('[data-request-qty]').map(input => ({ itemId: input.dataset.requestQty, quantity: Number(input.value) })).filter(row => row.quantity > 0);
+  const requiredFor = $('#stockRequestDate')?.value;
+  if (!outletId || !requiredFor || !items.length) return toast('Enter a quantity for at least one item.', 'bad');
+  const button = $('#submitStockRequest'); button.disabled = true;
+  try {
+    await inventoryApi('POST', { action: 'submit_request', outletId, requiredFor, items, notes: $('#stockRequestNotes')?.value || '' });
+    $$('[data-request-qty]').forEach(input => { input.value = ''; });
+    if ($('#stockRequestNotes')) $('#stockRequestNotes').value = '';
+    await loadInventory({ all: true });
+    toast('Tomorrow’s stock requirement sent to Admin.', 'ok');
+  } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
+}
+
+function useStockRequest(request) {
+  state.inventory.activeRequestId = request.id;
+  state.inventory.billLines = (request.franchise_stock_request_items || []).map(row => ({
+    itemId: row.item_id, name: row.item_name, unit: row.unit, quantity: Number(row.quantity), unitPrice: Number(inventoryItem(row.item_id)?.default_supply_price || row.fixed_unit_price || 0)
+  }));
+  if ($('#supplyOutlet')) $('#supplyOutlet').value = request.outlet_id;
+  if ($('#supplyNotes')) $('#supplyNotes').value = `From franchise requirement for ${request.required_for}${request.notes ? ` · ${request.notes}` : ''}`;
+  renderSupplyLines();
+  $('#inventoryAdminWorkspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  toast('Request loaded into the supply bill.', 'ok');
+}
+
+async function saveDailyExpense() {
+  const button = $('#saveDailyExpense');
+  button.disabled = true;
+  try {
+    await inventoryApi('POST', { action: 'add_expense', outletId: $('#expenseOutlet')?.value, category: $('#expenseCategory')?.value, description: $('#expenseDescription')?.value, amount: $('#expenseAmount')?.value, paymentMethod: $('#expensePayment')?.value });
+    if ($('#expenseDescription')) $('#expenseDescription').value = '';
+    if ($('#expenseAmount')) $('#expenseAmount').value = '';
+    await loadInventory({ all: true });
+    toast('Daily expense saved in the outlet book.', 'ok');
   } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
 }
 
@@ -3448,6 +3539,9 @@ function wireInventoryActions() {
   $('#supplyGenerateBill')?.addEventListener('click', generateSupplyBill);
   $('#inventoryCreateItem')?.addEventListener('click', createInventoryItem);
   $('#inventoryAdjustStock')?.addEventListener('click', adjustInventoryStock);
+  $('#submitStockRequest')?.addEventListener('click', submitStockRequirement);
+  $('#saveDailyExpense')?.addEventListener('click', saveDailyExpense);
+  $('#stockRequestList')?.addEventListener('click', event => { const button = event.target.closest('[data-use-stock-request]'); const request = button && state.inventory.requests.find(row => row.id === button.dataset.useStockRequest); if (request) useStockRequest(request); });
   $('#inventoryMasterList')?.addEventListener('click', event => { const button = event.target.closest('[data-inventory-edit-item]'); const item = button && inventoryItem(button.dataset.inventoryEditItem); if (item) editInventoryItemPrice(item); });
   $('#posSupplyNotice')?.addEventListener('click', event => { const view = event.target.closest('[data-supply-notice-view]'); const dismiss = event.target.closest('[data-supply-notice-dismiss]'); if (view) markSupplyNotification(view.dataset.supplyNoticeView, true); if (dismiss) markSupplyNotification(dismiss.dataset.supplyNoticeDismiss, false); });
   $('#supplyBillLines')?.addEventListener('click', event => { const button = event.target.closest('[data-supply-remove]'); if (!button) return; state.inventory.billLines.splice(Number(button.dataset.supplyRemove), 1); renderSupplyLines(); });
@@ -4586,7 +4680,7 @@ async function loadSalesReports() {
     for (let offset = 0; ; offset += pageSize) {
       let query = supabase
         .from('outlet_sales_reports')
-        .select('id,outlet_id,opened_at,closed_at,order_count,item_count,gross_sales,cash_sales,upi_sales,card_sales,created_at')
+        .select('id,outlet_id,opened_at,closed_at,order_count,item_count,gross_sales,cash_sales,upi_sales,card_sales,stock_received_amount,other_expense_amount,total_expense_amount,net_after_expenses,created_at')
         .order('closed_at', { ascending: false })
         .range(offset, offset + pageSize - 1);
       if (state.selectedOutlet !== 'ALL') {
@@ -4643,6 +4737,9 @@ function renderSalesReports(reports = filteredSessionReports()) {
           <div class="payment"><span>CASH</span><strong>${formatReportMoney(report.cash_sales)}</strong></div>
           <div class="payment"><span>UPI</span><strong>${formatReportMoney(report.upi_sales)}</strong></div>
           <div class="payment"><span>CARD</span><strong>${formatReportMoney(report.card_sales)}</strong></div>
+          <div><span>OHHO STOCK</span><strong>${formatReportMoney(report.stock_received_amount)}</strong></div>
+          <div><span>OTHER EXPENSES</span><strong>${formatReportMoney(report.other_expense_amount)}</strong></div>
+          <div><span>NET AFTER EXPENSES</span><strong>${formatReportMoney(report.net_after_expenses)}</strong></div>
         </div>
       </article>
     `;
@@ -4675,6 +4772,8 @@ function downloadCompletedSessionReport(reportId) {
   const outlet = state.outlets.find(item => item.id === report.outlet_id);
   const orderCount = Number(report.order_count || 0);
   const averageOrder = orderCount ? Number(report.gross_sales || 0) / orderCount : 0;
+  const sessionBills = (state.inventory.bills || []).filter(row => row.outlet_id === report.outlet_id && new Date(row.supplied_at).getTime() >= openedAt && new Date(row.supplied_at).getTime() < closedAt);
+  const sessionExpenses = (state.inventory.expenses || []).filter(row => row.outlet_id === report.outlet_id && new Date(row.occurred_at).getTime() >= openedAt && new Date(row.occurred_at).getTime() < closedAt);
   const rows = [
     ['OHHO SESSION SALES REPORT'],
     ['Outlet', outlet?.name || 'OHHO Outlet'],
@@ -4689,6 +4788,10 @@ function downloadCompletedSessionReport(reportId) {
     ['Cash', Number(report.cash_sales || 0).toFixed(2)],
     ['UPI', Number(report.upi_sales || 0).toFixed(2)],
     ['Card', Number(report.card_sales || 0).toFixed(2)],
+    ['OHHO Stock Received', Number(report.stock_received_amount || 0).toFixed(2)],
+    ['Owner Daily Expenses', Number(report.other_expense_amount || 0).toFixed(2)],
+    ['Total Expenses', Number(report.total_expense_amount || 0).toFixed(2)],
+    ['Net After Expenses', Number(report.net_after_expenses || 0).toFixed(2)],
     ['Family & Friends Orders', freeOrders.length],
     ['Free Food Items', sumItems(freeOrders)],
     ['Free Food Menu Value', sumOrders(freeOrders).toFixed(2)],
@@ -4701,7 +4804,15 @@ function downloadCompletedSessionReport(reportId) {
       item.paidQuantity + item.freeQuantity,
       item.paidSales.toFixed(2),
       item.freeValue.toFixed(2)
-    ])
+    ]),
+    [],
+    ['OHHO Stock Received'],
+    ['Bill','Date','Amount','Payment Status'],
+    ...sessionBills.map(bill => [bill.bill_number,new Date(bill.supplied_at).toLocaleString('en-IN'),Number(bill.total_amount || 0).toFixed(2),bill.payment_status]),
+    [],
+    ['Owner Daily Expenses'],
+    ['Description','Category','Date','Payment','Amount'],
+    ...sessionExpenses.map(expense => [expense.description,expense.category,new Date(expense.occurred_at).toLocaleString('en-IN'),expense.payment_method,Number(expense.amount || 0).toFixed(2)])
   ];
   const csv = rows.map(row => row.map(csvCell).join(',')).join('\n');
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
