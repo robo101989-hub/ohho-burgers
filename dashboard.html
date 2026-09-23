@@ -802,6 +802,7 @@ body{font-size:14px}
   </div>
 </section>
 <section id="pos" class="section">
+  <div id="posSupplyNotice" class="pos-supply-notice hidden"></div>
   <div class="page-head pos-page-head">
     <div>
       <div class="eyebrow">Point of sale</div>
@@ -1083,7 +1084,7 @@ body{font-size:14px}
         <label><span>OUTLET</span><select id="supplyOutlet"></select></label>
         <label><span>ITEM</span><select id="supplyItem"></select></label>
         <label><span>QUANTITY</span><input id="supplyQuantity" type="number" min="0.001" step="0.001" placeholder="0"></label>
-        <label><span>PRICE / UNIT</span><input id="supplyPrice" type="number" min="0" step="0.01" placeholder="₹0"></label>
+        <label><span>FIXED PRICE / UNIT</span><input id="supplyPrice" type="number" min="0" step="0.01" placeholder="Set in item list" readonly></label>
       </div>
       <button id="supplyAddLine" class="secondary inventory-wide-btn" type="button">＋ ADD ITEM TO BILL</button>
       <div id="supplyBillLines" class="supply-lines"></div>
@@ -1112,6 +1113,10 @@ body{font-size:14px}
       <button id="inventoryAdjustStock" class="secondary inventory-wide-btn" type="button">SAVE ADJUSTMENT</button>
     </article>
   </div>
+  <article id="inventoryMasterPanel" class="inventory-panel inventory-table-panel">
+    <div class="inventory-panel-head"><div><div class="eyebrow">One-time setup</div><h2>Item &amp; fixed price list</h2></div><span>Billing always uses these rates</span></div>
+    <div id="inventoryMasterList" class="inventory-master-list"></div>
+  </article>
   <article class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Live balances</div><h2>Outlet stock</h2></div><span id="inventoryStockCount">0 items</span></div>
     <div class="inventory-table-wrap"><div class="inventory-table-head"><span>ITEM</span><span>OUTLET</span><span>RECEIVED TODAY</span><span>USED / WASTE</span><span>CLOSING STOCK</span><span>STATUS</span></div><div id="inventoryStockList"></div></div>

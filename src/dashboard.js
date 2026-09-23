@@ -30,7 +30,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
-  inventory: { items: [], outlets: [], balances: [], bills: [], movements: [], billLines: [], loaded: false },
+  inventory: { items: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], billLines: [], loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -287,8 +287,9 @@ function injectStyles() {
     }
     @media(max-width:1050px){.outlet-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.outlet-grid,.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.modal-head,.outlet-form{padding:18px}.outlet-card{min-height:0}.outlet-links{flex-wrap:wrap}}
     .inventory-head-actions{display:flex;gap:8px;flex-wrap:wrap}.inventory-filterbar{display:grid;grid-template-columns:minmax(180px,1fr) 150px 150px auto auto;gap:9px;align-items:end;margin-bottom:13px}.inventory-filterbar label,.inventory-form-grid label,.inventory-notes{display:grid;gap:6px}.inventory-filterbar label span,.inventory-form-grid label span,.inventory-notes span{color:#777;font:900 7px var(--mono);letter-spacing:1px}.inventory-filterbar input,.inventory-filterbar select,.inventory-form-grid input,.inventory-form-grid select,.inventory-notes input{height:40px;width:100%;border:1px solid #303030;border-radius:8px;background:#0d0d0d;color:#eee;padding:0 11px;outline:0;color-scheme:dark}.inventory-filterbar input:focus,.inventory-filterbar select:focus,.inventory-form-grid input:focus,.inventory-form-grid select:focus,.inventory-notes input:focus{border-color:#ffd21c}.inventory-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:13px}.inventory-summary article{background:#0d0d0d;border:1px solid #252525;border-radius:13px;padding:16px}.inventory-summary span{display:block;color:#777;font:900 7px var(--mono);letter-spacing:1px}.inventory-summary strong{display:block;margin-top:7px;color:#f5f5f0;font:950 24px var(--mono)}.inventory-summary small{display:block;margin-top:5px;color:#5f5f5f;font-size:9px}.inventory-admin-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:12px;margin-bottom:12px}.inventory-panel{background:#0d0d0d;border:1px solid #252525;border-radius:14px;padding:17px}.inventory-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}.inventory-panel-head h2{margin:3px 0 0;font-size:18px}.inventory-panel-head>span{color:#777;font:800 8px var(--mono)}.inventory-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.item-create-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.inventory-wide-btn{width:100%;margin-top:10px}.inventory-notes{margin-top:10px}.supply-lines{display:grid;gap:7px;margin-top:11px}.supply-line{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:9px 10px;border:1px solid #282828;border-radius:8px;background:#101010}.supply-line strong{font-size:10px}.supply-line small{display:block;color:#777;margin-top:3px;font-size:8px}.supply-line b{color:#ffd21c;font:900 10px var(--mono)}.supply-line button{border:1px solid #492525;background:#1a0d0d;color:#ff8c8c;border-radius:6px;padding:6px 8px}.supply-empty{padding:18px;text-align:center;border:1px dashed #303030;border-radius:8px;color:#666;font-size:9px}.supply-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #272727}.supply-total span{color:#777;font:900 8px var(--mono)}.supply-total strong{color:#ffd21c;font:950 22px var(--mono)}.adjustment-head{margin-top:25px;padding-top:18px;border-top:1px solid #292929}.inventory-table-panel{margin-top:12px}.inventory-table-wrap{overflow-x:auto}.inventory-table-head,.inventory-stock-row{display:grid;grid-template-columns:minmax(160px,1.2fr) minmax(120px,1fr) 110px 110px 120px 105px;gap:10px;align-items:center;min-width:760px}.inventory-table-head{padding:9px 11px;color:#5e5e5e;font:900 7px var(--mono);letter-spacing:.8px;border-bottom:1px solid #282828}.inventory-stock-row{padding:12px 11px;border-bottom:1px solid #202020;color:#aaa;font-size:10px}.inventory-stock-row:last-child{border-bottom:0}.inventory-stock-row strong{color:#eee}.inventory-qty{color:#ffd21c;font:900 11px var(--mono)}.inventory-status{width:max-content;border-radius:6px;padding:5px 7px;font:900 7px var(--mono);letter-spacing:.5px}.inventory-status.in{color:#72d56b;background:#0d170d;border:1px solid #253b25}.inventory-status.low{color:#ffd21c;background:#191509;border:1px solid #4c411b}.inventory-status.out{color:#ff8c8c;background:#1c0d0d;border:1px solid #482121}.inventory-bills-list,.inventory-movement-list{display:grid;gap:8px}.inventory-bill{border:1px solid #292929;border-radius:10px;padding:13px;background:#101010}.inventory-bill-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.inventory-bill h3{margin:0;font-size:13px}.inventory-bill-meta{color:#777;font-size:8px;margin-top:5px}.inventory-bill-total{text-align:right}.inventory-bill-total strong{display:block;color:#ffd21c;font:950 17px var(--mono)}.inventory-bill-total span{display:block;margin-top:3px;color:#888;font:900 7px var(--mono)}.inventory-bill-items{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}.inventory-bill-items span{border:1px solid #2c2c2c;border-radius:6px;padding:6px 8px;color:#aaa;font-size:8px}.inventory-bill-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.inventory-bill-actions button{padding:8px 10px;font:900 7px var(--mono)}.inventory-movement{display:grid;grid-template-columns:120px minmax(130px,1fr) 130px 100px minmax(140px,1fr);gap:10px;padding:11px;border-bottom:1px solid #202020;align-items:center;color:#888;font-size:9px}.inventory-movement strong{color:#eee}.inventory-movement .positive{color:#72d56b}.inventory-movement .negative{color:#ff8c8c}.inventory-empty{padding:35px;text-align:center;border:1px dashed #303030;border-radius:10px;color:#666;font-size:10px}.inventory-admin-grid.owner-view{grid-template-columns:1fr}.inventory-admin-grid.owner-view>article:first-child{display:none}
-    @media(max-width:1000px){.inventory-filterbar{grid-template-columns:1fr 1fr 1fr}.inventory-admin-grid{grid-template-columns:1fr}.inventory-summary{grid-template-columns:repeat(2,1fr)}}
-    @media(max-width:650px){.inventory-head-actions{width:100%}.inventory-head-actions button{flex:1}.inventory-filterbar{grid-template-columns:1fr 1fr}.inventory-filterbar label:first-child{grid-column:1/-1}.inventory-summary{grid-template-columns:1fr 1fr}.inventory-summary article{padding:13px}.inventory-summary strong{font-size:19px}.inventory-form-grid,.item-create-grid{grid-template-columns:1fr}.inventory-panel{padding:13px}.inventory-movement{grid-template-columns:1fr 1fr}.inventory-movement span:last-child{grid-column:1/-1}.inventory-bill-top{display:block}.inventory-bill-total{text-align:left;margin-top:9px}}
+    .inventory-master-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.inventory-master-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px;border:1px solid #292929;border-radius:9px;background:#101010}.inventory-master-item strong{display:block;font-size:10px}.inventory-master-item small{display:block;margin-top:4px;color:#777;font-size:8px}.inventory-master-rate{text-align:right}.inventory-master-rate b{display:block;color:#ffd21c;font:900 11px var(--mono)}.inventory-master-rate button{margin-top:5px;border:0;background:transparent;color:#aaa;font:900 7px var(--mono);cursor:pointer}.inventory-master-rate button:hover{color:#ffd21c}.pos-supply-notice{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:13px;padding:14px 16px;border:1px solid #5b4a0f;border-radius:12px;background:linear-gradient(105deg,#211b05,#111);box-shadow:0 10px 30px rgba(0,0,0,.25)}.pos-supply-notice.hidden{display:none}.pos-supply-notice strong{display:block;color:#ffd21c;font-size:12px}.pos-supply-notice span{display:block;margin-top:4px;color:#bbb;font-size:9px}.pos-supply-notice-actions{display:flex;gap:7px;flex-shrink:0}.pos-supply-notice button{padding:9px 11px;font:900 7px var(--mono)}
+    @media(max-width:1000px){.inventory-filterbar{grid-template-columns:1fr 1fr 1fr}.inventory-admin-grid{grid-template-columns:1fr}.inventory-summary{grid-template-columns:repeat(2,1fr)}.inventory-master-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:650px){.inventory-head-actions{width:100%}.inventory-head-actions button{flex:1}.inventory-filterbar{grid-template-columns:1fr 1fr}.inventory-filterbar label:first-child{grid-column:1/-1}.inventory-summary{grid-template-columns:1fr 1fr}.inventory-summary article{padding:13px}.inventory-summary strong{font-size:19px}.inventory-form-grid,.item-create-grid{grid-template-columns:1fr}.inventory-panel{padding:13px}.inventory-movement{grid-template-columns:1fr 1fr}.inventory-movement span:last-child{grid-column:1/-1}.inventory-bill-top{display:block}.inventory-bill-total{text-align:left;margin-top:9px}.inventory-master-list{grid-template-columns:1fr}.pos-supply-notice{align-items:flex-start;flex-direction:column}.pos-supply-notice-actions{width:100%}.pos-supply-notice button{flex:1}}
   `;
   document.head.appendChild(style);
 }
@@ -3207,7 +3208,7 @@ function fillInventoryControls() {
   inventorySelectOptions($('#inventoryOutletFilter'), state.profile?.role === 'ADMIN' ? [{ value: '', label: 'All outlets' }, ...outletOptions] : outletOptions, previousFilter);
   inventorySelectOptions($('#supplyOutlet'), outletOptions, $('#supplyOutlet')?.value);
   inventorySelectOptions($('#adjustOutlet'), outletOptions, $('#adjustOutlet')?.value);
-  const itemOptions = state.inventory.items.filter(item => item.active !== false).map(item => ({ value: item.id, label: `${item.name} · ${item.display_unit}` }));
+  const itemOptions = state.inventory.items.filter(item => item.active !== false).map(item => ({ value: item.id, label: `${item.name} · ${item.display_unit} · ${Number(item.default_supply_price) > 0 ? formatReportMoney(item.default_supply_price) : 'SET PRICE'}` }));
   inventorySelectOptions($('#supplyItem'), itemOptions, $('#supplyItem')?.value);
   inventorySelectOptions($('#adjustItem'), itemOptions, $('#adjustItem')?.value);
   updateSupplyDefaultPrice();
@@ -3219,6 +3220,17 @@ function fillInventoryControls() {
     children.slice(0, 3).forEach(node => { node.style.display = admin ? '' : 'none'; });
   }
   if ($('#inventoryPageTitle')) $('#inventoryPageTitle').textContent = admin ? 'Supply & Inventory' : 'My Inventory';
+  if ($('#inventoryMasterPanel')) $('#inventoryMasterPanel').style.display = admin ? '' : 'none';
+}
+
+function renderSupplyNotification() {
+  const panel = $('#posSupplyNotice');
+  if (!panel) return;
+  const notification = state.inventory.notifications.find(row => !row.read_at);
+  const show = state.profile?.role !== 'ADMIN' && Boolean(notification);
+  panel.classList.toggle('hidden', !show);
+  if (!show) { panel.innerHTML = ''; return; }
+  panel.innerHTML = `<div><strong>● ${escapeHtml(notification.title)}</strong><span>${escapeHtml(notification.message)} · ${inventoryDate(notification.created_at)}</span></div><div class="pos-supply-notice-actions"><button class="primary" type="button" data-supply-notice-view="${notification.id}">VIEW BILL</button><button class="secondary" type="button" data-supply-notice-dismiss="${notification.id}">DISMISS</button></div>`;
 }
 
 function inventoryMovementTotals(outletId, itemId) {
@@ -3257,6 +3269,9 @@ function renderInventory() {
   if ($('#inventoryStockCount')) $('#inventoryStockCount').textContent = `${balances.length} item${balances.length === 1 ? '' : 's'}`;
   if ($('#inventoryBillCount')) $('#inventoryBillCount').textContent = `${bills.length} bill${bills.length === 1 ? '' : 's'}`;
 
+  const masterList = $('#inventoryMasterList');
+  if (masterList) masterList.innerHTML = state.inventory.items.length ? state.inventory.items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · PER ${escapeHtml(item.display_unit)} · LOW AT ${inventoryQty(item.low_stock_threshold)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? formatReportMoney(item.default_supply_price) : 'SET RATE'}</b><button type="button" data-inventory-edit-item="${item.id}">EDIT PRICE</button></div></div>`).join('') : '<div class="inventory-empty">No stock items configured.</div>';
+
   const stockList = $('#inventoryStockList');
   if (stockList) stockList.innerHTML = balances.length ? balances.map(row => {
     const item = inventoryItem(row.item_id) || {};
@@ -3281,6 +3296,7 @@ function renderInventory() {
     return `<div class="inventory-movement"><span>${inventoryDate(row.occurred_at)}</span><strong>${escapeHtml(item.name || 'Item')}</strong><span>${escapeHtml(inventoryOutlet(row.outlet_id)?.name || 'Outlet')}</span><span class="${delta >= 0 ? 'positive' : 'negative'}">${delta >= 0 ? '+' : ''}${inventoryQty(delta)} ${escapeHtml(item.display_unit || '')}</span><span>${escapeHtml(row.movement_type.replaceAll('_', ' '))}${row.notes ? ` · ${escapeHtml(row.notes)}` : ''}</span></div>`;
   }).join('') : '<div class="inventory-empty">No stock movements in this period.</div>';
   renderSupplyLines();
+  renderSupplyNotification();
 }
 
 async function loadInventory({ all = false } = {}) {
@@ -3297,13 +3313,14 @@ async function loadInventory({ all = false } = {}) {
   state.inventory.balances = payload.inventory || [];
   state.inventory.bills = payload.bills || [];
   state.inventory.movements = payload.movements || [];
+  state.inventory.notifications = payload.notifications || [];
   state.inventory.loaded = true;
   renderInventory();
 }
 
 function updateSupplyDefaultPrice() {
   const item = inventoryItem($('#supplyItem')?.value);
-  if (item && $('#supplyPrice') && !$('#supplyPrice').value) $('#supplyPrice').value = Number(item.default_supply_price || 0).toFixed(2);
+  if (item && $('#supplyPrice')) $('#supplyPrice').value = Number(item.default_supply_price || 0) > 0 ? Number(item.default_supply_price).toFixed(2) : '';
 }
 
 function renderSupplyLines() {
@@ -3317,12 +3334,35 @@ function addSupplyLine() {
   const item = inventoryItem($('#supplyItem')?.value);
   const quantity = Number($('#supplyQuantity')?.value);
   const unitPrice = Number($('#supplyPrice')?.value);
-  if (!item || !(quantity > 0) || !(unitPrice >= 0)) return toast('Select an item and enter a valid quantity and price.', 'bad');
+  if (!item || !(quantity > 0)) return toast('Select an item and enter a valid quantity.', 'bad');
+  if (!(unitPrice > 0)) return toast(`Set the fixed ${item.display_unit} price for ${item.name} in the item list first.`, 'bad');
   const existing = state.inventory.billLines.find(line => line.itemId === item.id);
   if (existing) { existing.quantity += quantity; existing.unitPrice = unitPrice; }
   else state.inventory.billLines.push({ itemId: item.id, name: item.name, unit: item.display_unit, quantity, unitPrice });
   if ($('#supplyQuantity')) $('#supplyQuantity').value = '';
   renderSupplyLines();
+}
+
+async function editInventoryItemPrice(item) {
+  const price = Number(window.prompt(`Fixed supply price per ${item.display_unit} for ${item.name}:`, Number(item.default_supply_price || 0).toFixed(2)));
+  if (!(price > 0)) return;
+  const threshold = Number(window.prompt(`Low-stock alert level in ${item.display_unit}:`, Number(item.low_stock_threshold || 0).toString()));
+  if (!(threshold >= 0)) return toast('Enter a valid low-stock level.', 'bad');
+  try {
+    await inventoryApi('POST', { action: 'update_item', itemId: item.id, defaultSupplyPrice: price, lowStockThreshold: threshold });
+    await loadInventory({ all: true });
+    toast(`${item.name} fixed price updated.`, 'ok');
+  } catch (error) { toast(error.message, 'bad'); }
+}
+
+async function markSupplyNotification(notificationId, openInventory = false) {
+  try {
+    await inventoryApi('POST', { action: 'mark_notification', notificationId });
+    const notification = state.inventory.notifications.find(row => row.id === notificationId);
+    if (notification) notification.read_at = new Date().toISOString();
+    renderSupplyNotification();
+    if (openInventory) $(`.nav-btn[data-section="inventory"]`)?.click();
+  } catch (error) { toast(error.message, 'bad'); }
 }
 
 async function generateSupplyBill() {
@@ -3403,11 +3443,13 @@ function wireInventoryActions() {
   $('#inventoryAllRecords')?.addEventListener('click', () => { if ($('#inventoryFrom')) $('#inventoryFrom').value = ''; if ($('#inventoryTo')) $('#inventoryTo').value = ''; loadInventory({ all: true }).catch(error => toast(error.message, 'bad')); });
   $('#inventoryOutletFilter')?.addEventListener('change', () => loadInventory().catch(error => toast(error.message, 'bad')));
   $('#inventoryDownloadBtn')?.addEventListener('click', downloadInventoryReport);
-  $('#supplyItem')?.addEventListener('change', () => { if ($('#supplyPrice')) $('#supplyPrice').value = ''; updateSupplyDefaultPrice(); });
+  $('#supplyItem')?.addEventListener('change', updateSupplyDefaultPrice);
   $('#supplyAddLine')?.addEventListener('click', addSupplyLine);
   $('#supplyGenerateBill')?.addEventListener('click', generateSupplyBill);
   $('#inventoryCreateItem')?.addEventListener('click', createInventoryItem);
   $('#inventoryAdjustStock')?.addEventListener('click', adjustInventoryStock);
+  $('#inventoryMasterList')?.addEventListener('click', event => { const button = event.target.closest('[data-inventory-edit-item]'); const item = button && inventoryItem(button.dataset.inventoryEditItem); if (item) editInventoryItemPrice(item); });
+  $('#posSupplyNotice')?.addEventListener('click', event => { const view = event.target.closest('[data-supply-notice-view]'); const dismiss = event.target.closest('[data-supply-notice-dismiss]'); if (view) markSupplyNotification(view.dataset.supplyNoticeView, true); if (dismiss) markSupplyNotification(dismiss.dataset.supplyNoticeDismiss, false); });
   $('#supplyBillLines')?.addEventListener('click', event => { const button = event.target.closest('[data-supply-remove]'); if (!button) return; state.inventory.billLines.splice(Number(button.dataset.supplyRemove), 1); renderSupplyLines(); });
   $('#inventoryBillsList')?.addEventListener('click', event => {
     const button = event.target.closest('button'); if (!button) return;
@@ -4722,7 +4764,7 @@ function startLiveDashboardRefresh() {
       await loadOutlets();
       await loadOrders({ silent: true });
       if (state.selectedSection === 'reports') await loadReports();
-      if (state.selectedSection === 'inventory') await loadInventory();
+      if (['inventory', 'pos'].includes(state.selectedSection) && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) await loadInventory();
     } catch (error) {
       console.error('Unable to refresh live dashboard feed:', error);
     } finally {
@@ -5017,6 +5059,7 @@ async function startApp(session) {
     updateUserCard();
     $('#authGate')?.classList.add('hidden');
     await loadOutlets();
+    if (['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) await loadInventory({ all: true });
     if (state.profile?.role === 'ADMIN') {
       await loadStaff();
     }
