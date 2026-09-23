@@ -134,7 +134,7 @@ async function loadCustomerReviews() {
   const target = $('#customerReviewGrid');
   if (!target) return;
   try {
-    const response = await fetch('/api/reviews', { cache: 'no-store' });
+    const response = await fetch('/api/menu?resource=reviews', { cache: 'no-store' });
     const payload = await response.json();
     const reviews = Array.isArray(payload.reviews) ? payload.reviews : [];
     if (!response.ok) throw new Error('Unable to load reviews');

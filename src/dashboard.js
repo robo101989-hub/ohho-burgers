@@ -4315,7 +4315,7 @@ async function loadCustomerReviews() {
   $('#customerReviewList').innerHTML = '<div class="settings-empty">Loading reviews…</div>';
   try {
     const { data: sessionData } = await supabase.auth.getSession();
-    const response = await fetch('/api/reviews?admin=1', { headers: { Authorization: `Bearer ${sessionData?.session?.access_token || ''}` } });
+    const response = await fetch('/api/menu?resource=reviews&admin=1', { headers: { Authorization: `Bearer ${sessionData?.session?.access_token || ''}` } });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error);
     state.customerReviews = result.reviews || [];
@@ -4338,7 +4338,7 @@ async function addCustomerReview() {
   button.disabled = true;
   try {
     const { data: sessionData } = await supabase.auth.getSession();
-    const response = await fetch('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData?.session?.access_token || ''}` }, body: JSON.stringify({ customerName, location, reviewText, rating }) });
+    const response = await fetch('/api/menu?resource=reviews', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData?.session?.access_token || ''}` }, body: JSON.stringify({ customerName, location, reviewText, rating }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error);
     state.customerReviewsError = '';
@@ -4359,7 +4359,7 @@ async function deleteCustomerReview(id, button) {
   if (button) button.disabled = true;
   try {
     const { data: sessionData } = await supabase.auth.getSession();
-    const response = await fetch('/api/reviews', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData?.session?.access_token || ''}` }, body: JSON.stringify({ id }) });
+    const response = await fetch('/api/menu?resource=reviews', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData?.session?.access_token || ''}` }, body: JSON.stringify({ id }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error);
     state.customerReviews = state.customerReviews.filter(review => review.id !== id);
