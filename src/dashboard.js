@@ -29,6 +29,7 @@ const state = {
   spinHistory: [],
   customerReviews: [],
   customerReviewsError: '',
+  editingOutletId: null,
   orderEdit: {
     orderId: null,
     items: []
@@ -211,6 +212,7 @@ function injectStyles() {
     .outlet-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.outlet-status-control{display:flex;align-items:flex-end;flex-direction:column;gap:7px;flex:0 0 auto}.outlet-state-row{display:flex;align-items:center;justify-content:flex-end;gap:7px}.outlet-state-label{color:#666;font:900 7px var(--mono);letter-spacing:.8px}.outlet-card h2{font-size:21px;letter-spacing:-.8px;margin:0}.outlet-status{font-size:8px;font-weight:950;letter-spacing:1px;padding:5px 7px;border-radius:6px;border:1px solid #253b25;color:#72d56b;background:#0d170d}.outlet-status.off{color:#ff8c8c;background:#1c0d0d;border-color:#482121}.outlet-admin-actions{display:flex;gap:8px;margin-top:12px}.outlet-toggle-btn,.order-delete-btn{border:1px solid #383838;background:#111;color:#eee;border-radius:8px;padding:8px 10px;font:900 8px var(--mono);letter-spacing:.7px;cursor:pointer}.outlet-toggle-btn:hover{border-color:#ffd21c;color:#ffd21c}.order-delete-btn{border-color:#552525;color:#ff8c8c;background:#190d0d}.order-delete-btn:hover{border-color:#ff6b6b;color:#fff}.outlet-toggle-btn:disabled,.order-delete-btn:disabled{opacity:.55;cursor:wait}
     .outlet-address{color:#999;font-size:11px;line-height:1.5;margin:12px 0 11px;max-width:100%}.outlet-meta-row{display:flex;flex-wrap:wrap;gap:6px}.outlet-chip{border:1px solid #292929;background:#101010;color:#777;border-radius:7px;padding:6px 8px;font-size:8px;font-weight:800}.outlet-chip strong{color:#eee}
     .outlet-links{display:flex;gap:6px;margin-top:13px}.outlet-links button{border:1px solid #303030;background:#111;color:#ddd;border-radius:7px;padding:7px 9px;font-size:8px;font-weight:900}.outlet-links button:hover{border-color:#ffd21c;color:#ffd21c}
+    .outlet-links .outlet-edit-btn{border-color:#665510;background:#191507;color:#ffd21c}
     .outlet-toggle-btn.website-on{border-color:#2f4f2f;color:#72d56b;background:#0d170d}.outlet-toggle-btn.website-off{border-color:#5a2b2b;color:#ff8c8c;background:#190d0d}
     .pos-outlet-toggle-btn{min-width:92px}.pos-outlet-toggle-btn.is-off{border-color:#5a2b2b!important;color:#ff8c8c!important;background:#190d0d!important}.pos-outlet-toggle-btn.is-on{border-color:#2f4f2f!important;color:#72d56b!important;background:#0d170d!important}
     .outlet-empty{grid-column:1/-1;border:1px dashed #303030;border-radius:14px;min-height:220px;display:grid;place-items:center;text-align:center;color:#777;padding:30px}.outlet-empty strong{display:block;color:#eee;font-size:15px}.outlet-empty span{display:block;font-size:11px;margin-top:6px}
@@ -661,7 +663,7 @@ function buildOutletModal() {
   $('.modal-close', backdrop).addEventListener('click', closeOutletModal);
   $('.form-cancel', backdrop).addEventListener('click', closeOutletModal);
   backdrop.addEventListener('click', event => { if (event.target === backdrop) closeOutletModal(); });
-  $('#outletForm', backdrop).addEventListener('submit', createOutlet);
+  $('#outletForm', backdrop).addEventListener('submit', saveOutlet);
   $('#outletName', backdrop).addEventListener('input', event => {
     const slug = $('#outletSlug', backdrop);
     if (!slug.dataset.touched) slug.value = slugify(event.target.value);
@@ -1905,12 +1907,14 @@ function renderOutletCards() {
         <span class="outlet-chip">Menu <strong>17</strong> configured</span>
       </div>
       <div class="outlet-links">
+        ${['ADMIN', 'OWNER'].includes(state.profile?.role) ? `<button type="button" class="outlet-edit-btn" data-outlet-edit="${escapeHtml(outlet.id)}">EDIT DETAILS</button>` : ''}
         ${safeUrl(outlet.maps_url) ? `<button type="button" data-url="${escapeHtml(safeUrl(outlet.maps_url))}">MAPS</button>` : ''}
         ${safeUrl(outlet.zomato_url) ? `<button type="button" data-url="${escapeHtml(safeUrl(outlet.zomato_url))}">ZOMATO</button>` : ''}
         ${safeUrl(outlet.swiggy_url) ? `<button type="button" data-url="${escapeHtml(safeUrl(outlet.swiggy_url))}">SWIGGY</button>` : ''}
       </div>
     </article>`).join('');
   $$('[data-url]', grid).forEach(button => button.addEventListener('click', () => window.open(button.dataset.url, '_blank', 'noopener,noreferrer')));
+  $$('[data-outlet-edit]', grid).forEach(button => button.addEventListener('click', () => openOutletModal(button.dataset.outletEdit)));
   $$('[data-website-toggle]', grid).forEach(button => button.addEventListener('click', async () => {
     button.disabled = true;
     await toggleWebsiteAvailability(button.dataset.websiteToggle);
@@ -2082,14 +2086,37 @@ function updateDashboardContext() {
   span.textContent = `${date} · ${selected ? selected.name : 'All outlets'} · Live operations`;
 }
 
-function openOutletModal() {
-  if (state.profile?.role !== 'ADMIN') {
-    toast('Admin access required.', 'bad');
+function openOutletModal(outletId = null) {
+  const editing = Boolean(outletId);
+  if (editing ? !['ADMIN', 'OWNER'].includes(state.profile?.role) : state.profile?.role !== 'ADMIN') {
+    toast(editing ? 'Admin or Owner access required.' : 'Admin access required.', 'bad');
     return;
   }
 
   const modal = $('#outletModal');
   if (!modal) return;
+  const form = $('#outletForm', modal);
+  const outlet = editing ? state.outlets.find(item => item.id === outletId) : null;
+  if (editing && !outlet) return;
+  state.editingOutletId = outlet?.id || null;
+  form.reset();
+  $('#outletName', modal).value = outlet?.name || '';
+  $('#outletSlug', modal).value = outlet?.slug || '';
+  $('#outletSlug', modal).dataset.touched = editing ? '1' : '';
+  $('#outletAddress', modal).value = outlet?.address || '';
+  $('#outletPhone', modal).value = outlet?.phone || '';
+  $('#outletStatus', modal).value = outlet?.status || 'ACTIVE';
+  $('#outletWebsiteEnabled', modal).value = String(outlet?.website_enabled !== false);
+  $('#openingTime', modal).value = outlet?.opening_time?.slice(0, 5) || '17:00';
+  $('#closingTime', modal).value = outlet?.closing_time?.slice(0, 5) || '01:00';
+  $('#mapsUrl', modal).value = outlet?.maps_url || '';
+  $('#zomatoUrl', modal).value = outlet?.zomato_url || '';
+  $('#swiggyUrl', modal).value = outlet?.swiggy_url || '';
+  $('#outletModalTitle', modal).textContent = editing ? 'Edit Outlet Details' : 'Add New Outlet';
+  $('.modal-head p', modal).textContent = editing
+    ? 'Update the details shown in POS and on the customer website.'
+    : 'Register a new OHHO location and configure all current menu items.';
+  $('#outletSubmit', modal).textContent = editing ? 'SAVE CHANGES' : 'CREATE OUTLET';
   $('#outletFormError', modal).classList.remove('show');
   modal.classList.add('open');
   setTimeout(() => $('#outletName', modal)?.focus(), 30);
@@ -2097,9 +2124,10 @@ function openOutletModal() {
 
 function closeOutletModal() {
   $('#outletModal')?.classList.remove('open');
+  state.editingOutletId = null;
 }
 
-async function createOutlet(event) {
+async function saveOutlet(event) {
   event.preventDefault();
   const modal = $('#outletModal');
   const form = event.currentTarget;
@@ -2107,20 +2135,24 @@ async function createOutlet(event) {
   const errorNode = $('#outletFormError', modal);
   const formData = new FormData(form);
   const body = Object.fromEntries(formData.entries());
+  const editingId = state.editingOutletId;
+  if (editingId) body.id = editingId;
   button.disabled = true;
   errorNode.classList.remove('show');
   try {
-    const payload = await apiRequest('POST', body);
-    state.outlets = [...state.outlets, payload.outlet];
+    const payload = await apiRequest(editingId ? 'PATCH' : 'POST', body);
+    state.outlets = editingId
+      ? state.outlets.map(item => item.id === editingId ? payload.outlet : item)
+      : [...state.outlets, payload.outlet];
     renderOutletCards();
     renderOutletSelector();
     renderOverviewOutlets();
+    renderSettings();
+    updatePosOutletName();
     closeOutletModal();
-    form.reset();
-    $('#openingTime', modal).value = '17:00';
-    $('#closingTime', modal).value = '01:00';
-    $('#outletSlug', modal).dataset.touched = '';
-    toast(`${payload.outlet.name} created with ${payload.menuItemsConfigured} menu items configured.`);
+    toast(editingId
+      ? `${payload.outlet.name} details updated on POS and website.`
+      : `${payload.outlet.name} created with ${payload.menuItemsConfigured} menu items configured.`, 'ok');
   } catch (error) {
     errorNode.textContent = error.message;
     errorNode.classList.add('show');

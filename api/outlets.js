@@ -219,6 +219,10 @@ export default async function handler(req, res) {
 
     const updates = {};
     if (body.name !== undefined) updates.name = String(body.name).trim();
+    if (body.slug !== undefined) {
+      updates.slug = String(body.slug).trim().toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    }
     if (body.address !== undefined) updates.address = String(body.address).trim();
     if (body.phone !== undefined) updates.phone = String(body.phone).trim() || null;
     if (body.openingTime !== undefined) updates.opening_time = String(body.openingTime);
@@ -331,6 +335,9 @@ export default async function handler(req, res) {
     if (updates.name !== undefined && !updates.name) {
       return res.status(400).json({ error: "Outlet name is required" });
     }
+    if (updates.slug !== undefined && !updates.slug) {
+      return res.status(400).json({ error: "Outlet slug is required" });
+    }
     if (updates.address !== undefined && !updates.address) {
       return res.status(400).json({ error: "Outlet address is required" });
     }
@@ -349,7 +356,12 @@ export default async function handler(req, res) {
       .select("id,name,slug,address,phone,opening_time,closing_time,maps_url,zomato_url,swiggy_url,status,website_enabled,current_session_started_at,created_at,updated_at")
       .single();
 
-    if (error || !outlet) return res.status(404).json({ error: "Outlet not found" });
+    if (error || !outlet) {
+      const duplicate = error?.code === "23505";
+      return res.status(duplicate ? 409 : 404).json({
+        error: duplicate ? "An outlet with this name or slug already exists" : "Outlet not found"
+      });
+    }
     return res.status(200).json({ success: true, outlet });
   } catch (error) {
     console.error("Outlet API error", error);
