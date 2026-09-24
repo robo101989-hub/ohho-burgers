@@ -1,1 +1,28 @@
-/* Shared outlet-card styling now lives in styles.css. */
+/* Compact outlet cards use the same dark/yellow language as Spin & Win. */
+.locations .location-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.locations .location-card.location-card-premium{display:flex;flex-direction:column;padding:0;min-height:342px;background:radial-gradient(circle at 92% 0,rgba(255,212,0,.14),transparent 34%),linear-gradient(135deg,#1d1d1a,#101010);border:1px solid rgba(255,212,0,.82);border-radius:18px;overflow:hidden;box-shadow:0 15px 38px rgba(0,0,0,.2)}
+.location-card.location-card-premium:before{display:none}
+.location-card.location-card-premium:hover{background:#181818;border-color:var(--yellow);transform:translateY(-5px);box-shadow:0 22px 48px rgba(0,0,0,.36)}
+.locations .location-card.location-card-premium .location-visual{display:block!important;flex:none;height:112px;position:relative;overflow:hidden;margin:0!important;border-bottom:1px solid rgba(255,212,0,.48)}
+.location-visual:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.1) 45%,rgba(0,0,0,.65))}
+.locations .location-card.location-card-premium .location-visual img{width:100%!important;height:100%!important;max-width:none!important;object-fit:cover;object-position:center 6%;display:block;transition:transform .55s ease,filter .55s ease;filter:saturate(1.04) contrast(1.04)}
+.location-card-premium:hover .location-visual img{transform:scale(1.07);filter:saturate(1.2) contrast(1.08)}
+.location-number,.location-open{position:absolute;z-index:1;font:700 9px var(--mono);letter-spacing:1px}
+.location-number{left:15px;top:14px;color:#111;background:var(--yellow);border-radius:99px;padding:6px 8px}
+.location-open{right:15px;top:14px;color:#fff;border:1px solid rgba(255,255,255,.65);border-radius:99px;padding:6px 8px;background:rgba(0,0,0,.22);backdrop-filter:blur(6px)}
+.locations .location-card.location-card-premium .location-content{display:flex!important;flex:1;flex-direction:column;align-items:stretch!important;gap:0!important;margin:0!important;padding:15px 16px 15px}
+.location-card-premium .location-kicker{margin:0 0 6px;color:var(--yellow);font:600 8px var(--mono);letter-spacing:1.25px}.location-card-premium .location-kicker:after{content:' · SPIN AT CART';color:#8f8f87}
+.location-card-premium h3{margin:0 0 8px;color:#fff;font:900 clamp(26px,2.2vw,32px)/.9 var(--display);text-transform:uppercase;letter-spacing:-.8px}
+.location-card-premium .location-address{margin:0;color:#aaa;font-size:10px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.locations .location-card.location-card-premium .location-meta{display:flex!important;flex-direction:row;flex-wrap:wrap;gap:5px 12px!important;margin:9px 0 0!important;padding:8px 0 0;border-top:1px solid rgba(255,212,0,.25)}
+.location-card-premium .location-meta span{display:block;color:#d6d6d6;font:600 9px var(--sans)}
+.location-card-premium .location-meta span:before{display:none}
+.locations .location-card.location-card-premium .location-links{display:block!important;margin:auto 0 0!important;padding-top:11px}
+.location-card-premium .location-order{width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--yellow);border:1px solid var(--yellow)!important;border-radius:9px;padding:10px 12px!important;color:#0a0a0a!important;font:900 9px var(--sans)!important;letter-spacing:.65px}
+.location-card-premium .location-order:hover{background:#fff03c!important;border-color:#fff03c!important;transform:translateY(-2px)}
+.location-card-premium .location-order b{font-size:15px;line-height:0}
+.locations .location-card.location-card-premium .location-secondary{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:8px 0 0!important}
+.location-card-premium .location-secondary a{display:flex!important;align-items:center;justify-content:center;min-height:30px;border:1px solid rgba(255,212,0,.48)!important;border-radius:7px;padding:7px 6px!important;color:#f1f1f1!important;font:800 8px var(--sans)!important;letter-spacing:.45px}
+.location-card-premium .location-secondary a:hover{background:rgba(255,212,0,.12)!important;border-color:var(--yellow)!important;color:var(--yellow)!important;transform:translateY(-2px)}
+@media(max-width:1000px){.locations .location-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.locations .location-grid{grid-template-columns:1fr;gap:14px}.locations .location-card.location-card-premium{min-height:0}.locations .location-card.location-card-premium .location-visual{height:122px}.locations .location-card.location-card-premium .location-content{padding:16px}.location-card-premium h3{font-size:32px}}
