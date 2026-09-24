@@ -162,7 +162,7 @@ function renderPublicOutlets(outlets) {
     const whatsapp = whatsappOrderUrl(outlet);
     const zomato = outlet.zomato_url || outlet.zomato;
     const swiggy = outlet.swiggy_url || outlet.swiggy;
-    return `<article class="location-card location-card-premium">
+    return `<article class="location-card location-card-premium shared-outlet-card">
       <div class="location-visual">
         <img src="/images/ohho-food-cart.jpeg" alt="OHHO Burgers food cart at ${escapeHtml(outlet.name)}" loading="lazy" />
         <span class="location-number">${String(index + 1).padStart(2, '0')}</span>

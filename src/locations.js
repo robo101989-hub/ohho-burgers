@@ -43,7 +43,7 @@ async function loadLocations() {
     return;
   }
 
-  grid.innerHTML = data.map(outlet => {
+  grid.innerHTML = data.map((outlet, index) => {
     const formatTime = (value) => {
       if (!value) return "";
       const [hour, minute] = value.split(":").map(Number);
@@ -60,6 +60,11 @@ async function loadLocations() {
     const mapsUrl = escapeHtml(safeUrl(outlet.maps_url) || "");
     const zomatoUrl = escapeHtml(safeUrl(outlet.zomato_url) || "");
     const swiggyUrl = escapeHtml(safeUrl(outlet.swiggy_url) || "");
+    const phoneDigits = String(outlet.phone || "").replace(/\D/g, "");
+    const whatsappPhone = phoneDigits.length === 10 ? `91${phoneDigits}` : phoneDigits;
+    const whatsappUrl = whatsappPhone.length >= 10
+      ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`Hi OHHO Burgers, I would like to place a takeaway order from the ${outlet.name} outlet.`)}`
+      : "";
 
     const links = [
       mapsUrl ? `<a href="${mapsUrl}" target="_blank" rel="noopener">Maps ↗</a>` : "",
@@ -68,18 +73,25 @@ async function loadLocations() {
     ].filter(Boolean).join("");
 
     return `
-      <article class="location-card">
-        <div class="location-card-top">
-          <span class="location-status">OPEN OUTLET</span>
-          <span class="location-arrow">↗</span>
+      <article class="location-card location-card-premium shared-outlet-card">
+        <div class="location-visual">
+          <img src="/images/ohho-food-cart.jpeg" alt="OHHO Burgers food cart at ${name}" loading="lazy">
+          <span class="location-number">${String(index + 1).padStart(2, "0")}</span>
+          <span class="location-open">NOW SERVING</span>
         </div>
-        <h2>${name}</h2>
-        <p class="location-address">${address}</p>
-        <div class="location-meta">
-          <span>${openingTime} – ${closingTime}</span>
-          ${outlet.phone ? `<span>☎ ${phone}</span>` : ""}
+        <div class="location-content">
+          <p class="location-kicker">OHHO BURGERS · OUTLET</p>
+          <h3>${name}</h3>
+          <p class="location-address">⌖ ${address}</p>
+          <div class="location-meta">
+            <span>◷ ${openingTime} – ${closingTime}</span>
+            ${outlet.phone ? `<span>☎ ${phone}</span>` : ""}
+          </div>
+          <div class="location-links">
+            ${whatsappUrl ? `<a class="location-order" href="${whatsappUrl}" target="_blank" rel="noopener">ORDER ON WHATSAPP <b>↗</b></a>` : ""}
+            ${links ? `<div class="location-secondary">${links}</div>` : ""}
+          </div>
         </div>
-        ${links ? `<div class="location-links">${links}</div>` : ""}
       </article>
     `;
   }).join("");
