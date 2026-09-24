@@ -1,8 +1,8 @@
 import { supabase } from './supabase.js';
 
 const ROLE_PERMISSIONS = {
-  ADMIN: ['overview', 'pos', 'orders', 'menu', 'inventory', 'outlets', 'staff', 'reports', 'settings'],
-  OWNER: ['overview', 'pos', 'orders', 'menu', 'inventory', 'outlets', 'reports'],
+  ADMIN: ['overview', 'pos', 'orders', 'menu', 'inventory', 'daily-expenses', 'outlets', 'staff', 'reports', 'settings'],
+  OWNER: ['overview', 'pos', 'orders', 'menu', 'inventory', 'daily-expenses', 'outlets', 'reports'],
   MANAGER: ['overview', 'pos', 'orders', 'menu', 'inventory', 'reports'],
   STAFF: ['overview', 'pos', 'orders', 'menu']
 };
@@ -30,7 +30,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
-  inventory: { items: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], billLines: [], activeRequestId: null, loaded: false },
+  inventory: { items: [], stockCategories: [], expenseCategories: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], billLines: [], activeRequestId: null, editingExpenseId: null, loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -3207,24 +3207,23 @@ function fillInventoryControls() {
   const outletOptions = state.inventory.outlets.map(outlet => ({ value: outlet.id, label: outlet.name }));
   inventorySelectOptions($('#inventoryOutletFilter'), state.profile?.role === 'ADMIN' ? [{ value: '', label: 'All outlets' }, ...outletOptions] : outletOptions, previousFilter);
   inventorySelectOptions($('#supplyOutlet'), outletOptions, $('#supplyOutlet')?.value);
-  inventorySelectOptions($('#adjustOutlet'), outletOptions, $('#adjustOutlet')?.value);
   inventorySelectOptions($('#expenseOutlet'), outletOptions, $('#expenseOutlet')?.value);
   inventorySelectOptions($('#stockRequestOutlet'), outletOptions, $('#stockRequestOutlet')?.value);
   const itemOptions = state.inventory.items.filter(item => item.active !== false).map(item => ({ value: item.id, label: `${item.name} · ${item.display_unit} · ${Number(item.default_supply_price) > 0 ? formatReportMoney(item.default_supply_price) : 'SET PRICE'}` }));
   inventorySelectOptions($('#supplyItem'), itemOptions, $('#supplyItem')?.value);
-  inventorySelectOptions($('#adjustItem'), itemOptions, $('#adjustItem')?.value);
+  inventorySelectOptions($('#inventoryItemCategory'), state.inventory.stockCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), $('#inventoryItemCategory')?.value);
+  inventorySelectOptions($('#expenseCategory'), state.inventory.expenseCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), $('#expenseCategory')?.value);
   updateSupplyDefaultPrice();
   const admin = state.profile?.role === 'ADMIN';
-  $('#inventoryAdminWorkspace')?.classList.toggle('owner-view', !admin);
-  const adjustmentPanel = $('#inventoryAdminWorkspace article:nth-child(2)');
-  if (adjustmentPanel) {
-    const children = [...adjustmentPanel.children];
-    children.slice(0, 3).forEach(node => { node.style.display = admin ? '' : 'none'; });
-  }
-  if ($('#inventoryPageTitle')) $('#inventoryPageTitle').textContent = admin ? 'Supply & Inventory' : 'My Inventory';
+  const owner = state.profile?.role === 'OWNER';
+  if ($('#inventoryAdminWorkspace')) $('#inventoryAdminWorkspace').style.display = admin ? '' : 'none';
+  if ($('#inventoryPageTitle')) $('#inventoryPageTitle').textContent = admin ? 'Stock & Supply Management' : 'Stock Requirements & Supply Bills';
   if ($('#inventoryMasterPanel')) $('#inventoryMasterPanel').style.display = admin ? '' : 'none';
-  if ($('#stockRequestCreatePanel')) $('#stockRequestCreatePanel').style.display = admin ? 'none' : '';
+  if ($('#stockRequestCreatePanel')) $('#stockRequestCreatePanel').style.display = owner ? '' : 'none';
   if ($('#stockRequestAdminPanel')) $('#stockRequestAdminPanel').style.display = admin ? '' : 'none';
+  if ($('#expenseCategoryAdminPanel')) $('#expenseCategoryAdminPanel').style.display = admin ? '' : 'none';
+  if ($('#ownerExpenseEntryPanel')) $('#ownerExpenseEntryPanel').style.display = owner ? '' : 'none';
+  if ($('#expenseDate') && !$('#expenseDate').value) $('#expenseDate').value = new Date().toLocaleDateString('en-CA');
   if ($('#stockRequestDate') && !$('#stockRequestDate').value) {
     const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
     $('#stockRequestDate').value = tomorrow.toLocaleDateString('en-CA');
@@ -3234,36 +3233,43 @@ function fillInventoryControls() {
 function renderStockRequestCatalogue() {
   const list = $('#stockRequestCatalogue');
   if (!list) return;
-  const groups = [
-    ['KG ITEMS', state.inventory.items.filter(item => item.active !== false && item.display_unit !== 'EACH')],
-    ['PIECE ITEMS', state.inventory.items.filter(item => item.active !== false && item.display_unit === 'EACH')]
-  ];
-  list.innerHTML = groups.map(([label, items]) => `<div class="request-group"><h3>${label}</h3><div class="request-items">${items.map(item => `<label class="request-item"><span><strong>${escapeHtml(item.name)}</strong><small>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${item.display_unit === 'EACH' ? 'PIECE' : 'KG'}` : 'PRICE PENDING'}</small></span><input type="number" min="0" step="${item.display_unit === 'EACH' ? '1' : '0.001'}" placeholder="0 ${item.display_unit === 'EACH' ? 'pcs' : 'kg'}" data-request-qty="${item.id}"></label>`).join('')}</div></div>`).join('');
+  const activeItems = state.inventory.items.filter(item => item.active !== false);
+  const groups = state.inventory.stockCategories.filter(row => row.active !== false).map(category => [category.name, activeItems.filter(item => item.category_id === category.id)]);
+  const uncategorized = activeItems.filter(item => !groups.some(([, items]) => items.includes(item)));
+  if (uncategorized.length) groups.push(['Other items', uncategorized]);
+  list.innerHTML = groups.filter(([, items]) => items.length).map(([label, items]) => `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="request-items">${items.map(item => { const requestUnit = item.request_unit === 'PIECE' ? 'PIECE' : 'KG'; return `<label class="request-item"><span><strong>${escapeHtml(item.name)}</strong><small>Request in ${requestUnit === 'PIECE' ? 'pieces' : 'kg'} · billed ${formatReportMoney(item.default_supply_price)} / ${item.display_unit === 'EACH' ? 'piece' : 'kg'}</small></span><input type="number" min="0" step="${requestUnit === 'PIECE' ? '1' : '0.001'}" placeholder="0 ${requestUnit === 'PIECE' ? 'pcs' : 'kg'}" data-request-qty="${item.id}"></label>`; }).join('')}</div></div>`).join('') || '<div class="inventory-empty">No stock items are available yet.</div>';
 }
 
 function renderStockRequests() {
   const list = $('#stockRequestList');
   if (!list) return;
   const requests = state.inventory.requests || [];
-  list.innerHTML = requests.length ? requests.map(request => `<div class="stock-request-card"><div class="stock-request-top"><div><strong>${escapeHtml(inventoryOutlet(request.outlet_id)?.name || 'Outlet')} · Needed ${new Date(`${request.required_for}T00:00:00`).toLocaleDateString('en-IN',{dateStyle:'medium'})}</strong><span>Requested ${inventoryDate(request.created_at)}${request.notes ? ` · ${escapeHtml(request.notes)}` : ''}</span></div><span class="inventory-status ${request.status === 'FULFILLED' ? 'in' : request.status === 'CANCELLED' ? 'out' : 'low'}">${escapeHtml(request.status)}</span></div><div class="stock-request-items">${(request.franchise_stock_request_items || []).map(item => `<span>${escapeHtml(item.item_name)} · ${inventoryQty(item.quantity)} ${item.unit === 'EACH' ? 'pcs' : 'kg'}</span>`).join('')}</div>${state.profile?.role === 'ADMIN' && request.status === 'SUBMITTED' ? `<button class="primary" type="button" data-use-stock-request="${request.id}">PREPARE SUPPLY BILL</button>` : ''}</div>`).join('') : '<div class="inventory-empty">No stock requirements submitted yet.</div>';
+  list.innerHTML = requests.length ? requests.map(request => `<div class="stock-request-card"><div class="stock-request-top"><div><strong>${escapeHtml(inventoryOutlet(request.outlet_id)?.name || 'Outlet')} · Needed ${new Date(`${request.required_for}T00:00:00`).toLocaleDateString('en-IN',{dateStyle:'medium'})}</strong><span>Requested ${inventoryDate(request.created_at)}${request.notes ? ` · ${escapeHtml(request.notes)}` : ''}</span></div><span class="inventory-status ${request.status === 'FULFILLED' ? 'in' : request.status === 'CANCELLED' ? 'out' : 'low'}">${escapeHtml(request.status)}</span></div><div class="stock-request-items">${(request.franchise_stock_request_items || []).map(item => `<span>${escapeHtml(item.item_name)} · ${inventoryQty(item.quantity)} ${item.unit === 'PIECE' || item.unit === 'EACH' ? 'pcs' : 'kg'}</span>`).join('')}</div>${state.profile?.role === 'ADMIN' && ['SUBMITTED','PARTIAL'].includes(request.status) ? `<button class="primary" type="button" data-use-stock-request="${request.id}">PREPARE SUPPLY BILL</button>` : ''}</div>`).join('') : '<div class="inventory-empty">No stock requirements submitted yet.</div>';
 }
 
 function renderDailyExpenses() {
   const list = $('#dailyExpenseList');
   if (!list) return;
   const outletId = inventorySelectedOutletId();
-  const today = new Date().toLocaleDateString('en-CA');
   const admin = state.profile?.role === 'ADMIN';
-  const expenses = state.inventory.expenses.filter(row => (!outletId || row.outlet_id === outletId) && (admin || new Date(row.occurred_at).toLocaleDateString('en-CA') === today));
-  const stockBills = state.inventory.bills.filter(row => (!outletId || row.outlet_id === outletId) && (admin || new Date(row.supplied_at).toLocaleDateString('en-CA') === today));
-  const rows = [
-    ...stockBills.map(row => ({ date: row.supplied_at, outlet_id: row.outlet_id, description: `OHHO stock · ${row.bill_number}`, category: 'OHHO STOCK', payment_method: row.payment_status, amount: row.total_amount })),
-    ...expenses.map(row => ({ date: row.occurred_at, ...row }))
-  ].sort((a,b) => new Date(b.date || b.occurred_at) - new Date(a.date || a.occurred_at));
+  const owner = state.profile?.role === 'OWNER';
+  const rows = state.inventory.expenses.filter(row => !outletId || row.outlet_id === outletId).sort((a,b) => new Date(b.occurred_at) - new Date(a.occurred_at));
   const total = rows.reduce((sum,row) => sum + Number(row.amount || 0), 0);
   if ($('#expenseTodayTotal')) $('#expenseTodayTotal').textContent = formatReportMoney(total);
-  if ($('#dailyExpenseHeading')) $('#dailyExpenseHeading').textContent = admin ? 'Expense history' : "Today's expenses";
-  list.innerHTML = rows.length ? rows.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.description)}</strong><span>${escapeHtml(inventoryOutlet(row.outlet_id)?.name || 'Outlet')} · ${escapeHtml(row.category.replaceAll('_',' '))} · ${escapeHtml(row.payment_method)} · ${inventoryDate(row.date || row.occurred_at)}</span></div><b>${formatReportMoney(row.amount)}</b></div>`).join('') : `<div class="inventory-empty">No expenses recorded${admin ? ' in this period' : ' today'}.</div>`;
+  if ($('#dailyExpenseHeading')) $('#dailyExpenseHeading').textContent = admin ? 'All outlet expenses' : 'My expense history';
+  list.innerHTML = rows.length ? rows.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.description || row.category_name || row.category || 'Expense')}</strong><span>${escapeHtml(inventoryOutlet(row.outlet_id)?.name || 'Outlet')} · ${escapeHtml(row.category_name || row.category || 'Other')} · ${inventoryDate(row.occurred_at)}</span></div><b>${formatReportMoney(row.amount)}</b>${owner ? `<div class="inventory-bill-actions"><button class="secondary" type="button" data-edit-expense="${row.id}">EDIT</button><button class="secondary" type="button" data-delete-expense="${row.id}">DELETE</button></div>` : ''}</div>`).join('') : '<div class="inventory-empty">No daily expenses recorded.</div>';
+}
+
+function renderStockCategories() {
+  const list = $('#stockCategoryList');
+  if (!list) return;
+  list.innerHTML = state.inventory.stockCategories.length ? state.inventory.stockCategories.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.name)}</strong><span>${row.active === false ? 'Hidden from new items' : 'Active'}</span></div><button class="secondary" type="button" data-edit-stock-category="${row.id}">EDIT</button></div>`).join('') : '<div class="inventory-empty">Create the first stock category.</div>';
+}
+
+function renderExpenseCategories() {
+  const list = $('#expenseCategoryList');
+  if (!list) return;
+  list.innerHTML = state.inventory.expenseCategories.length ? state.inventory.expenseCategories.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.name)}</strong><span>${row.active === false ? 'Hidden from owners' : 'Active'}</span></div><button class="secondary" type="button" data-edit-expense-category="${row.id}">EDIT</button></div>`).join('') : '<div class="inventory-empty">Create the first expense category.</div>';
 }
 
 function renderSupplyNotification() {
@@ -3314,8 +3320,9 @@ function renderInventory() {
 
   const masterList = $('#inventoryMasterList');
   if (masterList) {
-    const masterGroups = [['PER KG', state.inventory.items.filter(item => item.display_unit !== 'EACH')], ['PER PIECE', state.inventory.items.filter(item => item.display_unit === 'EACH')]];
-    masterList.innerHTML = state.inventory.items.length ? masterGroups.map(([label, items]) => `<div class="request-group"><h3>${label}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · LOW AT ${inventoryQty(item.low_stock_threshold)} ${item.display_unit === 'EACH' ? 'pcs' : 'kg'}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? formatReportMoney(item.default_supply_price) : 'SET RATE'}</b><button type="button" data-inventory-edit-item="${item.id}">EDIT PRICE</button></div></div>`).join('')}</div></div>`).join('') : '<div class="inventory-empty">No stock items configured.</div>';
+    const groupName = item => state.inventory.stockCategories.find(row => row.id === item.category_id)?.name || 'Other items';
+    const names = [...new Set(state.inventory.items.map(groupName))];
+    masterList.innerHTML = state.inventory.items.length ? names.map(label => { const items = state.inventory.items.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · REQUEST ${item.request_unit === 'PIECE' ? 'PIECES' : 'KG'} · BILL ${item.display_unit === 'EACH' ? 'PIECE' : 'KG'} · LOW AT ${inventoryQty(item.low_stock_threshold)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${item.display_unit === 'EACH' ? 'piece' : 'kg'}` : 'SET RATE'}</b><button type="button" data-inventory-edit-item="${item.id}">EDIT ITEM</button></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No stock items configured.</div>';
   }
 
   const stockList = $('#inventoryStockList');
@@ -3346,6 +3353,8 @@ function renderInventory() {
   renderStockRequestCatalogue();
   renderStockRequests();
   renderDailyExpenses();
+  renderStockCategories();
+  renderExpenseCategories();
 }
 
 async function loadInventory({ all = false } = {}) {
@@ -3358,6 +3367,8 @@ async function loadInventory({ all = false } = {}) {
   }
   const payload = await inventoryApi('GET', null, params);
   state.inventory.items = payload.items || [];
+  state.inventory.stockCategories = payload.stockCategories || [];
+  state.inventory.expenseCategories = payload.expenseCategories || [];
   state.inventory.outlets = payload.outlets || [];
   state.inventory.balances = payload.inventory || [];
   state.inventory.bills = payload.bills || [];
@@ -3367,6 +3378,7 @@ async function loadInventory({ all = false } = {}) {
   state.inventory.expenses = payload.expenses || [];
   state.inventory.loaded = true;
   renderInventory();
+  if (state.selectedSection === 'reports') renderReportDashboard();
 }
 
 function updateSupplyDefaultPrice() {
@@ -3376,8 +3388,8 @@ function updateSupplyDefaultPrice() {
 
 function renderSupplyLines() {
   const list = $('#supplyBillLines');
-  const total = state.inventory.billLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
-  if (list) list.innerHTML = state.inventory.billLines.length ? state.inventory.billLines.map((line, index) => `<div class="supply-line"><div><strong>${escapeHtml(line.name)}</strong><small>${line.requestedQuantity ? `Requested ${inventoryQty(line.requestedQuantity)} ${escapeHtml(line.unit)} · ` : ''}${formatReportMoney(line.unitPrice)} / ${escapeHtml(line.unit)}</small></div><div class="supply-line-actual"><input type="number" min="0.001" step="${line.unit === 'EACH' ? '1' : '0.001'}" value="${Number(line.quantity)}" data-supply-quantity="${index}" aria-label="Actual supplied quantity"><span>${escapeHtml(line.unit === 'EACH' ? 'pcs' : line.unit)}</span></div><b>${formatReportMoney(line.quantity * line.unitPrice)}</b><button type="button" data-supply-remove="${index}">×</button></div>`).join('') : '<div class="supply-empty">Add stock items to build this bill.</div>';
+  const total = state.inventory.billLines.reduce((sum, line) => sum + Number(line.quantity || 0) * line.unitPrice, 0);
+  if (list) list.innerHTML = state.inventory.billLines.length ? state.inventory.billLines.map((line, index) => `<div class="supply-line"><div><strong>${escapeHtml(line.name)}</strong><small>${line.requestedQuantity ? `Requested ${inventoryQty(line.requestedQuantity)} ${line.requestedUnit === 'PIECE' || line.requestedUnit === 'EACH' ? 'pcs' : 'kg'} · ` : ''}Actual billed at ${formatReportMoney(line.unitPrice)} / ${line.unit === 'EACH' ? 'piece' : 'kg'}</small></div><div class="supply-line-actual"><input type="number" min="0.001" step="${line.unit === 'EACH' ? '1' : '0.001'}" value="${line.quantity || ''}" placeholder="Actual" data-supply-quantity="${index}" aria-label="Actual supplied quantity"><span>${escapeHtml(line.unit === 'EACH' ? 'pcs' : line.unit)}</span></div><b>${formatReportMoney(Number(line.quantity || 0) * line.unitPrice)}</b><button type="button" data-supply-remove="${index}">×</button></div>`).join('') : '<div class="supply-empty">Add stock items to build this bill.</div>';
   if ($('#supplyBillTotal')) $('#supplyBillTotal').textContent = formatReportMoney(total);
 }
 
@@ -3395,12 +3407,21 @@ function addSupplyLine() {
 }
 
 async function editInventoryItemPrice(item) {
-  const price = Number(window.prompt(`Fixed supply price per ${item.display_unit} for ${item.name}:`, Number(item.default_supply_price || 0).toFixed(2)));
+  const name = String(window.prompt('Stock item name:', item.name) || '').trim();
+  if (!name) return;
+  const categoryNames = state.inventory.stockCategories.filter(row => row.active !== false || row.id === item.category_id).map(row => row.name);
+  const categoryName = String(window.prompt(`Stock category (${categoryNames.join(', ')}):`, state.inventory.stockCategories.find(row => row.id === item.category_id)?.name || '') || '').trim();
+  const category = state.inventory.stockCategories.find(row => row.name.toLowerCase() === categoryName.toLowerCase());
+  if (!category) return toast('Choose an existing stock category.', 'bad');
+  const requestUnit = String(window.prompt('Owner request unit: KG or PIECE', item.request_unit || (item.display_unit === 'EACH' ? 'PIECE' : 'KG')) || '').toUpperCase();
+  const displayUnit = String(window.prompt('Billing unit: KG or PIECE', item.display_unit === 'EACH' ? 'PIECE' : 'KG') || '').toUpperCase();
+  if (!['KG','PIECE'].includes(requestUnit) || !['KG','PIECE'].includes(displayUnit)) return toast('Units must be KG or PIECE.', 'bad');
+  const price = Number(window.prompt(`Fixed supply price per ${displayUnit === 'PIECE' ? 'piece' : 'kg'} for ${name}:`, Number(item.default_supply_price || 0).toFixed(2)));
   if (!(price > 0)) return;
   const threshold = Number(window.prompt(`Low-stock alert level in ${item.display_unit}:`, Number(item.low_stock_threshold || 0).toString()));
   if (!(threshold >= 0)) return toast('Enter a valid low-stock level.', 'bad');
   try {
-    await inventoryApi('POST', { action: 'update_item', itemId: item.id, defaultSupplyPrice: price, lowStockThreshold: threshold });
+    await inventoryApi('POST', { action: 'update_item', itemId: item.id, name, categoryId: category.id, requestUnit, displayUnit: displayUnit === 'PIECE' ? 'EACH' : 'KG', defaultSupplyPrice: price, lowStockThreshold: threshold });
     await loadInventory({ all: true });
     toast(`${item.name} fixed price updated.`, 'ok');
   } catch (error) { toast(error.message, 'bad'); }
@@ -3420,6 +3441,7 @@ async function generateSupplyBill() {
   const button = $('#supplyGenerateBill');
   const outletId = $('#supplyOutlet')?.value;
   if (!outletId || !state.inventory.billLines.length) return toast('Select an outlet and add at least one item.', 'bad');
+  if (state.inventory.billLines.some(line => !(Number(line.quantity) > 0))) return toast('Enter the actual supplied quantity for every item, or remove unavailable items.', 'bad');
   button.disabled = true;
   try {
     await inventoryApi('POST', { action: 'issue_bill', outletId, items: state.inventory.billLines, notes: $('#supplyNotes')?.value || '', requestId: state.inventory.activeRequestId });
@@ -3448,9 +3470,13 @@ async function submitStockRequirement() {
 
 function useStockRequest(request) {
   state.inventory.activeRequestId = request.id;
-  state.inventory.billLines = (request.franchise_stock_request_items || []).map(row => ({
-    itemId: row.item_id, name: row.item_name, unit: row.unit, quantity: Number(row.quantity), requestedQuantity: Number(row.quantity), unitPrice: Number(inventoryItem(row.item_id)?.default_supply_price || row.fixed_unit_price || 0)
-  }));
+  state.inventory.billLines = (request.franchise_stock_request_items || []).map(row => {
+    const item = inventoryItem(row.item_id) || {};
+    const billingUnit = item.display_unit || 'KG';
+    const requestUnit = row.unit === 'EACH' ? 'PIECE' : row.unit;
+    const sameUnit = requestUnit === 'KG' && billingUnit === 'KG' || requestUnit === 'PIECE' && billingUnit === 'EACH';
+    return { itemId: row.item_id, name: row.item_name, unit: billingUnit, quantity: sameUnit ? Number(row.quantity) : '', requestedQuantity: Number(row.quantity), requestedUnit: requestUnit, unitPrice: Number(item.default_supply_price || row.fixed_unit_price || 0) };
+  });
   if ($('#supplyOutlet')) $('#supplyOutlet').value = request.outlet_id;
   if ($('#supplyNotes')) $('#supplyNotes').value = `From franchise requirement for ${request.required_for}${request.notes ? ` · ${request.notes}` : ''}`;
   renderSupplyLines();
@@ -3462,12 +3488,71 @@ async function saveDailyExpense() {
   const button = $('#saveDailyExpense');
   button.disabled = true;
   try {
-    await inventoryApi('POST', { action: 'add_expense', outletId: $('#expenseOutlet')?.value, category: $('#expenseCategory')?.value, description: $('#expenseDescription')?.value, amount: $('#expenseAmount')?.value, paymentMethod: $('#expensePayment')?.value });
+    const editing = state.inventory.editingExpenseId;
+    await inventoryApi('POST', { action: editing ? 'update_expense' : 'add_expense', expenseId: editing, outletId: $('#expenseOutlet')?.value, categoryId: $('#expenseCategory')?.value, description: $('#expenseDescription')?.value, amount: $('#expenseAmount')?.value, occurredAt: $('#expenseDate')?.value ? `${$('#expenseDate').value}T12:00:00` : null });
     if ($('#expenseDescription')) $('#expenseDescription').value = '';
     if ($('#expenseAmount')) $('#expenseAmount').value = '';
+    resetExpenseForm();
     await loadInventory({ all: true });
-    toast('Daily expense saved in the outlet book.', 'ok');
+    toast(editing ? 'Daily expense updated.' : 'Daily expense saved in the outlet book.', 'ok');
   } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
+}
+
+function resetExpenseForm() {
+  state.inventory.editingExpenseId = null;
+  if ($('#expenseFormTitle')) $('#expenseFormTitle').textContent = 'Add daily expense';
+  if ($('#saveDailyExpense')) $('#saveDailyExpense').textContent = 'SAVE DAILY EXPENSE';
+  $('#cancelExpenseEdit')?.classList.add('hidden');
+  if ($('#expenseDescription')) $('#expenseDescription').value = '';
+  if ($('#expenseAmount')) $('#expenseAmount').value = '';
+  if ($('#expenseDate')) $('#expenseDate').value = new Date().toLocaleDateString('en-CA');
+}
+
+function editDailyExpense(expense) {
+  state.inventory.editingExpenseId = expense.id;
+  if ($('#expenseOutlet')) $('#expenseOutlet').value = expense.outlet_id;
+  if ($('#expenseCategory')) $('#expenseCategory').value = expense.category_id || '';
+  if ($('#expenseDescription')) $('#expenseDescription').value = expense.description || '';
+  if ($('#expenseAmount')) $('#expenseAmount').value = Number(expense.amount || 0);
+  if ($('#expenseDate')) $('#expenseDate').value = new Date(expense.occurred_at).toLocaleDateString('en-CA');
+  if ($('#expenseFormTitle')) $('#expenseFormTitle').textContent = 'Edit daily expense';
+  if ($('#saveDailyExpense')) $('#saveDailyExpense').textContent = 'UPDATE DAILY EXPENSE';
+  $('#cancelExpenseEdit')?.classList.remove('hidden');
+  $('#ownerExpenseEntryPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function deleteDailyExpense(expense) {
+  if (!window.confirm(`Delete this ${formatReportMoney(expense.amount)} expense?`)) return;
+  try {
+    await inventoryApi('POST', { action: 'delete_expense', expenseId: expense.id });
+    if (state.inventory.editingExpenseId === expense.id) resetExpenseForm();
+    await loadInventory({ all: true });
+    toast('Daily expense deleted.', 'ok');
+  } catch (error) { toast(error.message, 'bad'); }
+}
+
+async function createManagedCategory(type) {
+  const stock = type === 'stock';
+  const input = $(stock ? '#stockCategoryName' : '#expenseCategoryName');
+  const name = String(input?.value || '').trim();
+  if (!name) return toast('Enter a category name.', 'bad');
+  try {
+    await inventoryApi('POST', { action: stock ? 'create_stock_category' : 'create_expense_category', name });
+    input.value = '';
+    await loadInventory({ all: true });
+    toast(`${stock ? 'Stock' : 'Expense'} category created.`, 'ok');
+  } catch (error) { toast(error.message, 'bad'); }
+}
+
+async function editManagedCategory(type, row) {
+  const name = String(window.prompt('Category name:', row.name) || '').trim();
+  if (!name) return;
+  const active = window.confirm('Keep this category active? Choose Cancel to hide it from new entries.');
+  try {
+    await inventoryApi('POST', { action: type === 'stock' ? 'update_stock_category' : 'update_expense_category', categoryId: row.id, name, active });
+    await loadInventory({ all: true });
+    toast('Category updated.', 'ok');
+  } catch (error) { toast(error.message, 'bad'); }
 }
 
 async function createInventoryItem() {
@@ -3475,23 +3560,9 @@ async function createInventoryItem() {
   const baseUnit = displayUnit === 'KG' ? 'G' : displayUnit === 'L' ? 'ML' : displayUnit;
   const button = $('#inventoryCreateItem'); button.disabled = true;
   try {
-    await inventoryApi('POST', { action: 'create_item', name: $('#inventoryItemName')?.value, sku: $('#inventoryItemSku')?.value, baseUnit, displayUnit, lowStockThreshold: $('#inventoryItemThreshold')?.value, defaultSupplyPrice: $('#inventoryItemPrice')?.value });
+    await inventoryApi('POST', { action: 'create_item', name: $('#inventoryItemName')?.value, sku: $('#inventoryItemSku')?.value, categoryId: $('#inventoryItemCategory')?.value, requestUnit: $('#inventoryRequestUnit')?.value, baseUnit, displayUnit, lowStockThreshold: $('#inventoryItemThreshold')?.value, defaultSupplyPrice: $('#inventoryItemPrice')?.value });
     ['inventoryItemName','inventoryItemSku','inventoryItemThreshold','inventoryItemPrice'].forEach(id => { if ($(`#${id}`)) $(`#${id}`).value = ''; });
     await loadInventory({ all: true }); toast('Stock item created.', 'ok');
-  } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
-}
-
-async function adjustInventoryStock() {
-  const item = inventoryItem($('#adjustItem')?.value);
-  const displayQuantity = Number($('#adjustQuantity')?.value);
-  const type = $('#adjustType')?.value;
-  if (!item || !Number.isFinite(displayQuantity) || displayQuantity === 0) return toast('Select an item and enter a quantity.', 'bad');
-  const button = $('#inventoryAdjustStock'); button.disabled = true;
-  try {
-    await inventoryApi('POST', { action: 'adjust_stock', outletId: $('#adjustOutlet')?.value, itemId: item.id, movementType: type, quantity: inventoryBaseQuantity(item, displayQuantity), notes: $('#adjustNotes')?.value || '' });
-    if ($('#adjustQuantity')) $('#adjustQuantity').value = '';
-    if ($('#adjustNotes')) $('#adjustNotes').value = '';
-    await loadInventory({ all: true }); toast('Stock adjustment saved.', 'ok');
   } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
 }
 
@@ -3538,11 +3609,17 @@ function wireInventoryActions() {
   $('#supplyAddLine')?.addEventListener('click', addSupplyLine);
   $('#supplyGenerateBill')?.addEventListener('click', generateSupplyBill);
   $('#inventoryCreateItem')?.addEventListener('click', createInventoryItem);
-  $('#inventoryAdjustStock')?.addEventListener('click', adjustInventoryStock);
   $('#submitStockRequest')?.addEventListener('click', submitStockRequirement);
   $('#saveDailyExpense')?.addEventListener('click', saveDailyExpense);
+  $('#cancelExpenseEdit')?.addEventListener('click', resetExpenseForm);
+  $('#expenseRefreshBtn')?.addEventListener('click', () => loadInventory({ all: true }).catch(error => toast(error.message, 'bad')));
+  $('#createStockCategory')?.addEventListener('click', () => createManagedCategory('stock'));
+  $('#createExpenseCategory')?.addEventListener('click', () => createManagedCategory('expense'));
   $('#stockRequestList')?.addEventListener('click', event => { const button = event.target.closest('[data-use-stock-request]'); const request = button && state.inventory.requests.find(row => row.id === button.dataset.useStockRequest); if (request) useStockRequest(request); });
   $('#inventoryMasterList')?.addEventListener('click', event => { const button = event.target.closest('[data-inventory-edit-item]'); const item = button && inventoryItem(button.dataset.inventoryEditItem); if (item) editInventoryItemPrice(item); });
+  $('#stockCategoryList')?.addEventListener('click', event => { const button = event.target.closest('[data-edit-stock-category]'); const row = button && state.inventory.stockCategories.find(item => item.id === button.dataset.editStockCategory); if (row) editManagedCategory('stock', row); });
+  $('#expenseCategoryList')?.addEventListener('click', event => { const button = event.target.closest('[data-edit-expense-category]'); const row = button && state.inventory.expenseCategories.find(item => item.id === button.dataset.editExpenseCategory); if (row) editManagedCategory('expense', row); });
+  $('#dailyExpenseList')?.addEventListener('click', event => { const edit = event.target.closest('[data-edit-expense]'); const remove = event.target.closest('[data-delete-expense]'); const id = edit?.dataset.editExpense || remove?.dataset.deleteExpense; const expense = id && state.inventory.expenses.find(row => row.id === id); if (!expense) return; if (edit) editDailyExpense(expense); if (remove) deleteDailyExpense(expense); });
   $('#posSupplyNotice')?.addEventListener('click', event => { const view = event.target.closest('[data-supply-notice-view]'); const dismiss = event.target.closest('[data-supply-notice-dismiss]'); if (view) markSupplyNotification(view.dataset.supplyNoticeView, true); if (dismiss) markSupplyNotification(dismiss.dataset.supplyNoticeDismiss, false); });
   $('#supplyBillLines')?.addEventListener('click', event => { const button = event.target.closest('[data-supply-remove]'); if (!button) return; state.inventory.billLines.splice(Number(button.dataset.supplyRemove), 1); renderSupplyLines(); });
   $('#supplyBillLines')?.addEventListener('change', event => { const input = event.target.closest('[data-supply-quantity]'); if (!input) return; const line = state.inventory.billLines[Number(input.dataset.supplyQuantity)]; const quantity = Number(input.value); if (!line || !(quantity > 0)) { toast('Actual supplied quantity must be greater than zero, or remove the item.', 'bad'); renderSupplyLines(); return; } line.quantity = line.unit === 'EACH' ? Math.max(1, Math.round(quantity)) : quantity; renderSupplyLines(); });
@@ -3583,7 +3660,7 @@ function wireDashboardActions() {
         toast(error.message || 'Unable to refresh reports.', 'bad');
       });
     }
-    if (id === 'inventory') loadInventory().catch(error => { console.error('Unable to load inventory:', error); toast(error.message || 'Unable to load inventory.', 'bad'); });
+    if (id === 'inventory' || id === 'daily-expenses') loadInventory({ all: id === 'daily-expenses' }).catch(error => { console.error('Unable to load stock and expense records:', error); toast(error.message || 'Unable to load records.', 'bad'); });
   }));
 
   $$('#overview [data-section]').forEach(button => button.addEventListener('click', () => {
@@ -4206,6 +4283,7 @@ function reportDateBounds() {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   if (range === '7_DAYS') start.setDate(start.getDate() - 6);
+  if (range === '30_DAYS') start.setDate(start.getDate() - 29);
   return { start, end: null };
 }
 
@@ -4346,6 +4424,26 @@ function renderReportDashboard() {
       ? `${mostGifted.name} · ${mostGifted.freeQuantity}`
       : '—';
   }
+  const { start, end, invalid, session } = reportDateBounds();
+  const selectedOutlet = state.selectedOutlet === 'ALL' ? null : state.outlets.find(row => row.slug === state.selectedOutlet)?.id;
+  const inRange = (row, field) => {
+    if (invalid || selectedOutlet && row.outlet_id !== selectedOutlet) return false;
+    const timestamp = new Date(row[field]).getTime();
+    if (session) {
+      const outlet = state.outlets.find(item => item.id === row.outlet_id);
+      const openedAt = outlet?.current_session_started_at || outlet?.updated_at;
+      return Boolean(outlet?.status === 'ACTIVE' && openedAt && timestamp >= new Date(openedAt).getTime());
+    }
+    return (!start || timestamp >= start.getTime()) && (!end || timestamp < end.getTime());
+  };
+  const supplyCost = (state.inventory.bills || []).filter(row => inRange(row, 'supplied_at')).reduce((sum, row) => sum + Number(row.total_amount || 0), 0);
+  const dailyExpenses = (state.inventory.expenses || []).filter(row => inRange(row, 'occurred_at')).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  const totalExpenses = supplyCost + dailyExpenses;
+  if ($('#financialSales')) $('#financialSales').textContent = formatReportMoney(paidSales);
+  if ($('#financialSupply')) $('#financialSupply').textContent = formatReportMoney(supplyCost);
+  if ($('#financialDailyExpenses')) $('#financialDailyExpenses').textContent = formatReportMoney(dailyExpenses);
+  if ($('#financialTotalExpenses')) $('#financialTotalExpenses').textContent = formatReportMoney(totalExpenses);
+  if ($('#financialNet')) $('#financialNet').textContent = formatReportMoney(paidSales - totalExpenses);
   renderItemWiseSales(orders);
   renderSalesReports(reports);
 }
@@ -4412,6 +4510,7 @@ function reportExportScope() {
     SESSION: 'Current Session',
     TODAY: 'Today',
     '7_DAYS': 'Last 7 Days',
+    '30_DAYS': 'Last 30 Days',
     ALL: 'All Time'
   };
   let rangeLabel = rangeLabels[state.reportRange] || 'Selected Range';
@@ -4594,7 +4693,7 @@ async function clearSelectedReportLogs() {
   }
 
   if (state.reportRange === 'SESSION') {
-    toast('Choose Today, Last 7 Days, Custom Date or All Time to clear report logs.', 'bad');
+    toast('Choose Today, Last 7 Days, Last 30 Days, Custom Date or All Time to clear report logs.', 'bad');
     return;
   }
 
@@ -4607,6 +4706,7 @@ async function clearSelectedReportLogs() {
   const labels = {
     TODAY: 'today',
     '7_DAYS': 'the last 7 days',
+    '30_DAYS': 'the last 30 days',
     CUSTOM: 'the custom date range',
     ALL: 'all time'
   };
@@ -4876,7 +4976,7 @@ function startLiveDashboardRefresh() {
       await loadOutlets();
       await loadOrders({ silent: true });
       if (state.selectedSection === 'reports') await loadReports();
-      if (['inventory', 'pos'].includes(state.selectedSection) && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) await loadInventory();
+      if (['inventory', 'daily-expenses', 'pos', 'reports'].includes(state.selectedSection) && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) await loadInventory({ all: state.selectedSection === 'daily-expenses' || state.selectedSection === 'reports' });
     } catch (error) {
       console.error('Unable to refresh live dashboard feed:', error);
     } finally {

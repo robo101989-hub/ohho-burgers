@@ -733,7 +733,7 @@ body{font-size:14px}
 #reports h1,#reports h2,#reports h3{font-family:var(--sans);line-height:1.15;letter-spacing:-.45px;text-transform:none}
 #reports .page-head h1{font-size:34px;letter-spacing:-1.4px}
 .report-dashboard{gap:12px}.report-panel{background:#0d0d0d;border-color:#292929;border-radius:12px;padding:16px;box-shadow:none}.report-toolbar{align-items:center}.report-toolbar h2{font-size:17px;margin-top:5px}.report-toolbar-actions{gap:7px}.report-range-buttons{background:#0a0a0a;border-color:#292929}.report-range-btn{font-family:var(--sans);font-size:9px;letter-spacing:.15px}.report-summary-grid{gap:8px}.report-stat-card{position:relative;background:#0e0e0e;border-color:#292929;border-radius:10px;padding:15px 16px}.report-stat-card:before{content:"";position:absolute;left:0;top:13px;bottom:13px;width:2px;border-radius:2px;background:#3b3b36}.report-stat-card.free:before{background:var(--yellow)}.report-stat-card.free strong{color:var(--yellow)}.report-stat-card span,.report-payment-card span{font-family:var(--sans);font-size:9px;letter-spacing:.55px}.report-stat-card strong,.report-payment-card strong{font-family:var(--mono);font-size:22px}.report-split-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;min-width:0}.report-compact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.report-compact-grid .report-payment-card{padding:13px 14px;background:#101010}.report-family-panel{border-color:#393215}.report-family-panel .eyebrow:before{background:#ffd21c}.report-family-panel .report-payment-card{border-color:#302b17}.report-family-panel .report-payment-card strong{color:#ffd21c}.report-section-head{margin-bottom:11px}.report-section-head h2{font-size:16px;margin-top:4px}.report-section-head>span{font-size:10px}.item-sales-list{display:block;overflow-x:auto;border:1px solid #292929;border-radius:10px;background:#0a0a0a}.item-sales-table{min-width:800px}.item-sales-head,.item-sales-row{grid-template-columns:minmax(230px,1.5fr) 88px 88px 88px 125px 125px;gap:0;padding:0}.item-sales-head{display:grid!important;background:#111;border-bottom:1px solid #303030}.item-sales-head span{padding:11px 13px;color:#777;font:800 8px var(--sans);letter-spacing:.55px}.item-sales-row{display:grid!important;background:transparent;border:0;border-bottom:1px solid #202020;border-radius:0}.item-sales-row:last-child{border-bottom:0}.item-sales-row:hover{background:#111}.item-sales-row>*{min-width:0;padding:13px;color:#bdbdb7;font-size:11px}.item-sales-row strong{color:#f2f2ed;font-size:12px}.item-sales-row span{font:800 10px var(--mono)}.item-sales-row .qty{text-align:center}.item-sales-row .free-qty,.item-sales-row .free-value{color:#ffd21c}.item-sales-row .money{color:#ddd}.session-report-card{border-radius:9px;padding:13px}.session-report-main{padding-bottom:9px}.session-report-main h3{font-size:13px}.session-report-metrics{padding-top:9px}.report-empty{min-height:88px;border-radius:9px}.session-count-pill{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:24px;margin-left:8px;border:1px solid #343434;border-radius:99px;color:#ddd;font:800 9px var(--mono)}
-.report-range-buttons{grid-template-columns:repeat(5,auto)}
+.report-range-buttons{grid-template-columns:repeat(6,auto)}
 .session-report-actions{display:flex;align-items:flex-end;gap:9px;flex-direction:column}.session-report-download{height:30px;padding:6px 10px;font-size:8px}.session-report-metrics{grid-template-columns:repeat(6,minmax(0,1fr))}
 .report-family-panel #reportsMostGifted{font-family:var(--sans);font-size:13px;line-height:1.35}
 .report-section-actions{display:flex;align-items:center;gap:10px;color:#666;font-size:10px;text-align:right}.report-section-actions .report-clear-btn{height:34px;padding:8px 11px;font-size:8px}
@@ -760,7 +760,8 @@ body{font-size:14px}
     <button class="nav-btn" data-section="pos"><span class="nav-ico">＋</span>POS</button>
     <button class="nav-btn" data-section="orders"><span class="nav-ico">≡</span>Orders</button>
     <button class="nav-btn" data-section="menu"><span class="nav-ico">▦</span>Menu</button>
-    <button class="nav-btn" data-section="inventory"><span class="nav-ico">▤</span>Inventory</button>
+    <button class="nav-btn" data-section="inventory"><span class="nav-ico">▤</span>Stock &amp; Supply</button>
+    <button class="nav-btn" data-section="daily-expenses"><span class="nav-ico">₹</span>Daily Expenses</button>
     <button class="nav-btn" data-section="outlets"><span class="nav-ico">⌖</span>Outlets</button>
     <button class="nav-btn" data-section="staff"><span class="nav-ico">◎</span>Staff</button>
     <button class="nav-btn" data-section="reports"><span class="nav-ico">▥</span>Reports</button>
@@ -1059,10 +1060,22 @@ body{font-size:14px}
     </div>
   </div>
 </section>
-<style>.inventory-master-groups{display:grid;gap:16px}.supply-line{grid-template-columns:minmax(0,1fr) auto auto auto}.supply-line-actual{display:flex;align-items:center;gap:6px}.supply-line-actual input{width:90px;height:34px;border:1px solid #393939;border-radius:7px;background:#080808;color:#fff;padding:0 8px;text-align:right}.supply-line-actual span{color:#888;font:800 8px var(--mono)}</style>
+<style>
+#inventory,#daily-expenses{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:auto;text-rendering:optimizeLegibility;filter:none;opacity:1}
+#inventory h1,#inventory h2,#inventory h3,#daily-expenses h1,#daily-expenses h2,#daily-expenses h3{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;line-height:1.15;letter-spacing:-.45px;text-transform:none;font-style:normal}
+#inventory .page-head h1{font-size:36px;letter-spacing:-1.2px}
+#inventory .inventory-panel-head h2,#daily-expenses .inventory-panel-head h2{font-size:19px;font-weight:850;color:#f5f5f0}
+#inventory .eyebrow{color:#a3a39c;font-size:8px;letter-spacing:1.55px}
+#inventory .inventory-panel-head>span,#inventory .inventory-summary small,#inventory .stock-request-top span,#inventory .daily-expense-row span{color:#8b8b84}
+#inventory input,#inventory select,#inventory button,#daily-expenses input,#daily-expenses select,#daily-expenses button{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:auto}
+#inventory input::placeholder,#daily-expenses input::placeholder{color:#777;opacity:1}
+#inventory .inventory-empty,#daily-expenses .inventory-empty{color:#888}
+.inventory-master-groups{display:grid;gap:16px}.supply-line{grid-template-columns:minmax(0,1fr) auto auto auto}.supply-line-actual{display:flex;align-items:center;gap:6px}.supply-line-actual input{width:90px;height:34px;border:1px solid #393939;border-radius:7px;background:#080808;color:#fff;padding:0 8px;text-align:right}.supply-line-actual span{color:#888;font:800 8px var(--mono)}
+@media(max-width:650px){#inventory .page-head h1{font-size:30px}}
+</style>
 <section id="inventory" class="section">
   <div class="page-head inventory-page-head">
-    <div><div class="eyebrow">Franchise supply</div><h1 id="inventoryPageTitle">Supply &amp; Inventory</h1><p>One stock entry creates the bill, updates outlet inventory and appears in the outlet account.</p></div>
+    <div><div class="eyebrow">Franchise operations</div><h1 id="inventoryPageTitle">Stock &amp; Supply Management</h1><p>Owner requests stock, Admin enters the actual supply, and the bill appears for the outlet.</p></div>
     <div class="inventory-head-actions"><button id="inventoryDownloadBtn" class="secondary" type="button">DOWNLOAD REPORT</button><button id="inventoryRefreshBtn" class="primary" type="button">REFRESH</button></div>
   </div>
   <div class="inventory-filterbar">
@@ -1088,23 +1101,6 @@ body{font-size:14px}
     <div class="inventory-panel-head"><div><div class="eyebrow">Franchise demand</div><h2>Stock requirements</h2></div><span>Use a request to prepare its supply bill</span></div>
     <div id="stockRequestList" class="stock-request-list"></div>
   </article>
-  <div class="inventory-expense-grid">
-    <article class="inventory-panel">
-      <div class="inventory-panel-head"><div><div class="eyebrow">Owner expense book</div><h2>Add daily expense</h2></div></div>
-      <div class="inventory-form-grid">
-        <label><span>OUTLET</span><select id="expenseOutlet"></select></label>
-        <label><span>CATEGORY</span><select id="expenseCategory"><option value="LOCAL_STOCK">Local stock purchase</option><option value="TRANSPORT">Transport</option><option value="UTILITIES">Utilities</option><option value="SALARY">Salary / labour</option><option value="MAINTENANCE">Maintenance</option><option value="OTHER">Other</option></select></label>
-        <label><span>DESCRIPTION</span><input id="expenseDescription" type="text" maxlength="200" placeholder="What was paid for?"></label>
-        <label><span>AMOUNT</span><input id="expenseAmount" type="number" min="0.01" step="0.01" placeholder="₹0"></label>
-        <label><span>PAYMENT</span><select id="expensePayment"><option value="CASH">Cash</option><option value="UPI">UPI</option><option value="BANK">Bank</option><option value="CARD">Card</option><option value="OTHER">Other</option></select></label>
-      </div>
-      <button id="saveDailyExpense" class="secondary inventory-wide-btn" type="button">SAVE DAILY EXPENSE</button>
-    </article>
-    <article class="inventory-panel">
-      <div class="inventory-panel-head"><div><div class="eyebrow">Expense book</div><h2 id="dailyExpenseHeading">Today's expenses</h2></div><strong id="expenseTodayTotal">₹0</strong></div>
-      <div id="dailyExpenseList" class="daily-expense-list"></div>
-    </article>
-  </div>
   <div id="inventoryAdminWorkspace" class="inventory-admin-grid">
     <article class="inventory-panel">
       <div class="inventory-panel-head"><div><div class="eyebrow">Central billing</div><h2>Generate stock bill</h2></div></div>
@@ -1125,20 +1121,17 @@ body{font-size:14px}
       <div class="inventory-form-grid item-create-grid">
         <label><span>ITEM NAME</span><input id="inventoryItemName" type="text" placeholder="Chicken"></label>
         <label><span>SKU</span><input id="inventoryItemSku" type="text" placeholder="CHICKEN"></label>
-        <label><span>MEASUREMENT</span><select id="inventoryItemUnit"><option value="KG">Per KG</option><option value="EACH">Per piece</option></select></label>
+        <label><span>CATEGORY</span><select id="inventoryItemCategory"></select></label>
+        <label><span>OWNER REQUESTS IN</span><select id="inventoryRequestUnit"><option value="KG">Kg</option><option value="PIECE">Pieces</option></select></label>
+        <label><span>BILLING UNIT</span><select id="inventoryItemUnit"><option value="KG">Per KG</option><option value="EACH">Per piece</option></select></label>
         <label><span>LOW STOCK AT</span><input id="inventoryItemThreshold" type="number" min="0" step="0.001" placeholder="2"></label>
         <label><span>DEFAULT PRICE</span><input id="inventoryItemPrice" type="number" min="0" step="0.01" placeholder="₹0"></label>
       </div>
       <button id="inventoryCreateItem" class="secondary inventory-wide-btn" type="button">CREATE STOCK ITEM</button>
-      <div class="inventory-panel-head adjustment-head"><div><div class="eyebrow">Usage &amp; correction</div><h2>Stock adjustment</h2></div></div>
-      <div class="inventory-form-grid">
-        <label><span>OUTLET</span><select id="adjustOutlet"></select></label>
-        <label><span>ITEM</span><select id="adjustItem"></select></label>
-        <label><span>TYPE</span><select id="adjustType"><option value="USAGE">Used</option><option value="WASTE">Wastage</option><option value="ADJUSTMENT">Add / remove</option></select></label>
-        <label><span>QUANTITY</span><input id="adjustQuantity" type="number" step="0.001" placeholder="0"></label>
-      </div>
-      <label class="inventory-notes"><span>REASON / NOTES</span><input id="adjustNotes" type="text" maxlength="500" placeholder="Required for audit history"></label>
-      <button id="inventoryAdjustStock" class="secondary inventory-wide-btn" type="button">SAVE ADJUSTMENT</button>
+      <div class="inventory-panel-head adjustment-head"><div><div class="eyebrow">Item categories</div><h2>Category management</h2></div></div>
+      <div class="inventory-form-grid"><label><span>CATEGORY NAME</span><input id="stockCategoryName" type="text" maxlength="80" placeholder="Chicken"></label></div>
+      <button id="createStockCategory" class="secondary inventory-wide-btn" type="button">CREATE CATEGORY</button>
+      <div id="stockCategoryList" class="daily-expense-list"></div>
     </article>
   </div>
   <article id="inventoryMasterPanel" class="inventory-panel inventory-table-panel">
@@ -1157,6 +1150,33 @@ body{font-size:14px}
     <div class="inventory-panel-head"><div><div class="eyebrow">Audit trail</div><h2>Stock history</h2></div><span>Every receipt, usage and adjustment</span></div>
     <div id="inventoryMovementList" class="inventory-movement-list"></div>
   </article>
+</section>
+<section id="daily-expenses" class="section">
+  <div class="page-head"><div><div class="eyebrow">Outlet expense book</div><h1>Daily Expense Management</h1><p>Owners record actual outlet expenses. Admin manages categories and views every outlet.</p></div><button id="expenseRefreshBtn" class="primary" type="button">REFRESH</button></div>
+  <div id="expenseCategoryAdminPanel" class="inventory-panel">
+    <div class="inventory-panel-head"><div><div class="eyebrow">Admin setup</div><h2>Expense categories</h2></div><span>Owners select from this list</span></div>
+    <div class="inventory-form-grid"><label><span>CATEGORY NAME</span><input id="expenseCategoryName" type="text" maxlength="80" placeholder="Electricity"></label></div>
+    <button id="createExpenseCategory" class="secondary inventory-wide-btn" type="button">CREATE CATEGORY</button>
+    <div id="expenseCategoryList" class="daily-expense-list"></div>
+  </div>
+  <div class="inventory-expense-grid">
+    <article id="ownerExpenseEntryPanel" class="inventory-panel">
+      <div class="inventory-panel-head"><div><div class="eyebrow">Owner entry</div><h2 id="expenseFormTitle">Add daily expense</h2></div></div>
+      <div class="inventory-form-grid">
+        <label><span>OUTLET</span><select id="expenseOutlet"></select></label>
+        <label><span>DATE</span><input id="expenseDate" type="date"></label>
+        <label><span>CATEGORY</span><select id="expenseCategory"></select></label>
+        <label><span>AMOUNT</span><input id="expenseAmount" type="number" min="0.01" step="0.01" placeholder="₹0"></label>
+        <label><span>SHORT NOTE · OPTIONAL</span><input id="expenseDescription" type="text" maxlength="200" placeholder="Short note"></label>
+      </div>
+      <button id="saveDailyExpense" class="secondary inventory-wide-btn" type="button">SAVE DAILY EXPENSE</button>
+      <button id="cancelExpenseEdit" class="secondary inventory-wide-btn hidden" type="button">CANCEL EDIT</button>
+    </article>
+    <article class="inventory-panel">
+      <div class="inventory-panel-head"><div><div class="eyebrow">Expense history</div><h2 id="dailyExpenseHeading">Today's expenses</h2></div><strong id="expenseTodayTotal">₹0</strong></div>
+      <div id="dailyExpenseList" class="daily-expense-list"></div>
+    </article>
+  </div>
 </section>
 <section id="outlets" class="section"><div class="page-head"><div><div class="eyebrow">Network</div><h1>Outlets</h1><p>Build the OHHO network with one operating system.</p></div><button id="addNewOutletBtn" class="primary" type="button">＋ ADD NEW OUTLET</button></div><div class="cards"><article class="card"><div class="card-kicker">Active outlet</div><h2>Shamli</h2><p>ACTIVE · 5:00 PM – 1:00 AM · 17 menu items configured</p></article><article class="card"><div class="card-kicker">Active outlet</div><h2>Kairana</h2><p>ACTIVE · 5:00 PM – 1:00 AM · 17 menu items configured</p></article></div></section>
 <section id="staff" class="section">
@@ -1239,6 +1259,7 @@ body{font-size:14px}
           <button type="button" class="report-range-btn active" data-report-range="SESSION" aria-pressed="true">SESSION SALE</button>
           <button type="button" class="report-range-btn" data-report-range="TODAY" aria-pressed="false">TODAY</button>
           <button type="button" class="report-range-btn" data-report-range="7_DAYS" aria-pressed="false">LAST 7 DAYS</button>
+          <button type="button" class="report-range-btn" data-report-range="30_DAYS" aria-pressed="false">LAST 30 DAYS</button>
           <button type="button" class="report-range-btn" data-report-range="CUSTOM" aria-pressed="false">CUSTOM DATE</button>
           <button type="button" class="report-range-btn" data-report-range="ALL" aria-pressed="false">ALL TIME</button>
         </div>
@@ -1255,6 +1276,16 @@ body{font-size:14px}
       <div class="report-stat-card"><span>NUMBER OF ORDERS</span><strong id="reportsTotalOrders">0</strong></div>
       <div class="report-stat-card"><span>AVERAGE ORDER VALUE</span><strong id="reportsAverageOrder">₹0</strong></div>
       <div class="report-stat-card"><span>PAID ITEMS</span><strong id="reportsTotalItems">0</strong></div>
+    </div>
+    <div class="report-panel">
+      <div class="report-section-head"><div><div class="eyebrow">Financial summary</div><h2>Sales and expenses</h2></div><span>Supply bills and owner-entered daily expenses for this range</span></div>
+      <div class="report-summary-grid">
+        <div class="report-stat-card"><span>SALES</span><strong id="financialSales">₹0</strong></div>
+        <div class="report-stat-card"><span>STOCK SUPPLY COST</span><strong id="financialSupply">₹0</strong></div>
+        <div class="report-stat-card"><span>DAILY EXPENSES</span><strong id="financialDailyExpenses">₹0</strong></div>
+        <div class="report-stat-card"><span>TOTAL EXPENSES</span><strong id="financialTotalExpenses">₹0</strong></div>
+        <div class="report-stat-card free"><span>NET AFTER EXPENSES</span><strong id="financialNet">₹0</strong></div>
+      </div>
     </div>
     <div class="report-split-grid">
       <div class="report-panel">
