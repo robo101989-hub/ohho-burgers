@@ -3210,12 +3210,14 @@ function fillInventoryControls() {
   inventorySelectOptions($('#expenseOutlet'), outletOptions, $('#expenseOutlet')?.value);
   inventorySelectOptions($('#expenseOutletFilter'), state.profile?.role === 'ADMIN' ? [{ value: '', label: 'All outlets' }, ...outletOptions] : outletOptions, $('#expenseOutletFilter')?.value);
   inventorySelectOptions($('#stockRequestOutlet'), outletOptions, $('#stockRequestOutlet')?.value);
-  const itemOptions = state.inventory.items.filter(item => item.active !== false).map(item => ({ value: item.id, label: `${item.name} · ${item.display_unit} · ${Number(item.default_supply_price) > 0 ? formatReportMoney(item.default_supply_price) : 'SET PRICE'}` }));
-  inventorySelectOptions($('#supplyItem'), itemOptions, $('#supplyItem')?.value);
   inventorySelectOptions($('#inventoryItemCategory'), state.inventory.stockCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), $('#inventoryItemCategory')?.value);
   inventorySelectOptions($('#inventoryMasterCategory'), [{ value: '', label: 'All categories' }, ...state.inventory.stockCategories.map(row => ({ value: row.id, label: row.name }))], $('#inventoryMasterCategory')?.value);
   inventorySelectOptions($('#stockRequestCategory'), state.inventory.stockCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), $('#stockRequestCategory')?.value);
   inventorySelectOptions($('#expenseCategory'), state.inventory.expenseCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), $('#expenseCategory')?.value);
+  const selectedSupplyItem = inventoryItem($('#supplyItem')?.value);
+  if (!selectedSupplyItem && $('#supplyItem')) $('#supplyItem').value = '';
+  if (selectedSupplyItem && $('#supplyItemSearch') && !$('#supplyItemSearch').value) $('#supplyItemSearch').value = selectedSupplyItem.name;
+  renderSupplyItemPicker($('#supplyItemSearch')?.value || '', false);
   updateSupplyDefaultPrice();
   const admin = state.profile?.role === 'ADMIN';
   const owner = state.profile?.role === 'OWNER';
@@ -3394,6 +3396,31 @@ async function loadInventory({ all = false } = {}) {
 function updateSupplyDefaultPrice() {
   const item = inventoryItem($('#supplyItem')?.value);
   if (item && $('#supplyPrice')) $('#supplyPrice').value = Number(item.default_supply_price || 0) > 0 ? Number(item.default_supply_price).toFixed(2) : '';
+}
+
+function renderSupplyItemPicker(query = '', open = true) {
+  const menu = $('#supplyItemMenu');
+  if (!menu) return;
+  const term = String(query || '').trim().toLowerCase();
+  const items = state.inventory.items.filter(item => item.active !== false && (!term || item.name.toLowerCase().includes(term) || item.sku.toLowerCase().includes(term))).slice(0, 12);
+  menu.innerHTML = items.length ? items.map(item => {
+    const category = state.inventory.stockCategories.find(row => row.id === item.category_id)?.name || 'Stock item';
+    const unit = item.display_unit === 'EACH' ? 'piece' : 'kg';
+    const price = Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${unit}` : 'Price not set';
+    return `<button type="button" class="supply-item-option${$('#supplyItem')?.value === item.id ? ' active' : ''}" data-supply-item-option="${item.id}"><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(category)} · Billed per ${unit}</small></span><b>${escapeHtml(price)}</b></button>`;
+  }).join('') : '<div class="supply-item-menu-empty">No matching stock item</div>';
+  menu.classList.toggle('hidden', !open);
+  $('#supplyItemSearch')?.setAttribute('aria-expanded', String(open));
+}
+
+function selectSupplyItem(itemId) {
+  const item = inventoryItem(itemId);
+  if (!item) return;
+  if ($('#supplyItem')) $('#supplyItem').value = item.id;
+  if ($('#supplyItemSearch')) $('#supplyItemSearch').value = item.name;
+  $('#supplyItemMenu')?.classList.add('hidden');
+  $('#supplyItemSearch')?.setAttribute('aria-expanded', 'false');
+  updateSupplyDefaultPrice();
 }
 
 function renderSupplyLines() {
@@ -3627,7 +3654,11 @@ function wireInventoryActions() {
   $('#inventoryAllRecords')?.addEventListener('click', () => { if ($('#inventoryFrom')) $('#inventoryFrom').value = ''; if ($('#inventoryTo')) $('#inventoryTo').value = ''; loadInventory({ all: true }).catch(error => toast(error.message, 'bad')); });
   $('#inventoryOutletFilter')?.addEventListener('change', () => loadInventory().catch(error => toast(error.message, 'bad')));
   $('#inventoryDownloadBtn')?.addEventListener('click', downloadInventoryReport);
-  $('#supplyItem')?.addEventListener('change', updateSupplyDefaultPrice);
+  $('#supplyItemSearch')?.addEventListener('focus', event => renderSupplyItemPicker(event.target.value, true));
+  $('#supplyItemSearch')?.addEventListener('input', event => { if ($('#supplyItem')) $('#supplyItem').value = ''; if ($('#supplyPrice')) $('#supplyPrice').value = ''; renderSupplyItemPicker(event.target.value, true); });
+  $('#supplyItemSearch')?.addEventListener('keydown', event => { if (event.key === 'Escape') { $('#supplyItemMenu')?.classList.add('hidden'); event.target.setAttribute('aria-expanded', 'false'); } if (event.key === 'Enter') { const first = $('#supplyItemMenu [data-supply-item-option]'); if (first) { event.preventDefault(); selectSupplyItem(first.dataset.supplyItemOption); } } });
+  $('#supplyItemMenu')?.addEventListener('click', event => { const button = event.target.closest('[data-supply-item-option]'); if (button) selectSupplyItem(button.dataset.supplyItemOption); });
+  document.addEventListener('click', event => { if (!event.target.closest('.supply-item-combobox')) { $('#supplyItemMenu')?.classList.add('hidden'); $('#supplyItemSearch')?.setAttribute('aria-expanded', 'false'); } });
   $('#supplyAddLine')?.addEventListener('click', addSupplyLine);
   $('#supplyGenerateBill')?.addEventListener('click', generateSupplyBill);
   $('#inventoryCreateItem')?.addEventListener('click', createInventoryItem);
