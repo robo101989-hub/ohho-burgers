@@ -30,7 +30,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
-  inventory: { items: [], stockCategories: [], expenseCategories: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], billLines: [], activeRequestId: null, editingExpenseId: null, loaded: false },
+  inventory: { items: [], stockCategories: [], expenseCategories: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], billLines: [], requestLines: [], activeRequestId: null, editingExpenseId: null, loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -3208,10 +3208,13 @@ function fillInventoryControls() {
   inventorySelectOptions($('#inventoryOutletFilter'), state.profile?.role === 'ADMIN' ? [{ value: '', label: 'All outlets' }, ...outletOptions] : outletOptions, previousFilter);
   inventorySelectOptions($('#supplyOutlet'), outletOptions, $('#supplyOutlet')?.value);
   inventorySelectOptions($('#expenseOutlet'), outletOptions, $('#expenseOutlet')?.value);
+  inventorySelectOptions($('#expenseOutletFilter'), state.profile?.role === 'ADMIN' ? [{ value: '', label: 'All outlets' }, ...outletOptions] : outletOptions, $('#expenseOutletFilter')?.value);
   inventorySelectOptions($('#stockRequestOutlet'), outletOptions, $('#stockRequestOutlet')?.value);
   const itemOptions = state.inventory.items.filter(item => item.active !== false).map(item => ({ value: item.id, label: `${item.name} · ${item.display_unit} · ${Number(item.default_supply_price) > 0 ? formatReportMoney(item.default_supply_price) : 'SET PRICE'}` }));
   inventorySelectOptions($('#supplyItem'), itemOptions, $('#supplyItem')?.value);
   inventorySelectOptions($('#inventoryItemCategory'), state.inventory.stockCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), $('#inventoryItemCategory')?.value);
+  inventorySelectOptions($('#inventoryMasterCategory'), [{ value: '', label: 'All categories' }, ...state.inventory.stockCategories.map(row => ({ value: row.id, label: row.name }))], $('#inventoryMasterCategory')?.value);
+  inventorySelectOptions($('#stockRequestCategory'), state.inventory.stockCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), $('#stockRequestCategory')?.value);
   inventorySelectOptions($('#expenseCategory'), state.inventory.expenseCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), $('#expenseCategory')?.value);
   updateSupplyDefaultPrice();
   const admin = state.profile?.role === 'ADMIN';
@@ -3233,11 +3236,11 @@ function fillInventoryControls() {
 function renderStockRequestCatalogue() {
   const list = $('#stockRequestCatalogue');
   if (!list) return;
-  const activeItems = state.inventory.items.filter(item => item.active !== false);
-  const groups = state.inventory.stockCategories.filter(row => row.active !== false).map(category => [category.name, activeItems.filter(item => item.category_id === category.id)]);
-  const uncategorized = activeItems.filter(item => !groups.some(([, items]) => items.includes(item)));
-  if (uncategorized.length) groups.push(['Other items', uncategorized]);
-  list.innerHTML = groups.filter(([, items]) => items.length).map(([label, items]) => `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="request-items">${items.map(item => { const requestUnit = item.request_unit === 'PIECE' ? 'PIECE' : 'KG'; return `<label class="request-item"><span><strong>${escapeHtml(item.name)}</strong><small>Request in ${requestUnit === 'PIECE' ? 'pieces' : 'kg'} · billed ${formatReportMoney(item.default_supply_price)} / ${item.display_unit === 'EACH' ? 'piece' : 'kg'}</small></span><input type="number" min="0" step="${requestUnit === 'PIECE' ? '1' : '0.001'}" placeholder="0 ${requestUnit === 'PIECE' ? 'pcs' : 'kg'}" data-request-qty="${item.id}"></label>`; }).join('')}</div></div>`).join('') || '<div class="inventory-empty">No stock items are available yet.</div>';
+  const categoryId = $('#stockRequestCategory')?.value || state.inventory.stockCategories.find(row => row.active !== false)?.id || '';
+  const choices = state.inventory.items.filter(item => item.active !== false && (!categoryId || item.category_id === categoryId));
+  inventorySelectOptions($('#stockRequestItem'), choices.map(item => ({ value: item.id, label: `${item.name} · ${item.request_unit === 'PIECE' ? 'pieces' : 'kg'}` })), $('#stockRequestItem')?.value);
+  const selected = state.inventory.requestLines;
+  list.innerHTML = selected.length ? selected.map(row => { const item = inventoryItem(row.itemId) || {}; return `<div class="stock-request-selected-row"><strong>${escapeHtml(item.name || 'Item')}</strong><span>${inventoryQty(row.quantity)} ${item.request_unit === 'PIECE' ? 'pcs' : 'kg'}</span><button type="button" data-remove-request-item="${row.itemId}">REMOVE</button></div>`; }).join('') : '<div class="inventory-empty">Choose an item and quantity above. Only selected items will be sent.</div>';
 }
 
 function renderStockRequests() {
@@ -3250,10 +3253,14 @@ function renderStockRequests() {
 function renderDailyExpenses() {
   const list = $('#dailyExpenseList');
   if (!list) return;
-  const outletId = inventorySelectedOutletId();
+  const outletId = $('#expenseOutletFilter')?.value || '';
+  const from = $('#expenseFrom')?.value ? new Date(`${$('#expenseFrom').value}T00:00:00`).getTime() : null;
+  const toDate = $('#expenseTo')?.value ? new Date(`${$('#expenseTo').value}T00:00:00`) : null;
+  if (toDate) toDate.setDate(toDate.getDate() + 1);
+  const to = toDate?.getTime() || null;
   const admin = state.profile?.role === 'ADMIN';
   const owner = state.profile?.role === 'OWNER';
-  const rows = state.inventory.expenses.filter(row => !outletId || row.outlet_id === outletId).sort((a,b) => new Date(b.occurred_at) - new Date(a.occurred_at));
+  const rows = state.inventory.expenses.filter(row => { const time = new Date(row.occurred_at).getTime(); return (!outletId || row.outlet_id === outletId) && (!from || time >= from) && (!to || time < to); }).sort((a,b) => new Date(b.occurred_at) - new Date(a.occurred_at));
   const total = rows.reduce((sum,row) => sum + Number(row.amount || 0), 0);
   if ($('#expenseTodayTotal')) $('#expenseTodayTotal').textContent = formatReportMoney(total);
   if ($('#dailyExpenseHeading')) $('#dailyExpenseHeading').textContent = admin ? 'All outlet expenses' : 'My expense history';
@@ -3321,8 +3328,11 @@ function renderInventory() {
   const masterList = $('#inventoryMasterList');
   if (masterList) {
     const groupName = item => state.inventory.stockCategories.find(row => row.id === item.category_id)?.name || 'Other items';
-    const names = [...new Set(state.inventory.items.map(groupName))];
-    masterList.innerHTML = state.inventory.items.length ? names.map(label => { const items = state.inventory.items.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · REQUEST ${item.request_unit === 'PIECE' ? 'PIECES' : 'KG'} · BILL ${item.display_unit === 'EACH' ? 'PIECE' : 'KG'} · LOW AT ${inventoryQty(item.low_stock_threshold)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${item.display_unit === 'EACH' ? 'piece' : 'kg'}` : 'SET RATE'}</b><button type="button" data-inventory-edit-item="${item.id}">EDIT ITEM</button></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No stock items configured.</div>';
+    const categoryId = $('#inventoryMasterCategory')?.value || '';
+    const search = String($('#inventoryMasterSearch')?.value || '').trim().toLowerCase();
+    const filteredItems = state.inventory.items.filter(item => (!categoryId || item.category_id === categoryId) && (!search || item.name.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search)));
+    const names = [...new Set(filteredItems.map(groupName))];
+    masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · REQUEST ${item.request_unit === 'PIECE' ? 'PIECES' : 'KG'} · BILL ${item.display_unit === 'EACH' ? 'PIECE' : 'KG'} · LOW AT ${inventoryQty(item.low_stock_threshold)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${item.display_unit === 'EACH' ? 'piece' : 'kg'}` : 'SET RATE'}</b><button type="button" data-inventory-edit-item="${item.id}">EDIT ITEM</button></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
   }
 
   const stockList = $('#inventoryStockList');
@@ -3455,17 +3465,29 @@ async function generateSupplyBill() {
 
 async function submitStockRequirement() {
   const outletId = $('#stockRequestOutlet')?.value;
-  const items = $$('[data-request-qty]').map(input => ({ itemId: input.dataset.requestQty, quantity: Number(input.value) })).filter(row => row.quantity > 0);
+  const items = state.inventory.requestLines.map(row => ({ itemId: row.itemId, quantity: Number(row.quantity) })).filter(row => row.quantity > 0);
   const requiredFor = $('#stockRequestDate')?.value;
   if (!outletId || !requiredFor || !items.length) return toast('Enter a quantity for at least one item.', 'bad');
   const button = $('#submitStockRequest'); button.disabled = true;
   try {
     await inventoryApi('POST', { action: 'submit_request', outletId, requiredFor, items, notes: $('#stockRequestNotes')?.value || '' });
-    $$('[data-request-qty]').forEach(input => { input.value = ''; });
+    state.inventory.requestLines = [];
     if ($('#stockRequestNotes')) $('#stockRequestNotes').value = '';
     await loadInventory({ all: true });
     toast('Tomorrow’s stock requirement sent to Admin.', 'ok');
   } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
+}
+
+function addStockRequestItem() {
+  const item = inventoryItem($('#stockRequestItem')?.value);
+  let quantity = Number($('#stockRequestQuantity')?.value);
+  if (!item || !(quantity > 0)) return toast('Choose an item and enter a quantity.', 'bad');
+  if (item.request_unit === 'PIECE') quantity = Math.max(1, Math.round(quantity));
+  const existing = state.inventory.requestLines.find(row => row.itemId === item.id);
+  if (existing) existing.quantity += quantity;
+  else state.inventory.requestLines.push({ itemId: item.id, quantity });
+  if ($('#stockRequestQuantity')) $('#stockRequestQuantity').value = '';
+  renderStockRequestCatalogue();
 }
 
 function useStockRequest(request) {
@@ -3610,13 +3632,21 @@ function wireInventoryActions() {
   $('#supplyGenerateBill')?.addEventListener('click', generateSupplyBill);
   $('#inventoryCreateItem')?.addEventListener('click', createInventoryItem);
   $('#submitStockRequest')?.addEventListener('click', submitStockRequirement);
+  $('#addStockRequestItem')?.addEventListener('click', addStockRequestItem);
+  $('#stockRequestCategory')?.addEventListener('change', renderStockRequestCatalogue);
+  $('#stockRequestCatalogue')?.addEventListener('click', event => { const button = event.target.closest('[data-remove-request-item]'); if (!button) return; state.inventory.requestLines = state.inventory.requestLines.filter(row => row.itemId !== button.dataset.removeRequestItem); renderStockRequestCatalogue(); });
   $('#saveDailyExpense')?.addEventListener('click', saveDailyExpense);
   $('#cancelExpenseEdit')?.addEventListener('click', resetExpenseForm);
   $('#expenseRefreshBtn')?.addEventListener('click', () => loadInventory({ all: true }).catch(error => toast(error.message, 'bad')));
+  $('#expenseApplyFilter')?.addEventListener('click', renderDailyExpenses);
+  $('#expenseOutletFilter')?.addEventListener('change', renderDailyExpenses);
+  $('#expenseAllRecords')?.addEventListener('click', () => { if ($('#expenseFrom')) $('#expenseFrom').value = ''; if ($('#expenseTo')) $('#expenseTo').value = ''; renderDailyExpenses(); });
   $('#createStockCategory')?.addEventListener('click', () => createManagedCategory('stock'));
   $('#createExpenseCategory')?.addEventListener('click', () => createManagedCategory('expense'));
   $('#stockRequestList')?.addEventListener('click', event => { const button = event.target.closest('[data-use-stock-request]'); const request = button && state.inventory.requests.find(row => row.id === button.dataset.useStockRequest); if (request) useStockRequest(request); });
   $('#inventoryMasterList')?.addEventListener('click', event => { const button = event.target.closest('[data-inventory-edit-item]'); const item = button && inventoryItem(button.dataset.inventoryEditItem); if (item) editInventoryItemPrice(item); });
+  $('#inventoryMasterCategory')?.addEventListener('change', renderInventory);
+  $('#inventoryMasterSearch')?.addEventListener('input', renderInventory);
   $('#stockCategoryList')?.addEventListener('click', event => { const button = event.target.closest('[data-edit-stock-category]'); const row = button && state.inventory.stockCategories.find(item => item.id === button.dataset.editStockCategory); if (row) editManagedCategory('stock', row); });
   $('#expenseCategoryList')?.addEventListener('click', event => { const button = event.target.closest('[data-edit-expense-category]'); const row = button && state.inventory.expenseCategories.find(item => item.id === button.dataset.editExpenseCategory); if (row) editManagedCategory('expense', row); });
   $('#dailyExpenseList')?.addEventListener('click', event => { const edit = event.target.closest('[data-edit-expense]'); const remove = event.target.closest('[data-delete-expense]'); const id = edit?.dataset.editExpense || remove?.dataset.deleteExpense; const expense = id && state.inventory.expenses.find(row => row.id === id); if (!expense) return; if (edit) editDailyExpense(expense); if (remove) deleteDailyExpense(expense); });
