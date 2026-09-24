@@ -3272,13 +3272,15 @@ function renderDailyExpenses() {
 function renderStockCategories() {
   const list = $('#stockCategoryList');
   if (!list) return;
-  list.innerHTML = state.inventory.stockCategories.length ? state.inventory.stockCategories.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.name)}</strong><span>${row.active === false ? 'Hidden from new items' : 'Active'}</span></div><button class="secondary" type="button" data-edit-stock-category="${row.id}">EDIT</button></div>`).join('') : '<div class="inventory-empty">Create the first stock category.</div>';
+  const categories = state.inventory.stockCategories.filter(row => row.active !== false);
+  list.innerHTML = categories.length ? categories.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.name)}</strong><span>Active</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-stock-category="${row.id}">EDIT</button><button class="secondary danger" type="button" data-delete-stock-category="${row.id}">DELETE</button></div></div>`).join('') : '<div class="inventory-empty">Create the first stock category.</div>';
 }
 
 function renderExpenseCategories() {
   const list = $('#expenseCategoryList');
   if (!list) return;
-  list.innerHTML = state.inventory.expenseCategories.length ? state.inventory.expenseCategories.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.name)}</strong><span>${row.active === false ? 'Hidden from owners' : 'Active'}</span></div><button class="secondary" type="button" data-edit-expense-category="${row.id}">EDIT</button></div>`).join('') : '<div class="inventory-empty">Create the first expense category.</div>';
+  const categories = state.inventory.expenseCategories.filter(row => row.active !== false);
+  list.innerHTML = categories.length ? categories.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.name)}</strong><span>Active</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-expense-category="${row.id}">EDIT</button><button class="secondary danger" type="button" data-delete-expense-category="${row.id}">DELETE</button></div></div>`).join('') : '<div class="inventory-empty">Create the first expense category.</div>';
 }
 
 function renderSupplyNotification() {
@@ -3332,9 +3334,9 @@ function renderInventory() {
     const groupName = item => state.inventory.stockCategories.find(row => row.id === item.category_id)?.name || 'Other items';
     const categoryId = $('#inventoryMasterCategory')?.value || '';
     const search = String($('#inventoryMasterSearch')?.value || '').trim().toLowerCase();
-    const filteredItems = state.inventory.items.filter(item => (!categoryId || item.category_id === categoryId) && (!search || item.name.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search)));
+    const filteredItems = state.inventory.items.filter(item => item.active !== false && (!categoryId || item.category_id === categoryId) && (!search || item.name.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search)));
     const names = [...new Set(filteredItems.map(groupName))];
-    masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · REQUEST ${item.request_unit === 'PIECE' ? 'PIECES' : 'KG'} · BILL ${item.display_unit === 'EACH' ? 'PIECE' : 'KG'} · LOW AT ${inventoryQty(item.low_stock_threshold)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${item.display_unit === 'EACH' ? 'piece' : 'kg'}` : 'SET RATE'}</b><button type="button" data-inventory-edit-item="${item.id}">EDIT ITEM</button></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
+    masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · REQUEST ${item.request_unit === 'PIECE' ? 'PIECES' : 'KG'} · BILL ${item.display_unit === 'EACH' ? 'PIECE' : 'KG'} · LOW AT ${inventoryQty(item.low_stock_threshold)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${item.display_unit === 'EACH' ? 'piece' : 'kg'}` : 'SET RATE'}</b><div class="inventory-row-actions"><button type="button" data-inventory-edit-item="${item.id}">EDIT</button><button class="danger" type="button" data-inventory-delete-item="${item.id}">DELETE</button></div></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
   }
 
   const stockList = $('#inventoryStockList');
@@ -3604,6 +3606,24 @@ async function editManagedCategory(type, row) {
   } catch (error) { toast(error.message, 'bad'); }
 }
 
+async function deleteInventoryItem(item) {
+  if (!window.confirm(`Delete ${item.name}?\n\nIf it has billing or stock history, it will be archived so previous reports remain correct.`)) return;
+  try {
+    const result = await inventoryApi('POST', { action: 'delete_item', itemId: item.id });
+    await loadInventory({ all: true });
+    toast(result.archived ? `${item.name} archived because it has existing history.` : `${item.name} deleted.`, 'ok');
+  } catch (error) { toast(error.message, 'bad'); }
+}
+
+async function deleteManagedCategory(type, row) {
+  if (!window.confirm(`Delete the category “${row.name}”?`)) return;
+  try {
+    const result = await inventoryApi('POST', { action: type === 'stock' ? 'delete_stock_category' : 'delete_expense_category', categoryId: row.id });
+    await loadInventory({ all: true });
+    toast(result.archived ? `${row.name} archived to preserve previous records.` : `${row.name} deleted.`, 'ok');
+  } catch (error) { toast(error.message, 'bad'); }
+}
+
 async function createInventoryItem() {
   const displayUnit = $('#inventoryItemUnit')?.value || 'EACH';
   const baseUnit = displayUnit === 'KG' ? 'G' : displayUnit === 'L' ? 'ML' : displayUnit;
@@ -3675,11 +3695,11 @@ function wireInventoryActions() {
   $('#createStockCategory')?.addEventListener('click', () => createManagedCategory('stock'));
   $('#createExpenseCategory')?.addEventListener('click', () => createManagedCategory('expense'));
   $('#stockRequestList')?.addEventListener('click', event => { const button = event.target.closest('[data-use-stock-request]'); const request = button && state.inventory.requests.find(row => row.id === button.dataset.useStockRequest); if (request) useStockRequest(request); });
-  $('#inventoryMasterList')?.addEventListener('click', event => { const button = event.target.closest('[data-inventory-edit-item]'); const item = button && inventoryItem(button.dataset.inventoryEditItem); if (item) editInventoryItemPrice(item); });
+  $('#inventoryMasterList')?.addEventListener('click', event => { const edit = event.target.closest('[data-inventory-edit-item]'); const remove = event.target.closest('[data-inventory-delete-item]'); const id = edit?.dataset.inventoryEditItem || remove?.dataset.inventoryDeleteItem; const item = id && inventoryItem(id); if (!item) return; if (edit) editInventoryItemPrice(item); if (remove) deleteInventoryItem(item); });
   $('#inventoryMasterCategory')?.addEventListener('change', renderInventory);
   $('#inventoryMasterSearch')?.addEventListener('input', renderInventory);
-  $('#stockCategoryList')?.addEventListener('click', event => { const button = event.target.closest('[data-edit-stock-category]'); const row = button && state.inventory.stockCategories.find(item => item.id === button.dataset.editStockCategory); if (row) editManagedCategory('stock', row); });
-  $('#expenseCategoryList')?.addEventListener('click', event => { const button = event.target.closest('[data-edit-expense-category]'); const row = button && state.inventory.expenseCategories.find(item => item.id === button.dataset.editExpenseCategory); if (row) editManagedCategory('expense', row); });
+  $('#stockCategoryList')?.addEventListener('click', event => { const edit = event.target.closest('[data-edit-stock-category]'); const remove = event.target.closest('[data-delete-stock-category]'); const id = edit?.dataset.editStockCategory || remove?.dataset.deleteStockCategory; const row = id && state.inventory.stockCategories.find(item => item.id === id); if (!row) return; if (edit) editManagedCategory('stock', row); if (remove) deleteManagedCategory('stock', row); });
+  $('#expenseCategoryList')?.addEventListener('click', event => { const edit = event.target.closest('[data-edit-expense-category]'); const remove = event.target.closest('[data-delete-expense-category]'); const id = edit?.dataset.editExpenseCategory || remove?.dataset.deleteExpenseCategory; const row = id && state.inventory.expenseCategories.find(item => item.id === id); if (!row) return; if (edit) editManagedCategory('expense', row); if (remove) deleteManagedCategory('expense', row); });
   $('#dailyExpenseList')?.addEventListener('click', event => { const edit = event.target.closest('[data-edit-expense]'); const remove = event.target.closest('[data-delete-expense]'); const id = edit?.dataset.editExpense || remove?.dataset.deleteExpense; const expense = id && state.inventory.expenses.find(row => row.id === id); if (!expense) return; if (edit) editDailyExpense(expense); if (remove) deleteDailyExpense(expense); });
   $('#posSupplyNotice')?.addEventListener('click', event => { const view = event.target.closest('[data-supply-notice-view]'); const dismiss = event.target.closest('[data-supply-notice-dismiss]'); if (view) markSupplyNotification(view.dataset.supplyNoticeView, true); if (dismiss) markSupplyNotification(dismiss.dataset.supplyNoticeDismiss, false); });
   $('#supplyBillLines')?.addEventListener('click', event => { const button = event.target.closest('[data-supply-remove]'); if (!button) return; state.inventory.billLines.splice(Number(button.dataset.supplyRemove), 1); renderSupplyLines(); });
