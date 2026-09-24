@@ -1077,6 +1077,61 @@ body{font-size:14px}
 @media(max-width:900px){.stock-request-picker{grid-template-columns:1fr 1fr}.stock-request-picker button{grid-column:1/-1}.inventory-master-toolbar{grid-template-columns:1fr 1fr}.expense-flow{grid-template-columns:1fr}}
 @media(max-width:650px){#inventory .page-head h1{font-size:30px}.stock-request-picker,.inventory-master-toolbar{grid-template-columns:1fr}.stock-request-picker button{grid-column:auto}.stock-request-selected-row{grid-template-columns:1fr auto}.stock-request-selected-row span{grid-column:1/-1}}
 </style>
+<style>
+/* Stock operations: polished application UI */
+#inventory,#daily-expenses{--ops-surface:#111211;--ops-surface-raised:#161715;--ops-border:#2d2f2c;--ops-muted:#a1a39d;--ops-text:#f5f5f1}
+#inventory .page-head,#daily-expenses .page-head{align-items:flex-end;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid #242523}
+#inventory .page-head h1,#daily-expenses .page-head h1{margin:7px 0 6px;font-size:32px;font-weight:780;letter-spacing:-1px}
+#inventory .page-head p,#daily-expenses .page-head p{max-width:680px;color:#a5a7a1;font-size:13px;line-height:1.55}
+#inventory .eyebrow,#daily-expenses .eyebrow{color:#e4bd12;font-size:10px;font-weight:800;letter-spacing:.85px}
+#inventory .primary,#inventory .secondary,#daily-expenses .primary,#daily-expenses .secondary{min-height:42px;border-radius:9px;padding:10px 15px;font-size:10px;font-weight:800;letter-spacing:.35px;transition:transform .15s ease,border-color .15s ease,background .15s ease}
+#inventory button:hover,#daily-expenses button:hover{transform:translateY(-1px)}
+#inventory button:active,#daily-expenses button:active{transform:translateY(0)}
+#inventory .inventory-filterbar,#daily-expenses .inventory-filterbar{padding:14px;background:var(--ops-surface);border:1px solid var(--ops-border);border-radius:13px;box-shadow:0 12px 34px rgba(0,0,0,.14)}
+#inventory .inventory-filterbar label span,#inventory .inventory-form-grid label span,#inventory .inventory-notes span,#daily-expenses .inventory-filterbar label span,#daily-expenses .inventory-form-grid label span{color:#a3a59f;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:10px;font-weight:720;letter-spacing:.45px}
+#inventory .inventory-filterbar input,#inventory .inventory-filterbar select,#inventory .inventory-form-grid input,#inventory .inventory-form-grid select,#inventory .inventory-notes input,#daily-expenses .inventory-filterbar input,#daily-expenses .inventory-filterbar select,#daily-expenses .inventory-form-grid input,#daily-expenses .inventory-form-grid select{height:44px;border-color:#383a37;border-radius:9px;background:#0b0c0b;color:var(--ops-text);font-size:13px;box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}
+#inventory .inventory-filterbar input:focus,#inventory .inventory-filterbar select:focus,#inventory .inventory-form-grid input:focus,#inventory .inventory-form-grid select:focus,#daily-expenses input:focus,#daily-expenses select:focus{border-color:#d7b30f;box-shadow:0 0 0 3px rgba(255,210,28,.11)}
+#inventory .inventory-summary{gap:12px;margin:14px 0 16px}
+#inventory .inventory-summary article{position:relative;overflow:hidden;min-height:112px;padding:19px;background:linear-gradient(145deg,#151614,#101110);border-color:var(--ops-border);border-radius:14px;box-shadow:0 10px 26px rgba(0,0,0,.13)}
+#inventory .inventory-summary article:before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:3px;border-radius:0 3px 3px 0;background:#ffd21c}
+#inventory .inventory-summary span{color:#a3a59f;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:10px;font-weight:750;letter-spacing:.45px}
+#inventory .inventory-summary strong{margin-top:10px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:25px;font-weight:780;letter-spacing:-.6px}
+#inventory .inventory-summary small{margin-top:7px;color:#898b85!important;font-size:11px!important}
+#inventory .inventory-panel,#daily-expenses .inventory-panel{padding:21px;background:linear-gradient(150deg,#121311,#0f100f);border-color:var(--ops-border);border-radius:15px;box-shadow:0 14px 38px rgba(0,0,0,.13)}
+#inventory .inventory-panel-head,#daily-expenses .inventory-panel-head{align-items:center;margin-bottom:17px}
+#inventory .inventory-panel-head h2,#daily-expenses .inventory-panel-head h2{margin-top:5px;font-size:19px;font-weight:760;letter-spacing:-.35px}
+#inventory .inventory-panel-head>span,#daily-expenses .inventory-panel-head>span{color:#969892;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:10px;font-weight:600;letter-spacing:0}
+#inventory .stock-request-picker{padding:14px;border:1px solid #30322f;border-radius:12px;background:#0c0d0c}
+#inventory .stock-request-picker label span,#inventory .inventory-master-toolbar label span{color:#a9aba5;font-size:10px;font-weight:720}
+#inventory .stock-request-picker input,#inventory .stock-request-picker select,#inventory .inventory-master-toolbar input,#inventory .inventory-master-toolbar select{height:44px;background:#151614;border-color:#3a3c38;border-radius:9px}
+#inventory .stock-request-selected-row{padding:13px 15px;border-color:#343632;border-radius:10px;background:var(--ops-surface-raised)}
+#inventory .stock-request-selected-row strong{font-size:13px;font-weight:720}
+#inventory .stock-request-selected-row span{color:#d9ba23;font-weight:750}
+#inventory .inventory-setup-details>summary{min-height:48px}
+#inventory .inventory-setup-details>summary small{color:#d9ba23;font-size:10px}
+#inventory .inventory-setup-details>summary strong{font-size:16px;font-weight:720}
+#inventory .inventory-setup-details>summary b{min-width:58px;text-align:center;border:1px solid #4b4320;background:#211d0b;color:#f1cd25}
+#inventory .inventory-master-item{min-height:82px;padding:14px;border-color:#30322f;border-radius:11px;background:#151614}
+#inventory .inventory-master-item:hover{border-color:#4a4630;background:#181814}
+#inventory .inventory-master-rate button{min-height:auto;padding:4px 0;color:#c3c5bf}
+#inventory .inventory-status{border-radius:999px;padding:6px 9px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:9px;font-weight:750;letter-spacing:.25px}
+#inventory .inventory-bill,#inventory .stock-request-card{padding:15px;border-color:#30322f;border-radius:12px;background:#151614}
+#inventory .inventory-bill h3,#inventory .stock-request-top strong{font-size:13px;font-weight:730}
+#inventory .inventory-bill-meta,#inventory .stock-request-top span,#inventory .inventory-bill-items span{font-size:10px;line-height:1.45}
+#inventory .inventory-table-head{color:#969892;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:9px;font-weight:750;letter-spacing:.35px}
+#inventory .inventory-stock-row{font-size:11px}.inventory-stock-row strong{font-size:12px}
+#daily-expenses .expense-flow{gap:12px;margin-bottom:14px}
+#daily-expenses .expense-flow>div{min-height:78px;padding:16px;border-color:var(--ops-border);border-radius:13px;background:linear-gradient(145deg,#151614,#101110)}
+#daily-expenses .expense-flow b{width:34px;height:34px;flex-basis:34px;font-size:14px;box-shadow:0 5px 16px rgba(255,210,28,.12)}
+#daily-expenses .expense-flow strong{font-size:11px;font-weight:760;letter-spacing:.25px}
+#daily-expenses .expense-flow small{font-size:11px;color:#9b9d97}
+#daily-expenses .daily-expense-list{gap:8px}
+#daily-expenses .daily-expense-row{padding:13px 14px;border:1px solid #2e302d;border-radius:10px;background:#151614}
+#daily-expenses .daily-expense-row strong{font-size:12px;font-weight:720}
+#daily-expenses .daily-expense-row span{font-size:10px!important;color:#9b9d97}
+#daily-expenses .daily-expense-row b{font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:13px;font-weight:760}
+@media(max-width:760px){#inventory .page-head,#daily-expenses .page-head{align-items:flex-start}.inventory-head-actions{width:100%}#inventory .inventory-summary article{min-height:98px;padding:16px}#inventory .inventory-panel,#daily-expenses .inventory-panel{padding:16px}}
+</style>
 <section id="inventory" class="section">
   <div class="page-head inventory-page-head">
     <div><div class="eyebrow">Franchise operations</div><h1 id="inventoryPageTitle">Stock &amp; Supply Management</h1><p>Owner requests stock, Admin enters the actual supply, and the bill appears for the outlet.</p></div>
