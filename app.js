@@ -58,14 +58,7 @@ if (isMenuPage) {
         <h2>${category}</h2>
       </div>
       <div class="menu-list">
-        ${items.map(p => `<article class="menu-item menu-item-public" data-menu-id="${p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}" data-menu-image="${p.image || ''}">
-          <div class="menu-item-info">
-            <h3>${p.name}</h3>
-            <p>${p.desc}</p>
-          </div>
-          <img class="menu-item-image" loading="lazy" src="${p.image}" alt="${p.name}">
-          <span class="menu-price">${p.price}</span><button class="menu-add" type="button" data-add-to-cart="${p.name}">Add</button>
-        </article>`).join('')}
+        ${items.map(p => `<article class="menu-item menu-item-public menu-product-card" data-menu-id="${p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}" data-menu-image="${p.image || ''}"><div class="menu-product-image"><img loading="lazy" src="${p.image}" alt="${p.name}"><a class="menu-card-order" href="index.html#order" aria-label="Order ${p.name}">+</a></div><div class="menu-product-info"><div><h3>${p.name}</h3><p>${p.desc}</p></div><b>${p.price}</b></div></article>`).join('')}
       </div>
     </section>`;
   }).join(''));
@@ -356,7 +349,7 @@ function renderPublicMenu({ categories, items }) {
   const markup = categories.map((category, index) => {
     const categoryItems = itemsByCategory.get(category.id) || [];
     if (!categoryItems.length) return '';
-    return `<section class="menu-category"><div class="menu-category-header"><span class="menu-category-number">${String(index + 1).padStart(2, '0')}</span><h2>${escapeHtml(category.name)}</h2></div><div class="menu-list">${categoryItems.map(item => `<article class="menu-item menu-item-public"><div class="menu-item-info"><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.description || 'Made fresh with OHHO flavour.')}</p></div>${item.image_url ? `<img class="menu-item-image" src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}" loading="lazy">` : ''}<div class="menu-price">${money(item.price)}</div></article>`).join('')}</div></section>`;
+    return `<section class="menu-category"><div class="menu-category-header"><span class="menu-category-number">${String(index + 1).padStart(2, '0')}</span><h2>${escapeHtml(category.name)}</h2></div><div class="menu-list">${categoryItems.map(item => `<article class="menu-item menu-item-public menu-product-card"><div class="menu-product-image">${item.image_url ? `<img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}" loading="lazy">` : '<div class="menu-image-placeholder"><span>OHHO</span><small>BURGERS</small></div>'}<a class="menu-card-order" href="index.html#order" aria-label="Order ${escapeHtml(item.name)}">+</a></div><div class="menu-product-info"><div><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.description || 'Made fresh with OHHO flavour.')}</p></div><b>${money(item.price)}</b></div></article>`).join('')}</div></section>`;
   }).join('');
 
   if (markup) target.innerHTML = markup;
