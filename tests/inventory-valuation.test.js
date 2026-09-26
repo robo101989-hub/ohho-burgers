@@ -11,7 +11,7 @@ test('values piece-to-kg stock from the received bill total rather than kg rate 
   assert.equal(value, 875);
 });
 
-test('uses the latest received bill cost and ignores pending supplies', () => {
+test('uses received bill cost and ignores pending supplies', () => {
   const value = calculateCurrentStockValue({
     items: [{ id: 'sauce', measurement_type: 'KG_KG', base_unit: 'G', display_unit: 'KG', default_supply_price: 100 }],
     balances: [{ outlet_id: 'outlet', item_id: 'sauce', quantity_on_hand: 2000 }],
@@ -21,4 +21,16 @@ test('uses the latest received bill cost and ignores pending supplies', () => {
     ]
   });
   assert.equal(value, 240);
+});
+
+test('uses weighted received cost so one bad cross-unit receipt cannot replace the full stock value', () => {
+  const value = calculateCurrentStockValue({
+    items: [{ id: 'patty', supply_unit: 'KG', inventory_unit: 'EACH', base_unit: 'EACH', default_supply_price: 350 }],
+    balances: [{ outlet_id: 'outlet', item_id: 'patty', quantity_on_hand: 33 }],
+    bills: [
+      { outlet_id: 'outlet', receipt_status: 'RECEIVED', supply_bill_items: [{ item_id: 'patty', base_quantity: 30, line_total: 875 }] },
+      { outlet_id: 'outlet', receipt_status: 'RECEIVED', supply_bill_items: [{ item_id: 'patty', base_quantity: 3, line_total: 875 }] }
+    ]
+  });
+  assert.equal(value, 1750);
 });

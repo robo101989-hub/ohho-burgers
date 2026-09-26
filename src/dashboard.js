@@ -3467,6 +3467,7 @@ function renderInventory() {
   if ($('#inventoryToday')) $('#inventoryToday').textContent = String(todayReceived);
   if ($('#inventoryStockCount')) $('#inventoryStockCount').textContent = `${balances.length} item${balances.length === 1 ? '' : 's'}`;
   if ($('#inventoryBillCount')) $('#inventoryBillCount').textContent = `${bills.length} bill${bills.length === 1 ? '' : 's'}`;
+  if ($('#inventoryFilterStatus')) $('#inventoryFilterStatus').textContent = `${bills.length} bill${bills.length === 1 ? '' : 's'} · ${movements.length} movement${movements.length === 1 ? '' : 's'}`;
   if ($('#supplyHistoryRangeLabel')) {
     const from = state.inventory.historyFrom || '';
     const to = state.inventory.historyTo || '';
@@ -3912,10 +3913,22 @@ function wireInventoryActions() {
       historyBounds(from, to);
       state.inventory.historyFrom = from;
       state.inventory.historyTo = to;
-      loadInventory().catch(error => toast(error.message, 'bad'));
+      renderInventory();
+      const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at').length;
+      const movements = inventoryHistoryRows(state.inventory.movements, 'occurred_at').length;
+      $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      toast(`Showing ${bills} bill${bills === 1 ? '' : 's'} and ${movements} stock movement${movements === 1 ? '' : 's'}.`, 'ok');
     } catch (error) { toast(error.message, 'bad'); }
   });
-  $('#inventoryAllRecords')?.addEventListener('click', () => { if ($('#inventoryFrom')) $('#inventoryFrom').value = ''; if ($('#inventoryTo')) $('#inventoryTo').value = ''; state.inventory.historyFrom = ''; state.inventory.historyTo = ''; loadInventory().catch(error => toast(error.message, 'bad')); });
+  $('#inventoryAllRecords')?.addEventListener('click', () => {
+    if ($('#inventoryFrom')) $('#inventoryFrom').value = '';
+    if ($('#inventoryTo')) $('#inventoryTo').value = '';
+    state.inventory.historyFrom = '';
+    state.inventory.historyTo = '';
+    renderInventory();
+    $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast(`Showing all ${state.inventory.bills.length} supply bills and ${state.inventory.movements.length} stock movements.`, 'ok');
+  });
   $('#supplyHistoryCustomToggle')?.addEventListener('click', () => {
     const panel = $('#supplyHistoryCustomPanel');
     const open = panel?.classList.contains('hidden');

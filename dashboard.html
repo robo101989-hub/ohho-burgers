@@ -1115,6 +1115,7 @@ body{font-size:14px}
 #inventory .inventory-filterbar label span,#inventory .inventory-form-grid label span,#inventory .inventory-notes span,#daily-expenses .inventory-filterbar label span,#daily-expenses .inventory-form-grid label span{color:#a3a59f;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:10px;font-weight:720;letter-spacing:.45px}
 #inventory .inventory-filterbar input,#inventory .inventory-filterbar select,#inventory .inventory-form-grid input,#inventory .inventory-form-grid select,#inventory .inventory-notes input,#daily-expenses .inventory-filterbar input,#daily-expenses .inventory-filterbar select,#daily-expenses .inventory-form-grid input,#daily-expenses .inventory-form-grid select{height:44px;border-color:#383a37;border-radius:9px;background:#0b0c0b;color:var(--ops-text);font-size:13px;box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}
 #inventory .inventory-filterbar input:focus,#inventory .inventory-filterbar select:focus,#inventory .inventory-form-grid input:focus,#inventory .inventory-form-grid select:focus,#daily-expenses input:focus,#daily-expenses select:focus{border-color:#d7b30f;box-shadow:0 0 0 3px rgba(255,210,28,.11)}
+#inventory .inventory-filter-status{align-self:center;color:#ffd21c;font-size:10px;font-weight:750;letter-spacing:.35px;white-space:nowrap}
 #inventory .inventory-summary{gap:12px;margin:14px 0 16px}
 #inventory .inventory-summary article{position:relative;overflow:hidden;min-height:112px;padding:19px;background:linear-gradient(145deg,#151614,#101110);border-color:var(--ops-border);border-radius:14px;box-shadow:0 10px 26px rgba(0,0,0,.13)}
 #inventory .inventory-summary article:before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:3px;border-radius:0 3px 3px 0;background:#ffd21c}
@@ -1169,9 +1170,10 @@ body{font-size:14px}
     <label><span>TO</span><input id="inventoryTo" type="date"></label>
     <button id="inventoryApplyFilter" class="secondary" type="button">VIEW RECORDS</button>
     <button id="inventoryAllRecords" class="secondary" type="button">SEE ALL</button>
+    <span id="inventoryFilterStatus" class="inventory-filter-status" aria-live="polite">All records</span>
   </div>
   <div class="inventory-summary">
-    <article><span>CURRENT STOCK VALUE</span><strong id="inventoryStockValue">₹0</strong><small>At latest supply price</small></article>
+    <article><span>CURRENT STOCK VALUE</span><strong id="inventoryStockValue">₹0</strong><small>At weighted received cost</small></article>
     <article><span>LOW / OUT OF STOCK</span><strong id="inventoryLowCount">0</strong><small>Needs attention</small></article>
     <article><span>SUPPLY AMOUNT DUE</span><strong id="inventoryDue">₹0</strong><small>Unpaid balance</small></article>
     <article><span>STOCK RECEIVED TODAY</span><strong id="inventoryToday">0</strong><small>Supply entries</small></article>
@@ -1266,7 +1268,7 @@ body{font-size:14px}
     <div class="inventory-master-toolbar"><label><span>CATEGORY</span><select id="inventoryMasterCategory"></select></label><label><span>SEARCH ITEM</span><input id="inventoryMasterSearch" type="search" placeholder="Search name or SKU"></label></div>
     <div id="inventoryMasterList" class="inventory-master-groups"></div>
   </details>
-  <article class="inventory-panel inventory-table-panel">
+  <article id="inventoryRecords" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Live balances</div><h2>Outlet stock</h2></div><span id="inventoryStockCount">0 items</span></div>
     <div class="inventory-table-wrap"><div class="inventory-table-head"><span>ITEM</span><span>OUTLET</span><span>RECEIVED TODAY</span><span>USED / WASTE</span><span>CLOSING STOCK</span><span>STATUS</span></div><div id="inventoryStockList"></div></div>
   </article>
