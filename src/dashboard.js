@@ -2,7 +2,7 @@ import { supabase } from './supabase.js';
 import { filterHistory, historyBounds } from '../lib/history.js';
 import { calculateSuggestedRequirements } from '../lib/stock-requirements.js';
 import { calculateCurrentStockValue } from '../lib/inventory-valuation.js';
-import { defaultNetQuantity, unitLabel } from '../lib/inventory-measurements.js';
+import { defaultNetQuantity, unitLabel, stockRequestUnit, requestSupplyQuantities } from '../lib/inventory-measurements.js';
 
 const ROLE_PERMISSIONS = {
   ADMIN: ['overview', 'pos', 'orders', 'menu', 'inventory', 'daily-expenses', 'outlets', 'staff', 'reports', 'settings'],
@@ -3247,7 +3247,8 @@ function fillInventoryControls() {
   if ($('#openingStockPanel')) $('#openingStockPanel').style.display = admin ? '' : 'none';
   if ($('#stockRequestCreatePanel')) $('#stockRequestCreatePanel').style.display = owner ? '' : 'none';
   if ($('#wastagePanel')) $('#wastagePanel').style.display = owner ? '' : 'none';
-  if ($('#stockRequestAdminPanel')) $('#stockRequestAdminPanel').style.display = admin ? '' : 'none';
+  if ($('#stockRequestAdminPanel')) $('#stockRequestAdminPanel').style.display = admin || owner ? '' : 'none';
+  if ($('#stockRequestHistoryHint')) $('#stockRequestHistoryHint').textContent = owner ? 'Latest first · Edit before Admin starts processing' : 'Use a request to prepare its supply bill';
   if ($('#expenseCategoryAdminPanel')) $('#expenseCategoryAdminPanel').style.display = admin ? '' : 'none';
   if ($('#ownerExpenseEntryPanel')) $('#ownerExpenseEntryPanel').style.display = owner ? '' : 'none';
   if ($('#expenseDate') && !$('#expenseDate').value) $('#expenseDate').value = new Date().toLocaleDateString('en-CA');
@@ -3262,21 +3263,51 @@ function renderStockRequestCatalogue() {
   if (!list) return;
   const categoryId = $('#stockRequestCategory')?.value || state.inventory.stockCategories.find(row => row.active !== false)?.id || '';
   const choices = state.inventory.items.filter(item => item.active !== false && (!categoryId || item.category_id === categoryId));
-  inventorySelectOptions($('#stockRequestItem'), choices.map(item => ({ value: item.id, label: `${item.name} · ${unitLabel(item.supply_unit || item.request_unit)}` })), $('#stockRequestItem')?.value);
+  inventorySelectOptions($('#stockRequestItem'), choices.map(item => ({ value: item.id, label: `${item.name} · ${unitLabel(stockRequestUnit(item))}` })), $('#stockRequestItem')?.value);
   const selected = state.inventory.requestLines;
   list.innerHTML = selected.length ? selected.map(row => {
     const item = inventoryItem(row.itemId) || {};
-    const supplyUnit = item.supply_unit || item.request_unit;
+    const supplyUnit = row.unit || stockRequestUnit(item);
     const step = ['PIECE','PACK','CAN','BOX','BOTTLE'].includes(supplyUnit) ? '1' : '0.001';
     return `<div class="stock-request-selected-row"><strong>${escapeHtml(item.name || 'Item')}${row.suggested ? '<small> · SUGGESTED</small>' : ''}</strong><label><input type="number" min="${step}" step="${step}" value="${Number(row.quantity)}" data-request-line-quantity="${row.itemId}"> ${escapeHtml(unitLabel(supplyUnit))}</label><button type="button" data-remove-request-item="${row.itemId}">REMOVE</button></div>`;
   }).join('') : '<div class="inventory-empty">Generate suggestions or choose an item and quantity above.</div>';
 }
 
+function canEditStockRequest(request) {
+  return state.profile?.role === 'OWNER' && request.created_by === state.session?.user?.id &&
+    ['DRAFT','SUBMITTED'].includes(request.status) && !request.bill_id && !request.processing_started_at;
+}
+
+function stockRequestCard(request, latest = false) {
+  const owner = state.profile?.role === 'OWNER';
+  const label = request.processing_started_at && request.status === 'SUBMITTED' ? 'PROCESSING' : request.status;
+  const editable = canEditStockRequest(request);
+  const items = request.franchise_stock_request_items || [];
+  return `<div class="stock-request-card"><div class="stock-request-top"><div><strong>${latest ? 'LATEST · ' : ''}${escapeHtml(inventoryOutlet(request.outlet_id)?.name || 'Outlet')} · Needed ${escapeHtml(request.required_for)}</strong><span>Updated ${inventoryDate(request.updated_at || request.created_at)} · ${items.length} item${items.length === 1 ? '' : 's'}${request.notes ? ` · ${escapeHtml(request.notes)}` : ''}</span></div><span class="inventory-status ${request.status === 'FULFILLED' ? 'in' : 'low'}">${escapeHtml(label)}</span></div><div class="stock-request-items">${items.map(item => `<span>${escapeHtml(item.item_name)} · ${inventoryQty(item.quantity)} ${escapeHtml(unitLabel(item.unit, item.quantity))}</span>`).join('')}</div>${owner ? (editable ? `<button class="primary" type="button" data-edit-stock-draft="${request.id}">EDIT REQUIREMENT</button><p>You can change this requirement until Admin starts preparing the supply.</p>` : `<button class="secondary" type="button" disabled>EDIT UNAVAILABLE</button><p>${request.created_by !== state.session?.user?.id ? 'Only the Owner who created this requirement can edit it.' : 'This requirement is being processed or has been completed. Contact Admin for changes.'}</p>`) : ''}${state.profile?.role === 'ADMIN' && ['SUBMITTED','PARTIAL'].includes(request.status) ? `<button class="primary" type="button" data-use-stock-request="${request.id}">${request.processing_started_at ? 'CONTINUE' : 'PREPARE'} SUPPLY BILL</button>${request.processing_started_at && !request.bill_id ? `<button class="secondary" type="button" data-release-stock-request="${request.id}">ALLOW OWNER TO EDIT</button>` : ''}` : ''}</div>`;
+}
+
 function renderStockRequests() {
-  const list = $('#stockRequestList');
-  if (!list) return;
-  const requests = (state.inventory.requests || []).filter(request => state.profile?.role !== 'ADMIN' || request.status !== 'DRAFT');
-  list.innerHTML = requests.length ? requests.map(request => `<div class="stock-request-card"><div class="stock-request-top"><div><strong>${escapeHtml(inventoryOutlet(request.outlet_id)?.name || 'Outlet')} · Needed ${new Date(`${request.required_for}T00:00:00`).toLocaleDateString('en-IN',{dateStyle:'medium'})}</strong><span>${request.status === 'DRAFT' ? 'Saved' : 'Requested'} ${inventoryDate(request.updated_at || request.created_at)}${request.notes ? ` · ${escapeHtml(request.notes)}` : ''}</span></div><span class="inventory-status ${request.status === 'FULFILLED' ? 'in' : request.status === 'CANCELLED' ? 'out' : 'low'}">${escapeHtml(request.status)}</span></div><div class="stock-request-items">${(request.franchise_stock_request_items || []).map(item => `<span>${escapeHtml(item.item_name)} · ${inventoryQty(item.quantity)} ${escapeHtml(unitLabel(item.unit, item.quantity))}</span>`).join('')}</div>${state.profile?.role === 'OWNER' && request.status === 'DRAFT' ? `<button class="secondary" type="button" data-edit-stock-draft="${request.id}">EDIT DRAFT</button>` : ''}${state.profile?.role === 'ADMIN' && ['SUBMITTED','PARTIAL'].includes(request.status) ? `<button class="primary" type="button" data-use-stock-request="${request.id}">PREPARE SUPPLY BILL</button>` : ''}</div>`).join('') : '<div class="inventory-empty">No stock requirements submitted yet.</div>';
+  const owner = state.profile?.role === 'OWNER';
+  const requests = [...(state.inventory.requests || [])].filter(request => state.profile?.role !== 'ADMIN' || request.status !== 'DRAFT')
+    .sort((a,b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+  const outletId = inventorySelectedOutletId();
+  const visible = requests.filter(request => !outletId || request.outlet_id === outletId);
+  if ($('#stockRequestList')) $('#stockRequestList').innerHTML = visible.length ? visible.map((request, index) => stockRequestCard(request, index === 0)).join('') : '<div class="inventory-empty">No requirements yet. Generate suggestions, then save or send your first requirement.</div>';
+  if ($('#ownerLatestRequirementPanel')) $('#ownerLatestRequirementPanel').style.display = owner ? '' : 'none';
+  if ($('#ownerLatestRequirement')) $('#ownerLatestRequirement').innerHTML = requests.length ? stockRequestCard(requests[0], true) : '<div class="inventory-empty">No requirements yet. Open Stock Requirements to create one.</div>';
+}
+
+function resetStockRequestEditor() {
+  state.inventory.activeDraftId = null;
+  state.inventory.requestLines = [];
+  if ($('#stockRequestNotes')) $('#stockRequestNotes').value = '';
+  if ($('#stockRequestEditorTitle')) $('#stockRequestEditorTitle').textContent = "Review tomorrow's stock";
+  $('#stockRequestEditingNotice')?.classList.add('hidden');
+  $('#cancelStockRequestEdit')?.classList.add('hidden');
+  if ($('#stockRequestOutlet')) $('#stockRequestOutlet').disabled = false;
+  if ($('#saveStockRequestDraft')) $('#saveStockRequestDraft').classList.remove('hidden');
+  if ($('#submitStockRequest')) $('#submitStockRequest').textContent = 'CONFIRM & SEND';
+  renderStockRequestCatalogue();
 }
 
 function renderDailyExpenses() {
@@ -3654,7 +3685,7 @@ async function generateSupplyBill() {
   if (state.inventory.billLines.some(line => !(Number(line.inventoryQuantity) > 0) || !(Number(line.billingQuantity) > 0))) return toast('Enter the supplied quantity and billing quantity for every item.', 'bad');
   button.disabled = true;
   try {
-    await inventoryApi('POST', { action: 'issue_bill', outletId, items: state.inventory.billLines, notes: $('#supplyNotes')?.value || '', requestId: state.inventory.activeRequestId });
+    await inventoryApi('POST', { action: 'issue_bill', outletId, items: state.inventory.billLines, notes: $('#supplyNotes')?.value || '', requestId: state.inventory.activeRequestId, requestUpdatedAt: state.inventory.activeRequestUpdatedAt });
     state.inventory.billLines = [];
     state.inventory.activeRequestId = null;
     if ($('#supplyNotes')) $('#supplyNotes').value = '';
@@ -3672,39 +3703,48 @@ function generateStockSuggestions() {
     bills: state.inventory.bills,
     outletId
   });
-  state.inventory.activeDraftId = null;
+  if (!state.inventory.activeDraftId) resetStockRequestEditor();
   state.inventory.requestLines = suggestions.map(row => ({ itemId: row.itemId, quantity: row.quantity, suggested: true }));
   renderStockRequestCatalogue();
   toast(suggestions.length ? `${suggestions.length} stock suggestion${suggestions.length === 1 ? '' : 's'} ready for review.` : 'Stock already meets its targets, or Admin has not set target levels yet.', suggestions.length ? 'ok' : 'bad');
 }
 
 function editStockDraft(request) {
+  if (!canEditStockRequest(request)) return toast('This requirement can no longer be edited. Refresh to see its latest status.', 'bad');
+  $('.nav-btn[data-section="inventory"]')?.click();
   state.inventory.activeDraftId = request.id;
-  state.inventory.requestLines = (request.franchise_stock_request_items || []).map(row => ({ itemId: row.item_id, quantity: Number(row.quantity) }));
+  state.inventory.requestLines = (request.franchise_stock_request_items || []).map(row => ({ itemId: row.item_id, quantity: Number(row.quantity), unit: row.unit }));
   if ($('#stockRequestOutlet')) $('#stockRequestOutlet').value = request.outlet_id;
   if ($('#stockRequestDate')) $('#stockRequestDate').value = request.required_for;
   if ($('#stockRequestNotes')) $('#stockRequestNotes').value = request.notes || '';
+  $('#stockRequestEditorTitle').textContent = 'Edit requirement';
+  $('#stockRequestEditingNotice').textContent = `Editing existing requirement · Needed ${request.required_for}. Saving updates this same requirement.`;
+  $('#stockRequestEditingNotice').classList.remove('hidden');
+  $('#cancelStockRequestEdit').classList.remove('hidden');
+  $('#stockRequestOutlet').disabled = true;
+  $('#saveStockRequestDraft').classList.toggle('hidden', request.status === 'SUBMITTED');
+  $('#submitStockRequest').textContent = request.status === 'SUBMITTED' ? 'SAVE CHANGES' : 'CONFIRM & SEND';
   renderStockRequestCatalogue();
   $('#stockRequestCreatePanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  toast('Draft loaded. Adjust the quantities, then save or send it.', 'ok');
+  toast('Requirement loaded. Edit quantities and save your changes.', 'ok');
 }
 
 async function saveStockRequirement(status) {
   const outletId = $('#stockRequestOutlet')?.value;
-  const items = state.inventory.requestLines.map(row => ({ itemId: row.itemId, quantity: Number(row.quantity) })).filter(row => row.quantity > 0);
+  const items = state.inventory.requestLines.map(row => ({ itemId: row.itemId, quantity: Number(row.quantity), unit: row.unit })).filter(row => row.quantity > 0);
   const requiredFor = $('#stockRequestDate')?.value;
   if (!outletId || !requiredFor || !items.length) return toast('Enter a quantity for at least one item.', 'bad');
+  const editingSent = state.inventory.requests.find(row => row.id === state.inventory.activeDraftId)?.status === 'SUBMITTED';
   const button = status === 'DRAFT' ? $('#saveStockRequestDraft') : $('#submitStockRequest');
   if (button) button.disabled = true;
   try {
     const result = await inventoryApi('POST', { action: 'save_request', requestId: state.inventory.activeDraftId, outletId, requiredFor, items, notes: $('#stockRequestNotes')?.value || '', status });
     state.inventory.activeDraftId = status === 'DRAFT' ? result.requestId : null;
     if (status === 'SUBMITTED') {
-      state.inventory.requestLines = [];
-      if ($('#stockRequestNotes')) $('#stockRequestNotes').value = '';
+      resetStockRequestEditor();
     }
     await loadInventory();
-    toast(status === 'DRAFT' ? 'Stock requirement draft saved.' : 'Tomorrow’s stock requirement sent to Admin.', 'ok');
+    toast(status === 'DRAFT' ? 'Stock requirement draft saved.' : editingSent ? 'Requirement updated. Admin will see your changes.' : 'Stock requirement sent to Admin.', 'ok');
   } catch (error) { toast(error.message, 'bad'); } finally { if (button) button.disabled = false; }
 }
 
@@ -3714,8 +3754,10 @@ function saveStockRequirementDraft() { return saveStockRequirement('DRAFT'); }
 function addStockRequestItem() {
   const item = inventoryItem($('#stockRequestItem')?.value);
   let quantity = Number($('#stockRequestQuantity')?.value);
+  const existingLine = state.inventory.requestLines.find(row => row.itemId === item?.id);
+  if (existingLine?.unit && existingLine.unit !== stockRequestUnit(item)) return toast('Edit this item quantity directly in the existing requirement below.', 'bad');
   if (!item || !(quantity > 0)) return toast('Choose an item and enter a quantity.', 'bad');
-  if (['PIECE','BOTTLE','PACK','CAN','BOX'].includes(item.supply_unit || item.request_unit)) quantity = Math.max(1, Math.round(quantity));
+  if (['PIECE','BOTTLE','PACK','CAN','BOX'].includes(stockRequestUnit(item))) quantity = Math.max(1, Math.round(quantity));
   const existing = state.inventory.requestLines.find(row => row.itemId === item.id);
   if (existing) existing.quantity += quantity;
   else state.inventory.requestLines.push({ itemId: item.id, quantity, suggested: false });
@@ -3723,14 +3765,20 @@ function addStockRequestItem() {
   renderStockRequestCatalogue();
 }
 
-function useStockRequest(request) {
+async function useStockRequest(request) {
+  try {
+    const result = await inventoryApi('POST', { action: 'set_request_processing', requestId: request.id, start: true });
+    request = result.request;
+    await loadInventory();
+  } catch (error) { return toast(error.message, 'bad'); }
   state.inventory.activeRequestId = request.id;
+  state.inventory.activeRequestUpdatedAt = request.updated_at;
   state.inventory.billLines = (request.franchise_stock_request_items || []).map(row => {
     const item = inventoryItem(row.item_id) || {};
     const requestUnit = row.unit === 'EACH' ? 'PIECE' : row.unit;
     const supplyQuantity = Number(row.quantity);
-    const inventoryQuantity = defaultNetQuantity(requestUnit, item.inventory_unit || item.base_unit, supplyQuantity);
-    return { itemId: row.item_id, name: row.item_name, inventoryQuantity, billingQuantity: supplyQuantity, requestedQuantity: supplyQuantity, requestedUnit: requestUnit, unitPrice: Number(item.default_supply_price || row.fixed_unit_price || 0) };
+    const { inventoryQuantity, billingQuantity } = requestSupplyQuantities(item, requestUnit, supplyQuantity);
+    return { itemId: row.item_id, name: row.item_name, inventoryQuantity, billingQuantity, requestedQuantity: supplyQuantity, requestedUnit: requestUnit, unitPrice: Number(item.default_supply_price || row.fixed_unit_price || 0) };
   });
   if ($('#supplyOutlet')) $('#supplyOutlet').value = request.outlet_id;
   if ($('#supplyNotes')) $('#supplyNotes').value = `From franchise requirement for ${request.required_for}${request.notes ? ` · ${request.notes}` : ''}`;
@@ -3927,7 +3975,7 @@ function wireInventoryActions() {
     state.inventory.historyTo = '';
     renderInventory();
     $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    toast(`Showing all ${state.inventory.bills.length} supply bills and ${state.inventory.movements.length} stock movements.`, 'ok');
+    toast(`Showing all ${inventoryHistoryRows(state.inventory.bills, 'supplied_at').length} supply bills and ${inventoryHistoryRows(state.inventory.movements, 'occurred_at').length} stock movements.`, 'ok');
   });
   $('#supplyHistoryCustomToggle')?.addEventListener('click', () => {
     const panel = $('#supplyHistoryCustomPanel');
@@ -4008,7 +4056,7 @@ function wireInventoryActions() {
     const item = row && inventoryItem(row.itemId);
     if (!row || !item) return;
     let quantity = Number(input.value);
-    if (['PIECE','BOTTLE','PACK','CAN','BOX'].includes(item.supply_unit || item.request_unit)) quantity = Math.max(1, Math.round(quantity));
+    if (['PIECE','EACH','BOTTLE','PACK','CAN','BOX'].includes(row.unit || stockRequestUnit(item))) quantity = Math.max(1, Math.round(quantity));
     if (!(quantity > 0)) return renderStockRequestCatalogue();
     row.quantity = quantity;
     row.suggested = false;
@@ -4023,14 +4071,31 @@ function wireInventoryActions() {
   $('#expenseAllRecords')?.addEventListener('click', () => { if ($('#expenseFrom')) $('#expenseFrom').value = ''; if ($('#expenseTo')) $('#expenseTo').value = ''; renderDailyExpenses(); });
   $('#createStockCategory')?.addEventListener('click', () => createManagedCategory('stock'));
   $('#createExpenseCategory')?.addEventListener('click', () => createManagedCategory('expense'));
-  $('#stockRequestList')?.addEventListener('click', event => {
+  $('#cancelStockRequestEdit')?.addEventListener('click', resetStockRequestEditor);
+  $('#ownerViewRequirements')?.addEventListener('click', () => {
+    $('.nav-btn[data-section="inventory"]')?.click();
+    $('#stockRequestAdminPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  const requestAction = async event => {
     const use = event.target.closest('[data-use-stock-request]');
     const edit = event.target.closest('[data-edit-stock-draft]');
-    const id = use?.dataset.useStockRequest || edit?.dataset.editStockDraft;
+    const release = event.target.closest('[data-release-stock-request]');
+    const id = use?.dataset.useStockRequest || edit?.dataset.editStockDraft || release?.dataset.releaseStockRequest;
     const request = id && state.inventory.requests.find(row => row.id === id);
-    if (request && use) useStockRequest(request);
-    if (request && edit) editStockDraft(request);
-  });
+    if (!request) return;
+    if (use) await useStockRequest(request);
+    if (edit) editStockDraft(request);
+    if (release) {
+      try {
+        await inventoryApi('POST', { action: 'set_request_processing', requestId: id, start: false });
+        if (state.inventory.activeRequestId === id) { state.inventory.activeRequestId = null; state.inventory.billLines = []; renderSupplyLines(); }
+        await loadInventory();
+        toast('Owner can edit this requirement again.', 'ok');
+      } catch (error) { toast(error.message, 'bad'); }
+    }
+  };
+  $('#stockRequestList')?.addEventListener('click', requestAction);
+  $('#ownerLatestRequirement')?.addEventListener('click', requestAction);
   $('#inventoryMasterList')?.addEventListener('click', event => { const edit = event.target.closest('[data-inventory-edit-item]'); const remove = event.target.closest('[data-inventory-delete-item]'); const id = edit?.dataset.inventoryEditItem || remove?.dataset.inventoryDeleteItem; const item = id && inventoryItem(id); if (!item) return; if (edit) editInventoryItemPrice(item); if (remove) deleteInventoryItem(item); });
   $('#inventoryMasterCategory')?.addEventListener('change', renderInventory);
   $('#inventoryMasterSearch')?.addEventListener('input', renderInventory);
@@ -5572,7 +5637,7 @@ function startLiveDashboardRefresh() {
       await loadOutlets();
       await loadOrders({ silent: true });
       if (state.selectedSection === 'reports') await loadReports();
-      if (['inventory', 'daily-expenses', 'pos', 'reports'].includes(state.selectedSection) && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) await loadInventory();
+      if (['overview', 'inventory', 'daily-expenses', 'pos', 'reports'].includes(state.selectedSection) && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) await loadInventory();
     } catch (error) {
       console.error('Unable to refresh live dashboard feed:', error);
     } finally {

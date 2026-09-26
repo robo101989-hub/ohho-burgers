@@ -40,3 +40,23 @@ test('rounds piece requirements up and omits fully covered targets', () => {
   });
   assert.deepEqual(result, [{ itemId: 'bun', quantity: 2, current: 9, pending: 0 }]);
 });
+
+test('migrated kilogram targets are not divided by 1000 twice', () => {
+  assert.deepEqual(calculateSuggestedRequirements({
+    outletId: 'outlet-1', items: [{ ...kg, supply_unit: 'KG', inventory_unit: 'G' }],
+    balances: [{ outlet_id: 'outlet-1', item_id: 'sauce', quantity_on_hand: 1200 }],
+    bills: [{ outlet_id: 'outlet-1', receipt_status: 'PENDING', supply_bill_items: [{ item_id: 'sauce', base_quantity: 800 }] }]
+  }), [{ itemId: 'sauce', quantity: 3, current: 1.2, pending: 0.8 }]);
+});
+
+test('patty requirements stay in pieces despite kilogram billing', () => {
+  assert.deepEqual(calculateSuggestedRequirements({
+    outletId: 'outlet-1', items: [{ ...piece, supply_unit: 'KG', inventory_unit: 'EACH' }],
+    balances: [{ outlet_id: 'outlet-1', item_id: 'bun', quantity_on_hand: 35 }, { outlet_id: 'other', item_id: 'bun', quantity_on_hand: 100 }],
+    bills: [{ outlet_id: 'outlet-1', receipt_status: 'PENDING', supply_bill_items: [{ item_id: 'bun', base_quantity: 20 }] }]
+  }), [{ itemId: 'bun', quantity: 45, current: 35, pending: 20 }]);
+});
+
+test('gram targets convert to requested kilograms once', () => {
+  assert.equal(calculateSuggestedRequirements({ outletId: 'outlet-1', items: [{ ...kg, target_stock_level: 5000, display_unit: 'G', supply_unit: 'KG', inventory_unit: 'G' }] })[0].quantity, 5);
+});

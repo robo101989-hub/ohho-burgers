@@ -554,6 +554,16 @@
   }
 }
 
+
+.stock-request-picker>label{min-width:0}.stock-request-picker input,.stock-request-picker select{width:100%;min-width:0}
+/* Requirement history and Owner summary use the same readable card layout. */
+#ownerLatestRequirementPanel{margin:0 0 24px;border:1px solid #524820;border-radius:16px;padding:20px;background:linear-gradient(120deg,#1d1b12,#111210)}
+.stock-request-list{display:grid;gap:14px}.stock-request-card{padding:18px;border:1px solid #32342e;border-radius:12px;background:#151614}
+.stock-request-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}.stock-request-top>div{display:grid;gap:7px;min-width:0}.stock-request-top strong{font-size:14px;line-height:1.5}.stock-request-top span{color:#a9aaa2}.stock-request-top>.inventory-status{flex-shrink:0}
+.stock-request-items{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 18px}.stock-request-items>span{background:#22241e;border:1px solid #34362c;border-radius:7px;padding:8px 10px;font-size:12px;color:#eceee5;overflow-wrap:anywhere}.stock-request-card>p{font-size:12px;line-height:1.6;color:#a6a99c;margin:12px 0 0}.stock-request-card>button{margin:0 8px 6px 0}
+.request-date-row{display:grid;grid-template-columns:1fr 1fr 2fr;gap:12px;margin:16px 0}.request-date-row label{display:grid;gap:7px;min-width:0}.request-date-row label>span{font-size:10px;letter-spacing:.5px;font-weight:750;color:#a9aaa2}.request-date-row input,.request-date-row select,.stock-request-selected-row input{width:100%;min-width:0;height:42px;background:#10110f;border:1px solid #3a3d32;border-radius:8px;color:#f2f2ea;padding:0 12px;color-scheme:dark}.stock-request-selected-row input{width:100px}.request-date-row select:disabled{opacity:.65}
+#stockRequestEditingNotice{padding:12px 14px;border-left:3px solid #ffd21c;background:#242217;color:#eee7ba;font-size:12px;line-height:1.6}#cancelStockRequestEdit{margin-bottom:10px}
+@media(max-width:700px){#ownerLatestRequirementPanel{padding:14px}.stock-request-top{flex-direction:column;gap:8px}.request-date-row{grid-template-columns:1fr 1fr}.request-date-row label:last-child{grid-column:1/-1}.stock-request-selected-row{grid-template-columns:minmax(0,1fr) auto;gap:8px}.stock-request-selected-row>button{grid-column:2}.stock-request-selected-row input{width:76px}#ownerLatestRequirementPanel .inventory-panel-head{align-items:flex-start;gap:12px;flex-direction:column}.stock-request-card{padding:14px}}
 </style>
 <style>
 /* FINAL READABILITY PASS */
@@ -788,6 +798,10 @@ body{font-size:14px}
     <article class="kpi"><div class="kpi-head"><span class="kpi-label">Average order</span><span class="kpi-icon">↗</span></div><div id="overviewAverageOrder" class="kpi-value">₹0</div><div class="kpi-foot"><span>Per paid session order</span></div></article>
     <article class="kpi"><div class="kpi-head"><span class="kpi-label">Live menu</span><span class="kpi-icon">▦</span></div><div id="overviewMenuCount" class="kpi-value">0</div><div class="kpi-foot"><span id="overviewMenuFoot" class="positive">0 active items</span></div></article>
   </div>
+  <article id="ownerLatestRequirementPanel" class="inventory-panel" style="display:none">
+    <div class="inventory-panel-head"><div><div class="eyebrow">Your stock</div><h2>Latest requirement</h2></div><button id="ownerViewRequirements" class="secondary" type="button">VIEW ALL REQUIREMENTS</button></div>
+    <div id="ownerLatestRequirement" class="stock-request-list"></div>
+  </article>
   <article class="panel operations-summary-panel">
     <div class="panel-head"><div><div class="panel-title">Current session operations</div><div class="panel-sub">From outlet opening until closing: net sales, stock supply costs and daily expenses</div></div><span id="overviewOperationsRangeLabel" class="panel-meta">Current open session</span></div>
     <div class="orders-history-toolbar operations-toolbar">
@@ -1192,7 +1206,7 @@ body{font-size:14px}
     <button id="saveWastage" class="primary inventory-wide-btn" type="button">SAVE &amp; DEDUCT</button>
   </article>
   <article id="stockRequestCreatePanel" class="inventory-panel inventory-table-panel">
-    <div class="inventory-panel-head"><div><div class="eyebrow">Smart requirement</div><h2>Review tomorrow's stock</h2></div><span>Available stock and pending supplies are already considered</span></div>
+    <div class="inventory-panel-head"><div><div class="eyebrow">Smart requirement</div><h2 id="stockRequestEditorTitle">Review tomorrow's stock</h2></div><span>Available stock and pending supplies are already considered</span></div>
     <div class="request-date-row"><label><span>OUTLET</span><select id="stockRequestOutlet"></select></label><label><span>NEEDED ON</span><input id="stockRequestDate" type="date"></label><label><span>NOTE</span><input id="stockRequestNotes" type="text" maxlength="500" placeholder="Delivery timing or special note"></label></div>
     <div class="stock-request-picker">
       <label><span>CATEGORY</span><select id="stockRequestCategory"></select></label>
@@ -1200,13 +1214,15 @@ body{font-size:14px}
       <label><span>QUANTITY</span><input id="stockRequestQuantity" type="number" min="0.001" step="0.001" placeholder="0"></label>
       <button id="addStockRequestItem" class="secondary" type="button">＋ ADD TO REQUEST</button>
     </div>
+    <p id="stockRequestEditingNotice" class="hidden" role="status"></p>
+    <button id="cancelStockRequestEdit" class="secondary hidden" type="button">CANCEL EDIT</button>
     <div id="stockRequestCatalogue" class="stock-request-selection"></div>
     <button id="generateStockSuggestions" class="secondary inventory-wide-btn" type="button">GENERATE SUGGESTIONS</button>
     <button id="saveStockRequestDraft" class="secondary inventory-wide-btn" type="button">SAVE DRAFT</button>
     <button id="submitStockRequest" class="primary inventory-wide-btn" type="button">CONFIRM &amp; SEND</button>
   </article>
   <article id="stockRequestAdminPanel" class="inventory-panel inventory-table-panel">
-    <div class="inventory-panel-head"><div><div class="eyebrow">Franchise demand</div><h2>Stock requirements</h2></div><span>Use a request to prepare its supply bill</span></div>
+    <div class="inventory-panel-head"><div><div class="eyebrow">Franchise demand</div><h2>Stock requirements</h2></div><span id="stockRequestHistoryHint">Use a request to prepare its supply bill</span></div>
     <div id="stockRequestList" class="stock-request-list"></div>
   </article>
   <div id="inventoryAdminWorkspace" class="inventory-admin-grid">
