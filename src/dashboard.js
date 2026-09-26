@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js';
 import { filterHistory, historyBounds } from '../lib/history.js';
+import { calculateSuggestedRequirements } from '../lib/stock-requirements.js';
 
 const ROLE_PERMISSIONS = {
   ADMIN: ['overview', 'pos', 'orders', 'menu', 'inventory', 'daily-expenses', 'outlets', 'staff', 'reports', 'settings'],
@@ -31,7 +32,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
-  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], recipes: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], billLines: [], requestLines: [], activeRequestId: null, editingExpenseId: null, loaded: false },
+  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], recipes: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -3254,14 +3255,18 @@ function renderStockRequestCatalogue() {
   const choices = state.inventory.items.filter(item => item.active !== false && (!categoryId || item.category_id === categoryId));
   inventorySelectOptions($('#stockRequestItem'), choices.map(item => ({ value: item.id, label: `${item.name} · ${item.request_unit === 'PIECE' ? 'pieces' : 'kg'}` })), $('#stockRequestItem')?.value);
   const selected = state.inventory.requestLines;
-  list.innerHTML = selected.length ? selected.map(row => { const item = inventoryItem(row.itemId) || {}; return `<div class="stock-request-selected-row"><strong>${escapeHtml(item.name || 'Item')}</strong><span>${inventoryQty(row.quantity)} ${item.request_unit === 'PIECE' ? 'pcs' : 'kg'}</span><button type="button" data-remove-request-item="${row.itemId}">REMOVE</button></div>`; }).join('') : '<div class="inventory-empty">Choose an item and quantity above. Only selected items will be sent.</div>';
+  list.innerHTML = selected.length ? selected.map(row => {
+    const item = inventoryItem(row.itemId) || {};
+    const step = item.request_unit === 'PIECE' ? '1' : '0.001';
+    return `<div class="stock-request-selected-row"><strong>${escapeHtml(item.name || 'Item')}${row.suggested ? '<small> · SUGGESTED</small>' : ''}</strong><label><input type="number" min="${step}" step="${step}" value="${Number(row.quantity)}" data-request-line-quantity="${row.itemId}"> ${item.request_unit === 'PIECE' ? 'pcs' : 'kg'}</label><button type="button" data-remove-request-item="${row.itemId}">REMOVE</button></div>`;
+  }).join('') : '<div class="inventory-empty">Generate suggestions or choose an item and quantity above.</div>';
 }
 
 function renderStockRequests() {
   const list = $('#stockRequestList');
   if (!list) return;
-  const requests = state.inventory.requests || [];
-  list.innerHTML = requests.length ? requests.map(request => `<div class="stock-request-card"><div class="stock-request-top"><div><strong>${escapeHtml(inventoryOutlet(request.outlet_id)?.name || 'Outlet')} · Needed ${new Date(`${request.required_for}T00:00:00`).toLocaleDateString('en-IN',{dateStyle:'medium'})}</strong><span>Requested ${inventoryDate(request.created_at)}${request.notes ? ` · ${escapeHtml(request.notes)}` : ''}</span></div><span class="inventory-status ${request.status === 'FULFILLED' ? 'in' : request.status === 'CANCELLED' ? 'out' : 'low'}">${escapeHtml(request.status)}</span></div><div class="stock-request-items">${(request.franchise_stock_request_items || []).map(item => `<span>${escapeHtml(item.item_name)} · ${inventoryQty(item.quantity)} ${item.unit === 'PIECE' || item.unit === 'EACH' ? 'pcs' : 'kg'}</span>`).join('')}</div>${state.profile?.role === 'ADMIN' && ['SUBMITTED','PARTIAL'].includes(request.status) ? `<button class="primary" type="button" data-use-stock-request="${request.id}">PREPARE SUPPLY BILL</button>` : ''}</div>`).join('') : '<div class="inventory-empty">No stock requirements submitted yet.</div>';
+  const requests = (state.inventory.requests || []).filter(request => state.profile?.role !== 'ADMIN' || request.status !== 'DRAFT');
+  list.innerHTML = requests.length ? requests.map(request => `<div class="stock-request-card"><div class="stock-request-top"><div><strong>${escapeHtml(inventoryOutlet(request.outlet_id)?.name || 'Outlet')} · Needed ${new Date(`${request.required_for}T00:00:00`).toLocaleDateString('en-IN',{dateStyle:'medium'})}</strong><span>${request.status === 'DRAFT' ? 'Saved' : 'Requested'} ${inventoryDate(request.updated_at || request.created_at)}${request.notes ? ` · ${escapeHtml(request.notes)}` : ''}</span></div><span class="inventory-status ${request.status === 'FULFILLED' ? 'in' : request.status === 'CANCELLED' ? 'out' : 'low'}">${escapeHtml(request.status)}</span></div><div class="stock-request-items">${(request.franchise_stock_request_items || []).map(item => `<span>${escapeHtml(item.item_name)} · ${inventoryQty(item.quantity)} ${item.unit === 'PIECE' || item.unit === 'EACH' ? 'pcs' : 'kg'}</span>`).join('')}</div>${state.profile?.role === 'OWNER' && request.status === 'DRAFT' ? `<button class="secondary" type="button" data-edit-stock-draft="${request.id}">EDIT DRAFT</button>` : ''}${state.profile?.role === 'ADMIN' && ['SUBMITTED','PARTIAL'].includes(request.status) ? `<button class="primary" type="button" data-use-stock-request="${request.id}">PREPARE SUPPLY BILL</button>` : ''}</div>`).join('') : '<div class="inventory-empty">No stock requirements submitted yet.</div>';
 }
 
 function renderDailyExpenses() {
@@ -3417,7 +3422,7 @@ function renderInventory() {
     const search = String($('#inventoryMasterSearch')?.value || '').trim().toLowerCase();
     const filteredItems = state.inventory.items.filter(item => item.active !== false && (!categoryId || item.category_id === categoryId) && (!search || item.name.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search)));
     const names = [...new Set(filteredItems.map(groupName))];
-    masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · ${escapeHtml(inventoryMeasurementLabel(item).toUpperCase())} · LOW AT ${inventoryQty(item.low_stock_threshold)} ${item.display_unit === 'EACH' ? 'pcs' : 'kg'}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${inventoryBillingUnit(item)}` : 'SET RATE'}</b><div class="inventory-row-actions"><button type="button" data-inventory-edit-item="${item.id}">EDIT</button><button class="danger" type="button" data-inventory-delete-item="${item.id}">DELETE</button></div></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
+    masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · ${escapeHtml(inventoryMeasurementLabel(item).toUpperCase())} · LOW AT ${inventoryQty(item.low_stock_threshold)} · TARGET ${inventoryQty(item.target_stock_level)} ${item.display_unit === 'EACH' ? 'pcs' : 'kg'}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${inventoryBillingUnit(item)}` : 'SET RATE'}</b><div class="inventory-row-actions"><button type="button" data-inventory-edit-item="${item.id}">EDIT</button><button class="danger" type="button" data-inventory-delete-item="${item.id}">DELETE</button></div></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
   }
 
   const stockList = $('#inventoryStockList');
@@ -3552,10 +3557,12 @@ async function editInventoryItemPrice(item) {
   if (!(price > 0)) return;
   const threshold = Number(window.prompt(`Low-stock alert level in ${item.display_unit}:`, Number(item.low_stock_threshold || 0).toString()));
   if (!(threshold >= 0)) return toast('Enter a valid low-stock level.', 'bad');
+  const targetStockLevel = Number(window.prompt(`Target stock level in ${item.display_unit}:`, Number(item.target_stock_level || 0).toString()));
+  if (!(targetStockLevel >= 0)) return toast('Enter a valid target stock level.', 'bad');
   try {
-    await inventoryApi('POST', { action: 'update_item', itemId: item.id, name, categoryId: category.id, measurementType, defaultSupplyPrice: price, lowStockThreshold: threshold });
+    await inventoryApi('POST', { action: 'update_item', itemId: item.id, name, categoryId: category.id, measurementType, defaultSupplyPrice: price, lowStockThreshold: threshold, targetStockLevel });
     await loadInventory();
-    toast(`${item.name} fixed price updated.`, 'ok');
+    toast(`${item.name} stock settings updated.`, 'ok');
   } catch (error) { toast(error.message, 'bad'); }
 }
 
@@ -3589,20 +3596,53 @@ async function generateSupplyBill() {
   } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
 }
 
-async function submitStockRequirement() {
+function generateStockSuggestions() {
+  const outletId = $('#stockRequestOutlet')?.value;
+  if (!outletId) return toast('Choose an outlet first.', 'bad');
+  const suggestions = calculateSuggestedRequirements({
+    items: state.inventory.items,
+    balances: state.inventory.balances,
+    bills: state.inventory.bills,
+    outletId
+  });
+  state.inventory.activeDraftId = null;
+  state.inventory.requestLines = suggestions.map(row => ({ itemId: row.itemId, quantity: row.quantity, suggested: true }));
+  renderStockRequestCatalogue();
+  toast(suggestions.length ? `${suggestions.length} stock suggestion${suggestions.length === 1 ? '' : 's'} ready for review.` : 'Stock already meets its targets, or Admin has not set target levels yet.', suggestions.length ? 'ok' : 'bad');
+}
+
+function editStockDraft(request) {
+  state.inventory.activeDraftId = request.id;
+  state.inventory.requestLines = (request.franchise_stock_request_items || []).map(row => ({ itemId: row.item_id, quantity: Number(row.quantity) }));
+  if ($('#stockRequestOutlet')) $('#stockRequestOutlet').value = request.outlet_id;
+  if ($('#stockRequestDate')) $('#stockRequestDate').value = request.required_for;
+  if ($('#stockRequestNotes')) $('#stockRequestNotes').value = request.notes || '';
+  renderStockRequestCatalogue();
+  $('#stockRequestCreatePanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  toast('Draft loaded. Adjust the quantities, then save or send it.', 'ok');
+}
+
+async function saveStockRequirement(status) {
   const outletId = $('#stockRequestOutlet')?.value;
   const items = state.inventory.requestLines.map(row => ({ itemId: row.itemId, quantity: Number(row.quantity) })).filter(row => row.quantity > 0);
   const requiredFor = $('#stockRequestDate')?.value;
   if (!outletId || !requiredFor || !items.length) return toast('Enter a quantity for at least one item.', 'bad');
-  const button = $('#submitStockRequest'); button.disabled = true;
+  const button = status === 'DRAFT' ? $('#saveStockRequestDraft') : $('#submitStockRequest');
+  if (button) button.disabled = true;
   try {
-    await inventoryApi('POST', { action: 'submit_request', outletId, requiredFor, items, notes: $('#stockRequestNotes')?.value || '' });
-    state.inventory.requestLines = [];
-    if ($('#stockRequestNotes')) $('#stockRequestNotes').value = '';
+    const result = await inventoryApi('POST', { action: 'save_request', requestId: state.inventory.activeDraftId, outletId, requiredFor, items, notes: $('#stockRequestNotes')?.value || '', status });
+    state.inventory.activeDraftId = status === 'DRAFT' ? result.requestId : null;
+    if (status === 'SUBMITTED') {
+      state.inventory.requestLines = [];
+      if ($('#stockRequestNotes')) $('#stockRequestNotes').value = '';
+    }
     await loadInventory();
-    toast('Tomorrow’s stock requirement sent to Admin.', 'ok');
-  } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
+    toast(status === 'DRAFT' ? 'Stock requirement draft saved.' : 'Tomorrow’s stock requirement sent to Admin.', 'ok');
+  } catch (error) { toast(error.message, 'bad'); } finally { if (button) button.disabled = false; }
 }
+
+function submitStockRequirement() { return saveStockRequirement('SUBMITTED'); }
+function saveStockRequirementDraft() { return saveStockRequirement('DRAFT'); }
 
 function addStockRequestItem() {
   const item = inventoryItem($('#stockRequestItem')?.value);
@@ -3611,7 +3651,7 @@ function addStockRequestItem() {
   if (item.request_unit === 'PIECE') quantity = Math.max(1, Math.round(quantity));
   const existing = state.inventory.requestLines.find(row => row.itemId === item.id);
   if (existing) existing.quantity += quantity;
-  else state.inventory.requestLines.push({ itemId: item.id, quantity });
+  else state.inventory.requestLines.push({ itemId: item.id, quantity, suggested: false });
   if ($('#stockRequestQuantity')) $('#stockRequestQuantity').value = '';
   renderStockRequestCatalogue();
 }
@@ -3723,8 +3763,8 @@ async function deleteManagedCategory(type, row) {
 async function createInventoryItem() {
   const button = $('#inventoryCreateItem'); button.disabled = true;
   try {
-    await inventoryApi('POST', { action: 'create_item', name: $('#inventoryItemName')?.value, sku: $('#inventoryItemSku')?.value, categoryId: $('#inventoryItemCategory')?.value, measurementType: $('#inventoryMeasurementType')?.value, lowStockThreshold: $('#inventoryItemThreshold')?.value, defaultSupplyPrice: $('#inventoryItemPrice')?.value });
-    ['inventoryItemName','inventoryItemSku','inventoryItemThreshold','inventoryItemPrice'].forEach(id => { if ($(`#${id}`)) $(`#${id}`).value = ''; });
+    await inventoryApi('POST', { action: 'create_item', name: $('#inventoryItemName')?.value, sku: $('#inventoryItemSku')?.value, categoryId: $('#inventoryItemCategory')?.value, measurementType: $('#inventoryMeasurementType')?.value, lowStockThreshold: $('#inventoryItemThreshold')?.value, targetStockLevel: $('#inventoryItemTarget')?.value, defaultSupplyPrice: $('#inventoryItemPrice')?.value });
+    ['inventoryItemName','inventoryItemSku','inventoryItemThreshold','inventoryItemTarget','inventoryItemPrice'].forEach(id => { if ($(`#${id}`)) $(`#${id}`).value = ''; });
     await loadInventory(); toast('Stock item created.', 'ok');
   } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
 }
@@ -3805,10 +3845,26 @@ function wireInventoryActions() {
   $('#wastageType')?.addEventListener('change', updateWastageFields);
   $('#saveWastage')?.addEventListener('click', saveWastage);
   updateWastageFields();
+  $('#generateStockSuggestions')?.addEventListener('click', generateStockSuggestions);
+  $('#saveStockRequestDraft')?.addEventListener('click', saveStockRequirementDraft);
   $('#submitStockRequest')?.addEventListener('click', submitStockRequirement);
   $('#addStockRequestItem')?.addEventListener('click', addStockRequestItem);
   $('#stockRequestCategory')?.addEventListener('change', renderStockRequestCatalogue);
   $('#stockRequestCatalogue')?.addEventListener('click', event => { const button = event.target.closest('[data-remove-request-item]'); if (!button) return; state.inventory.requestLines = state.inventory.requestLines.filter(row => row.itemId !== button.dataset.removeRequestItem); renderStockRequestCatalogue(); });
+  $('#stockRequestCatalogue')?.addEventListener('change', event => {
+    const input = event.target.closest('[data-request-line-quantity]');
+    if (!input) return;
+    const row = state.inventory.requestLines.find(entry => entry.itemId === input.dataset.requestLineQuantity);
+    const item = row && inventoryItem(row.itemId);
+    if (!row || !item) return;
+    let quantity = Number(input.value);
+    if (item.request_unit === 'PIECE') quantity = Math.max(1, Math.round(quantity));
+    if (!(quantity > 0)) return renderStockRequestCatalogue();
+    row.quantity = quantity;
+    row.suggested = false;
+    renderStockRequestCatalogue();
+  });
+  $('#stockRequestOutlet')?.addEventListener('change', () => { state.inventory.activeDraftId = null; state.inventory.requestLines = []; renderStockRequestCatalogue(); });
   $('#saveDailyExpense')?.addEventListener('click', saveDailyExpense);
   $('#cancelExpenseEdit')?.addEventListener('click', resetExpenseForm);
   $('#expenseRefreshBtn')?.addEventListener('click', () => loadInventory().catch(error => toast(error.message, 'bad')));
@@ -3817,7 +3873,14 @@ function wireInventoryActions() {
   $('#expenseAllRecords')?.addEventListener('click', () => { if ($('#expenseFrom')) $('#expenseFrom').value = ''; if ($('#expenseTo')) $('#expenseTo').value = ''; renderDailyExpenses(); });
   $('#createStockCategory')?.addEventListener('click', () => createManagedCategory('stock'));
   $('#createExpenseCategory')?.addEventListener('click', () => createManagedCategory('expense'));
-  $('#stockRequestList')?.addEventListener('click', event => { const button = event.target.closest('[data-use-stock-request]'); const request = button && state.inventory.requests.find(row => row.id === button.dataset.useStockRequest); if (request) useStockRequest(request); });
+  $('#stockRequestList')?.addEventListener('click', event => {
+    const use = event.target.closest('[data-use-stock-request]');
+    const edit = event.target.closest('[data-edit-stock-draft]');
+    const id = use?.dataset.useStockRequest || edit?.dataset.editStockDraft;
+    const request = id && state.inventory.requests.find(row => row.id === id);
+    if (request && use) useStockRequest(request);
+    if (request && edit) editStockDraft(request);
+  });
   $('#inventoryMasterList')?.addEventListener('click', event => { const edit = event.target.closest('[data-inventory-edit-item]'); const remove = event.target.closest('[data-inventory-delete-item]'); const id = edit?.dataset.inventoryEditItem || remove?.dataset.inventoryDeleteItem; const item = id && inventoryItem(id); if (!item) return; if (edit) editInventoryItemPrice(item); if (remove) deleteInventoryItem(item); });
   $('#inventoryMasterCategory')?.addEventListener('change', renderInventory);
   $('#inventoryMasterSearch')?.addEventListener('input', renderInventory);

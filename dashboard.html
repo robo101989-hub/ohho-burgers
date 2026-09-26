@@ -1166,7 +1166,7 @@ body{font-size:14px}
     <button id="saveWastage" class="primary inventory-wide-btn" type="button">SAVE &amp; DEDUCT</button>
   </article>
   <article id="stockRequestCreatePanel" class="inventory-panel inventory-table-panel">
-    <div class="inventory-panel-head"><div><div class="eyebrow">Tomorrow's requirement</div><h2>Request stock from OHHO</h2></div><span>Enter only the items you need</span></div>
+    <div class="inventory-panel-head"><div><div class="eyebrow">Smart requirement</div><h2>Review tomorrow's stock</h2></div><span>Available stock and pending supplies are already considered</span></div>
     <div class="request-date-row"><label><span>OUTLET</span><select id="stockRequestOutlet"></select></label><label><span>NEEDED ON</span><input id="stockRequestDate" type="date"></label><label><span>NOTE</span><input id="stockRequestNotes" type="text" maxlength="500" placeholder="Delivery timing or special note"></label></div>
     <div class="stock-request-picker">
       <label><span>CATEGORY</span><select id="stockRequestCategory"></select></label>
@@ -1175,7 +1175,9 @@ body{font-size:14px}
       <button id="addStockRequestItem" class="secondary" type="button">＋ ADD TO REQUEST</button>
     </div>
     <div id="stockRequestCatalogue" class="stock-request-selection"></div>
-    <button id="submitStockRequest" class="primary inventory-wide-btn" type="button">SEND REQUIREMENT TO ADMIN</button>
+    <button id="generateStockSuggestions" class="secondary inventory-wide-btn" type="button">GENERATE SUGGESTIONS</button>
+    <button id="saveStockRequestDraft" class="secondary inventory-wide-btn" type="button">SAVE DRAFT</button>
+    <button id="submitStockRequest" class="primary inventory-wide-btn" type="button">CONFIRM &amp; SEND</button>
   </article>
   <article id="stockRequestAdminPanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Franchise demand</div><h2>Stock requirements</h2></div><span>Use a request to prepare its supply bill</span></div>
@@ -1206,6 +1208,7 @@ body{font-size:14px}
         <label><span>CATEGORY</span><select id="inventoryItemCategory"></select></label>
         <label><span>MEASUREMENT TYPE</span><select id="inventoryMeasurementType"><option value="PIECE_PIECE">Piece → Piece</option><option value="KG_KG">Kg → Kg</option><option value="PIECE_KG">Piece → Kg</option></select></label>
         <label><span>LOW STOCK AT</span><input id="inventoryItemThreshold" type="number" min="0" step="0.001" placeholder="2"></label>
+        <label><span>TARGET STOCK</span><input id="inventoryItemTarget" type="number" min="0" step="0.001" placeholder="100"></label>
         <label><span>DEFAULT PRICE</span><input id="inventoryItemPrice" type="number" min="0" step="0.01" placeholder="₹0"></label>
       </div>
       <button id="inventoryCreateItem" class="secondary inventory-wide-btn" type="button">CREATE STOCK ITEM</button>
