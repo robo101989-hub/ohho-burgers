@@ -1213,8 +1213,8 @@ body{font-size:14px}
       <div class="inventory-form-grid">
         <label><span>OUTLET</span><select id="supplyOutlet"></select></label>
         <label><span>ITEM</span><div class="supply-item-combobox"><input id="supplyItem" type="hidden"><input id="supplyItemSearch" type="search" role="combobox" aria-controls="supplyItemMenu" aria-expanded="false" autocomplete="off" placeholder="Search stock item"><div id="supplyItemMenu" class="supply-item-menu hidden" role="listbox"></div></div></label>
-        <label><span id="supplyQuantityLabel">SUPPLIED QUANTITY</span><input id="supplyQuantity" type="number" min="0.001" step="0.001" placeholder="0"></label>
-        <label id="supplyBillingQuantityField" class="hidden"><span>ACTUAL TOTAL WEIGHT · KG</span><input id="supplyBillingQuantity" type="number" min="0.001" step="0.001" placeholder="0.000"></label>
+        <label><span id="supplyQuantityLabel">SUPPLY QUANTITY</span><input id="supplyQuantity" type="number" min="0.001" step="0.001" placeholder="0"></label>
+        <label id="supplyBillingQuantityField"><span id="supplyNetQuantityLabel">ACTUAL NET INVENTORY</span><input id="supplyBillingQuantity" type="number" min="0.001" step="0.001" placeholder="0"></label>
         <label><span>FIXED PRICE / UNIT</span><input id="supplyPrice" type="number" min="0" step="0.01" placeholder="Set in item list" readonly></label>
       </div>
       <button id="supplyAddLine" class="secondary inventory-wide-btn" type="button">＋ ADD ITEM TO BILL</button>
@@ -1230,17 +1230,18 @@ body{font-size:14px}
         <label><span>ITEM NAME</span><input id="inventoryItemName" type="text" placeholder="Chicken"></label>
         <label><span>SKU</span><input id="inventoryItemSku" type="text" placeholder="CHICKEN"></label>
         <label><span>CATEGORY</span><select id="inventoryItemCategory"></select></label>
-        <label><span>MEASUREMENT TYPE</span><select id="inventoryMeasurementType"><option value="PIECE_PIECE">Piece → Piece</option><option value="KG_KG">Kg → Kg</option><option value="PIECE_KG">Piece → Kg</option></select></label>
+        <label><span>SUPPLY / BILLING UNIT</span><select id="inventorySupplyUnit"><option value="KG">Kg</option><option value="G">Gram</option><option value="L">Litre</option><option value="ML">Millilitre</option><option value="PIECE">Piece</option><option value="BOTTLE">Bottle</option><option value="PACK">Pack</option><option value="CAN">Can</option><option value="BOX">Box</option></select></label>
+        <label><span>INVENTORY / RECIPE UNIT</span><select id="inventoryInternalUnit"><option value="G">Gram (g)</option><option value="ML">Millilitre (ml)</option><option value="EACH">Piece (pc)</option></select></label>
         <label><span>LOW STOCK AT</span><input id="inventoryItemThreshold" type="number" min="0" step="0.001" placeholder="2"></label>
         <label><span>TARGET STOCK</span><input id="inventoryItemTarget" type="number" min="0" step="0.001" placeholder="100"></label>
         <label><span>DEFAULT PRICE</span><input id="inventoryItemPrice" type="number" min="0" step="0.01" placeholder="₹0"></label>
       </div>
       <button id="inventoryCreateItem" class="secondary inventory-wide-btn" type="button">CREATE STOCK ITEM</button>
-      <div class="inventory-panel-head adjustment-head"><div><div class="eyebrow">POS automation</div><h2>Menu recipes</h2></div><span>Quantity used for one menu item</span></div>
+      <div class="inventory-panel-head adjustment-head"><div><div class="eyebrow">POS automation</div><h2>Menu recipes</h2></div><span>Recipe consumption for one menu item</span></div>
       <div class="inventory-form-grid">
         <label><span>MENU ITEM</span><select id="recipeMenuItem"></select></label>
         <label><span>STOCK ITEM</span><select id="recipeStockItem"></select></label>
-        <label><span>QUANTITY PER MENU ITEM</span><input id="recipeQuantity" type="number" min="0.001" step="0.001" placeholder="0"></label>
+        <label><span id="recipeQuantityLabel">RECIPE CONSUMPTION</span><div class="supply-line-actual"><input id="recipeQuantity" type="number" min="0.001" step="0.001" placeholder="0"><span id="recipeQuantityUnit">g</span></div></label>
         <label><span>INGREDIENT TYPE</span><select id="recipePackaging"><option value="NO">Food / stock ingredient</option><option value="YES">Optional packaging</option></select></label>
       </div>
       <button id="saveRecipeIngredient" class="secondary inventory-wide-btn" type="button">ADD / UPDATE INGREDIENT</button>
@@ -1251,6 +1252,15 @@ body{font-size:14px}
       <div id="stockCategoryList" class="daily-expense-list"></div>
     </details>
   </div>
+  <article id="openingStockPanel" class="inventory-panel inventory-table-panel">
+    <div class="inventory-panel-head"><div><div class="eyebrow">Admin control</div><h2>Opening Stock Setup</h2></div><span id="openingStockStatus">Set the physical starting balance once</span></div>
+    <div class="inventory-form-grid">
+      <label><span>OUTLET</span><select id="openingStockOutlet"></select></label>
+      <label><span>REASON / NOTE</span><input id="openingStockReason" type="text" maxlength="500" placeholder="Required for later corrections"></label>
+    </div>
+    <div id="openingStockItems" class="daily-expense-list"></div>
+    <button id="confirmOpeningStock" class="primary inventory-wide-btn" type="button">CONFIRM OPENING STOCK</button>
+  </article>
   <details id="inventoryMasterPanel" class="inventory-panel inventory-table-panel inventory-setup-details">
     <summary><span><small>ITEM DIRECTORY</small><strong>Items, units &amp; fixed prices</strong></span><b>OPEN</b></summary>
     <div class="inventory-master-toolbar"><label><span>CATEGORY</span><select id="inventoryMasterCategory"></select></label><label><span>SEARCH ITEM</span><input id="inventoryMasterSearch" type="search" placeholder="Search name or SKU"></label></div>
