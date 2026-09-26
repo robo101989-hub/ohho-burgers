@@ -20,6 +20,8 @@ const state = {
   reportOrders: [],
   reportItems: [],
   reportRange: 'SESSION',
+  overviewOperationsFrom: '',
+  overviewOperationsTo: '',
   ordersArchiveOpen: false,
   orderHistoryRecords: null,
   orderHistoryRangeLabel: 'Latest order history',
@@ -2076,6 +2078,7 @@ function renderOverview() {
   setPayment('#overviewCash', '#overviewCashBar', cash);
   setPayment('#overviewUpi', '#overviewUpiBar', upi);
   setPayment('#overviewCard', '#overviewCardBar', card);
+  renderOverviewOperations();
 
   const topStatus = $('.topbar .status');
   if (topStatus) topStatus.innerHTML = `<i></i>${openOutlets.length ? `${openOutlets.length} OPEN` : 'CLOSED'}`;
@@ -3414,6 +3417,11 @@ function renderInventory() {
   if ($('#inventoryToday')) $('#inventoryToday').textContent = String(todayReceived);
   if ($('#inventoryStockCount')) $('#inventoryStockCount').textContent = `${balances.length} item${balances.length === 1 ? '' : 's'}`;
   if ($('#inventoryBillCount')) $('#inventoryBillCount').textContent = `${bills.length} bill${bills.length === 1 ? '' : 's'}`;
+  if ($('#supplyHistoryRangeLabel')) {
+    const from = state.inventory.historyFrom || '';
+    const to = state.inventory.historyTo || '';
+    $('#supplyHistoryRangeLabel').textContent = from || to ? `${from || 'Beginning'} to ${to || 'Today'}` : 'All supply bills';
+  }
 
   const masterList = $('#inventoryMasterList');
   if (masterList) {
@@ -3480,6 +3488,7 @@ async function loadInventory() {
   state.inventory.expenses = payload.expenses || [];
   state.inventory.loaded = true;
   renderInventory();
+  renderOverviewOperations();
   if (state.selectedSection === 'reports') renderReportDashboard();
 }
 
@@ -3795,6 +3804,29 @@ function downloadSupplyBillCsv(bill) {
   downloadCsv(`${bill.bill_number}.csv`, [['Bill Number',bill.bill_number],['Outlet',inventoryOutlet(bill.outlet_id)?.name || ''],['Supplied At',inventoryDate(bill.supplied_at)],['Receipt Status',bill.receipt_status || 'RECEIVED'],['Payment Status',bill.payment_status],[],['Item','Inventory Quantity','Inventory Unit','Billing Quantity','Billing Unit','Rate','Total'],...(bill.supply_bill_items || []).map(line => { const item = inventoryItem(line.item_id) || {}; return [line.item_name,inventoryDisplayQuantity(item,line.base_quantity),item.display_unit,line.quantity,line.unit,line.unit_price,line.line_total]; }),[],['Bill Total',bill.total_amount],['Paid',bill.paid_amount],['Due',Number(bill.total_amount)-Number(bill.paid_amount)]]);
 }
 
+function downloadSupplyHistoryCsv() {
+  const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at');
+  if (!bills.length) return toast('There are no supply bills to download for this range.', 'bad');
+  const rows = [
+    ['OHHO BURGERS SUPPLY BILL HISTORY'],
+    ['From', state.inventory.historyFrom || 'Beginning'],
+    ['To', state.inventory.historyTo || 'Today'],
+    ['Generated At', new Date().toLocaleString('en-IN')],
+    [],
+    ['Bill Number','Date','Outlet','Item','Inventory Quantity','Inventory Unit','Billing Quantity','Billing Unit','Rate','Line Total','Bill Total','Receipt Status','Payment Status','Paid','Due'],
+    ...bills.flatMap(bill => {
+      const lines = bill.supply_bill_items || [];
+      const due = Math.max(0, Number(bill.total_amount || 0) - Number(bill.paid_amount || 0));
+      if (!lines.length) return [[bill.bill_number, inventoryDate(bill.supplied_at), inventoryOutlet(bill.outlet_id)?.name || '', '', '', '', '', '', '', '', bill.total_amount, bill.receipt_status || 'RECEIVED', bill.payment_status || '', bill.paid_amount || 0, due]];
+      return lines.map(line => {
+        const item = inventoryItem(line.item_id) || {};
+        return [bill.bill_number, inventoryDate(bill.supplied_at), inventoryOutlet(bill.outlet_id)?.name || '', line.item_name, inventoryDisplayQuantity(item, line.base_quantity), item.display_unit || '', line.quantity, line.unit, line.unit_price, line.line_total, bill.total_amount, bill.receipt_status || 'RECEIVED', bill.payment_status || '', bill.paid_amount || 0, due];
+      });
+    })
+  ];
+  downloadCsv(`ohho-supply-bill-history-${new Date().toISOString().slice(0,10)}.csv`, rows);
+}
+
 function printSupplyBill(bill, autoPrint = true) {
   const outlet = inventoryOutlet(bill.outlet_id);
   const popup = window.open('', '_blank', 'width=760,height=850');
@@ -3826,6 +3858,45 @@ function wireInventoryActions() {
     } catch (error) { toast(error.message, 'bad'); }
   });
   $('#inventoryAllRecords')?.addEventListener('click', () => { if ($('#inventoryFrom')) $('#inventoryFrom').value = ''; if ($('#inventoryTo')) $('#inventoryTo').value = ''; state.inventory.historyFrom = ''; state.inventory.historyTo = ''; loadInventory().catch(error => toast(error.message, 'bad')); });
+  $('#supplyHistoryCustomToggle')?.addEventListener('click', () => {
+    const panel = $('#supplyHistoryCustomPanel');
+    const open = panel?.classList.contains('hidden');
+    panel?.classList.toggle('hidden', !open);
+    $('#supplyHistoryCustomToggle')?.setAttribute('aria-expanded', String(Boolean(open)));
+    if (open) {
+      const today = localDateInputValue();
+      if ($('#supplyHistoryFrom') && !$('#supplyHistoryFrom').value) $('#supplyHistoryFrom').value = state.inventory.historyFrom || today;
+      if ($('#supplyHistoryTo') && !$('#supplyHistoryTo').value) $('#supplyHistoryTo').value = state.inventory.historyTo || today;
+    }
+  });
+  $('#supplyHistoryApply')?.addEventListener('click', () => {
+    const from = $('#supplyHistoryFrom')?.value || '';
+    const to = $('#supplyHistoryTo')?.value || '';
+    try {
+      historyBounds(from, to);
+      state.inventory.historyFrom = from;
+      state.inventory.historyTo = to;
+      if ($('#inventoryFrom')) $('#inventoryFrom').value = from;
+      if ($('#inventoryTo')) $('#inventoryTo').value = to;
+      renderInventory();
+    } catch (error) { toast(error.message, 'bad'); }
+  });
+  $('#supplyHistoryShowAll')?.addEventListener('click', () => {
+    state.inventory.historyFrom = '';
+    state.inventory.historyTo = '';
+    if ($('#inventoryFrom')) $('#inventoryFrom').value = '';
+    if ($('#inventoryTo')) $('#inventoryTo').value = '';
+    if ($('#supplyHistoryFrom')) $('#supplyHistoryFrom').value = '';
+    if ($('#supplyHistoryTo')) $('#supplyHistoryTo').value = '';
+    renderInventory();
+  });
+  $('#supplyHistoryClear')?.addEventListener('click', () => {
+    if ($('#supplyHistoryFrom')) $('#supplyHistoryFrom').value = '';
+    if ($('#supplyHistoryTo')) $('#supplyHistoryTo').value = '';
+    $('#supplyHistoryCustomPanel')?.classList.add('hidden');
+    $('#supplyHistoryCustomToggle')?.setAttribute('aria-expanded', 'false');
+  });
+  $('#supplyHistoryDownload')?.addEventListener('click', downloadSupplyHistoryCsv);
   $('#inventoryOutletFilter')?.addEventListener('change', () => loadInventory().catch(error => toast(error.message, 'bad')));
   $('#inventoryDownloadBtn')?.addEventListener('click', () => { try { downloadInventoryReport(); } catch (error) { toast(error.message, 'bad'); } });
   $('#supplyItemSearch')?.addEventListener('focus', event => renderSupplyItemPicker(event.target.value, true));
@@ -3917,6 +3988,48 @@ function wireInventoryActions() {
 
 function wireDashboardActions() {
   const sections = $$('.section');
+  $('#overviewOperationsCustomToggle')?.addEventListener('click', () => {
+    const panel = $('#overviewOperationsCustomPanel');
+    const open = panel?.classList.contains('hidden');
+    panel?.classList.toggle('hidden', !open);
+    $('#overviewOperationsCustomToggle')?.setAttribute('aria-expanded', String(Boolean(open)));
+    if (open) renderOverviewOperations();
+  });
+  $('#overviewOperationsApply')?.addEventListener('click', () => {
+    const from = $('#overviewOperationsFrom')?.value || '';
+    const to = $('#overviewOperationsTo')?.value || '';
+    try {
+      historyBounds(from, to);
+      if (!from || !to) throw new Error('Select both From and To dates.');
+      state.overviewOperationsFrom = from;
+      state.overviewOperationsTo = to;
+      renderOverviewOperations();
+    } catch (error) { toast(error.message, 'bad'); }
+  });
+  $('#overviewOperationsToday')?.addEventListener('click', () => {
+    const today = localDateInputValue();
+    state.overviewOperationsFrom = today;
+    state.overviewOperationsTo = today;
+    renderOverviewOperations();
+  });
+  $('#overviewOperationsClear')?.addEventListener('click', () => {
+    state.overviewOperationsFrom = '';
+    state.overviewOperationsTo = '';
+    $('#overviewOperationsCustomPanel')?.classList.add('hidden');
+    $('#overviewOperationsCustomToggle')?.setAttribute('aria-expanded', 'false');
+    renderOverviewOperations();
+  });
+  $('#overviewOperationsDownload')?.addEventListener('click', () => {
+    const bounds = overviewOperationsBounds();
+    downloadOperationsHistory(operationsSnapshot(bounds), bounds.from === bounds.to ? bounds.from : `${bounds.from} to ${bounds.to}`, 'overview-operations');
+  });
+  ['#overviewOperationsLedger', '#reportOperationsLedger'].forEach(selector => {
+    $(selector)?.addEventListener('click', event => {
+      const button = event.target.closest('[data-operations-view-bill]');
+      const bill = button && state.inventory.bills.find(row => row.id === button.dataset.operationsViewBill);
+      if (bill) printSupplyBill(bill, false);
+    });
+  });
   $('#spinSettingsOutlet')?.addEventListener('change', fillSpinSettingForm);
   $('#saveSpinSettingsBtn')?.addEventListener('click', saveSpinSettings);
   $('#addCustomerReviewBtn')?.addEventListener('click', addCustomerReview);
@@ -4029,6 +4142,10 @@ function wireDashboardActions() {
   });
   $('#sessionHistoryDownloadBtn')?.addEventListener('click', downloadCombinedSessionHistoryCsv);
   $('#reportsExportBtn')?.addEventListener('click', exportSessionReports);
+  $('#reportsOperationsDownload')?.addEventListener('click', () => {
+    const { rangeLabel } = reportExportScope();
+    downloadOperationsHistory(operationsSnapshot(reportDateBounds()), rangeLabel, 'report-operations');
+  });
   $('#reportsClearLogBtn')?.addEventListener('click', clearSelectedReportLogs);
 
   wirePosActions();
@@ -4508,6 +4625,108 @@ function localDateInputValue(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+function selectedOperationsOutletId() {
+  if (state.selectedOutlet === 'ALL') return '';
+  return state.outlets.find(outlet => outlet.slug === state.selectedOutlet)?.id || '';
+}
+
+function operationInRange(row, field, bounds) {
+  const outletId = selectedOperationsOutletId();
+  if (outletId && row.outlet_id !== outletId) return false;
+  const timestamp = new Date(row[field]).getTime();
+  if (bounds.invalid || Number.isNaN(timestamp)) return false;
+  if (bounds.session) {
+    const outlet = state.outlets.find(item => item.id === row.outlet_id);
+    const openedAt = outlet?.current_session_started_at || outlet?.updated_at;
+    return Boolean(outlet?.status === 'ACTIVE' && openedAt && timestamp >= new Date(openedAt).getTime());
+  }
+  const start = bounds.start instanceof Date ? bounds.start.getTime() : bounds.start;
+  const end = bounds.end instanceof Date ? bounds.end.getTime() : bounds.end;
+  return (!start || timestamp >= start) && (!end || timestamp < end);
+}
+
+function operationsSnapshot(bounds) {
+  const orders = (state.reportOrders || []).filter(order =>
+    operationInRange(order, 'created_at', bounds) && isReportableOrder(order) && !isFamilyFriendsOrder(order)
+  );
+  const bills = (state.inventory.bills || []).filter(row => operationInRange(row, 'supplied_at', bounds));
+  const expenses = (state.inventory.expenses || []).filter(row => operationInRange(row, 'occurred_at', bounds));
+  const sales = orders.reduce((sum, row) => sum + Number(row.total || 0), 0);
+  const stock = bills.reduce((sum, row) => sum + Number(row.total_amount || 0), 0);
+  const dailyExpenses = expenses.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  return { orders, bills, expenses, sales, stock, dailyExpenses, net: sales - stock - dailyExpenses };
+}
+
+function operationsLedgerRows(snapshot) {
+  return [
+    ...snapshot.bills.map(row => ({
+      type: 'STOCK SUPPLY', date: row.supplied_at, outletId: row.outlet_id,
+      detail: row.bill_number || 'Supply bill', amount: Number(row.total_amount || 0), billId: row.id
+    })),
+    ...snapshot.expenses.map(row => ({
+      type: 'DAILY EXPENSE', date: row.occurred_at, outletId: row.outlet_id,
+      detail: row.description || row.category_name || row.category || 'Expense', amount: Number(row.amount || 0)
+    }))
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+function renderOperationsLedger(target, snapshot) {
+  const node = $(target);
+  if (!node) return;
+  const rows = operationsLedgerRows(snapshot);
+  node.innerHTML = rows.length ? rows.map(row => `
+    <div class="operations-ledger-row">
+      <span class="type">${escapeHtml(row.type)}</span>
+      <span>${escapeHtml(inventoryDate(row.date))}</span>
+      <strong class="operations-detail">${escapeHtml(row.detail)}</strong>
+      <span>${escapeHtml(inventoryOutlet(row.outletId)?.name || state.outlets.find(outlet => outlet.id === row.outletId)?.name || 'Outlet')}</span>
+      <div><b>${formatReportMoney(row.amount)}</b>${row.billId ? `<button class="secondary" type="button" data-operations-view-bill="${row.billId}">VIEW BILL</button>` : ''}</div>
+    </div>`).join('') : '<div class="operations-ledger-empty">No stock supply or daily expense records in this date range.</div>';
+}
+
+function overviewOperationsBounds() {
+  const today = localDateInputValue();
+  const from = state.overviewOperationsFrom || today;
+  const to = state.overviewOperationsTo || today;
+  try {
+    const { start, end } = historyBounds(from, to);
+    return { start, end, from, to };
+  } catch {
+    return { invalid: true, from, to };
+  }
+}
+
+function renderOverviewOperations() {
+  if (!$('#overviewOperationsLedger')) return;
+  const bounds = overviewOperationsBounds();
+  const snapshot = operationsSnapshot(bounds);
+  if ($('#overviewOperationsSales')) $('#overviewOperationsSales').textContent = formatReportMoney(snapshot.sales);
+  if ($('#overviewOperationsStock')) $('#overviewOperationsStock').textContent = formatReportMoney(snapshot.stock);
+  if ($('#overviewOperationsExpenses')) $('#overviewOperationsExpenses').textContent = formatReportMoney(snapshot.dailyExpenses);
+  if ($('#overviewOperationsNet')) $('#overviewOperationsNet').textContent = formatReportMoney(snapshot.net);
+  if ($('#overviewOperationsRangeLabel')) $('#overviewOperationsRangeLabel').textContent = bounds.from === bounds.to ? bounds.from : `${bounds.from} to ${bounds.to}`;
+  if ($('#overviewOperationsFrom')) $('#overviewOperationsFrom').value = bounds.from;
+  if ($('#overviewOperationsTo')) $('#overviewOperationsTo').value = bounds.to;
+  renderOperationsLedger('#overviewOperationsLedger', snapshot);
+}
+
+function downloadOperationsHistory(snapshot, rangeLabel, filePrefix = 'operations') {
+  const outletLabel = selectedOperationsOutletId()
+    ? state.outlets.find(outlet => outlet.id === selectedOperationsOutletId())?.name || 'Outlet'
+    : 'All Outlets';
+  const rows = [
+    ['OHHO BURGERS OPERATIONS HISTORY'], ['Outlet', outletLabel], ['Range', rangeLabel], ['Generated At', new Date().toLocaleString('en-IN')], [],
+    ['SUMMARY'], ['Net Sales', snapshot.sales.toFixed(2)], ['Stock Supply Cost', snapshot.stock.toFixed(2)], ['Daily Expenses', snapshot.dailyExpenses.toFixed(2)], ['Operational Amount', snapshot.net.toFixed(2)], [],
+    ['PAID SALES'], ['Date', 'Outlet', 'Order Number', 'Payment', 'Amount'],
+    ...snapshot.orders.map(row => [inventoryDate(row.created_at), inventoryOutlet(row.outlet_id)?.name || '', row.order_number || '', row.payment_method || '', Number(row.total || 0).toFixed(2)]), [],
+    ['STOCK SUPPLY BILLS'], ['Date', 'Outlet', 'Bill Number', 'Receipt Status', 'Payment Status', 'Amount'],
+    ...snapshot.bills.map(row => [inventoryDate(row.supplied_at), inventoryOutlet(row.outlet_id)?.name || '', row.bill_number || '', row.receipt_status || 'RECEIVED', row.payment_status || '', Number(row.total_amount || 0).toFixed(2)]), [],
+    ['DAILY EXPENSES'], ['Date', 'Outlet', 'Category', 'Description', 'Amount'],
+    ...snapshot.expenses.map(row => [inventoryDate(row.occurred_at), inventoryOutlet(row.outlet_id)?.name || '', row.category_name || row.category || '', row.description || '', Number(row.amount || 0).toFixed(2)])
+  ];
+  downloadCsv(`ohho-${filePrefix}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+}
+
 function setDefaultCustomReportDates() {
   const from = $('#reportDateFrom');
   const to = $('#reportDateTo');
@@ -4705,54 +4924,45 @@ function renderReportDashboard() {
       ? `${mostGifted.name} · ${mostGifted.freeQuantity}`
       : '—';
   }
-  const { start, end, invalid, session } = reportDateBounds();
-  const selectedOutlet = state.selectedOutlet === 'ALL' ? null : state.outlets.find(row => row.slug === state.selectedOutlet)?.id;
-  const inRange = (row, field) => {
-    if (invalid || selectedOutlet && row.outlet_id !== selectedOutlet) return false;
-    const timestamp = new Date(row[field]).getTime();
-    if (session) {
-      const outlet = state.outlets.find(item => item.id === row.outlet_id);
-      const openedAt = outlet?.current_session_started_at || outlet?.updated_at;
-      return Boolean(outlet?.status === 'ACTIVE' && openedAt && timestamp >= new Date(openedAt).getTime());
-    }
-    return (!start || timestamp >= start.getTime()) && (!end || timestamp < end.getTime());
-  };
-  const supplyCost = (state.inventory.bills || []).filter(row => inRange(row, 'supplied_at')).reduce((sum, row) => sum + Number(row.total_amount || 0), 0);
-  const dailyExpenses = (state.inventory.expenses || []).filter(row => inRange(row, 'occurred_at')).reduce((sum, row) => sum + Number(row.amount || 0), 0);
-  const totalExpenses = supplyCost + dailyExpenses;
+  const operations = operationsSnapshot(reportDateBounds());
+  const totalExpenses = operations.stock + operations.dailyExpenses;
   if ($('#financialSales')) $('#financialSales').textContent = formatReportMoney(paidSales);
-  if ($('#financialSupply')) $('#financialSupply').textContent = formatReportMoney(supplyCost);
-  if ($('#financialDailyExpenses')) $('#financialDailyExpenses').textContent = formatReportMoney(dailyExpenses);
+  if ($('#financialSupply')) $('#financialSupply').textContent = formatReportMoney(operations.stock);
+  if ($('#financialDailyExpenses')) $('#financialDailyExpenses').textContent = formatReportMoney(operations.dailyExpenses);
   if ($('#financialTotalExpenses')) $('#financialTotalExpenses').textContent = formatReportMoney(totalExpenses);
-  if ($('#financialNet')) $('#financialNet').textContent = formatReportMoney(paidSales - totalExpenses);
+  if ($('#financialNet')) $('#financialNet').textContent = formatReportMoney(operations.net);
+  renderOperationsLedger('#reportOperationsLedger', operations);
   renderItemWiseSales(orders);
   renderSalesReports(reports);
 }
 
 async function loadLegacyReports() {
-  let query = supabase
-    .from('orders')
-    .select('id,order_number,outlet_id,status,payment_method,payment_status,order_source,total,created_at')
-    .order('created_at', { ascending: false })
-    .limit(1000);
-
-  if (state.selectedOutlet !== 'ALL') {
-    const outlet = state.outlets.find(item => item.slug === state.selectedOutlet);
-    if (outlet?.id) query = query.eq('outlet_id', outlet.id);
-  }
-
-  const { data: orders, error } = await query;
-
-  if (error) {
-    console.error('Unable to load session order details:', error);
-    state.reportOrders = [];
-    state.reportItems = [];
-    return;
+  const orders = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    let query = supabase
+      .from('orders')
+      .select('id,order_number,outlet_id,status,payment_method,payment_status,order_source,total,created_at')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (state.selectedOutlet !== 'ALL') {
+      const outlet = state.outlets.find(item => item.slug === state.selectedOutlet);
+      if (outlet?.id) query = query.eq('outlet_id', outlet.id);
+    }
+    const { data, error } = await query;
+    if (error) {
+      console.error('Unable to load session order details:', error);
+      state.reportOrders = [];
+      state.reportItems = [];
+      return;
+    }
+    orders.push(...(data || []));
+    if (!data || data.length < pageSize) break;
   }
 
   const itemCounts = new Map();
   state.reportItems = [];
-  const orderIds = (orders || []).map(order => order.id);
+  const orderIds = orders.map(order => order.id);
 
   for (let index = 0; index < orderIds.length; index += 200) {
     const { data: items, error: itemsError } = await supabase
@@ -4774,7 +4984,7 @@ async function loadLegacyReports() {
     });
   }
 
-  state.reportOrders = (orders || []).map(order => ({
+  state.reportOrders = orders.map(order => ({
     ...order,
     item_count: itemCounts.get(order.id) || 0
   }));
@@ -4844,6 +5054,7 @@ function exportSessionReports() {
   const freeItemTotals = itemSalesTotals(freeOrders).filter(item => item.freeQuantity > 0);
   const mostGifted = freeItemTotals[0];
   const { rangeLabel, outletLabel, fileScope } = reportExportScope();
+  const operations = operationsSnapshot(reportDateBounds());
 
   const rows = [
     ['OHHO BURGERS OVERALL SALES REPORT'],
@@ -4858,6 +5069,21 @@ function exportSessionReports() {
     ['Average Order Value', averageOrder.toFixed(2)],
     ['Paid Items', paidItems],
     ['Closed Sessions', reports.length],
+    [],
+    ['OPERATIONS SUMMARY'],
+    ['Metric', 'Value'],
+    ['Net Sales', operations.sales.toFixed(2)],
+    ['Stock Supply Cost', operations.stock.toFixed(2)],
+    ['Daily Expenses', operations.dailyExpenses.toFixed(2)],
+    ['Operational Amount', operations.net.toFixed(2)],
+    [],
+    ['STOCK SUPPLY BILLS'],
+    ['Date', 'Outlet', 'Bill Number', 'Receipt Status', 'Payment Status', 'Amount'],
+    ...operations.bills.map(row => [inventoryDate(row.supplied_at), inventoryOutlet(row.outlet_id)?.name || '', row.bill_number || '', row.receipt_status || 'RECEIVED', row.payment_status || '', Number(row.total_amount || 0).toFixed(2)]),
+    [],
+    ['DAILY EXPENSES'],
+    ['Date', 'Outlet', 'Category', 'Description', 'Amount'],
+    ...operations.expenses.map(row => [inventoryDate(row.occurred_at), inventoryOutlet(row.outlet_id)?.name || '', row.category_name || row.category || '', row.description || '', Number(row.amount || 0).toFixed(2)]),
     [],
     ['PAYMENT COLLECTION'],
     ['Payment Mode', 'Amount'],
@@ -5048,6 +5274,7 @@ async function clearSelectedReportLogs() {
 async function loadReports() {
   await Promise.all([loadLegacyReports(), loadSalesReports()]);
   renderReportDashboard();
+  renderOverviewOperations();
 }
 
 async function loadSalesReports() {

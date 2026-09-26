@@ -740,6 +740,9 @@ body{font-size:14px}
 @media(max-width:1050px){.report-split-grid{grid-template-columns:1fr}.report-toolbar{align-items:flex-start}.report-toolbar-actions{width:100%}}
 @media(max-width:760px){#reports .page-head h1{font-size:29px}.report-panel{padding:13px}.report-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.report-compact-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.item-sales-list{overflow-x:auto}.item-sales-head,.item-sales-row{grid-template-columns:minmax(210px,1.5fr) 82px 82px 82px 118px 118px}.item-sales-row .money{grid-column:auto}.report-toolbar-actions{gap:7px}.report-section-actions{width:100%;justify-content:space-between;text-align:left}.report-section-actions .report-clear-btn{width:auto}}
 @media(max-width:430px){.report-summary-grid,.report-compact-grid{grid-template-columns:1fr 1fr}.report-stat-card strong,.report-payment-card strong{font-size:19px}}
+.operations-summary-panel{margin:14px 0}.operations-toolbar{margin:12px 0}.operations-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 14px}.operations-summary-grid>div{padding:14px 15px;border:1px solid #292929;border-radius:10px;background:#101010}.operations-summary-grid span{display:block;margin-bottom:8px;color:#777;font-size:9px;font-weight:800;letter-spacing:.55px}.operations-summary-grid strong{font:900 21px var(--mono);color:#f5f5f0}.operations-summary-grid .net{border-color:#4a3d13;background:#151205}.operations-summary-grid .net strong{color:var(--yellow)}.operations-ledger{display:grid;gap:7px}.operations-ledger-row{display:grid;grid-template-columns:115px 130px minmax(170px,1fr) 135px auto;align-items:center;gap:10px;padding:11px 13px;border:1px solid #292929;border-radius:9px;background:#101010}.operations-ledger-row>span{color:#999;font-size:10px}.operations-ledger-row strong{font-size:11px}.operations-ledger-row b{color:#f5f5f0;font:900 12px var(--mono);text-align:right}.operations-ledger-row .type{color:var(--yellow);font:800 8px var(--mono);letter-spacing:.6px}.operations-ledger-empty{padding:20px;border:1px dashed #303030;border-radius:9px;color:#777;text-align:center;font-size:11px}.supply-history-toolbar{margin:0 0 12px}.report-section-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}.report-section-actions>span{color:#666;font-size:10px}.report-section-actions .primary{white-space:nowrap}.operations-ledger-row button{padding:7px 9px;font-size:8px}
+@media(max-width:760px){.operations-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.operations-ledger-row{grid-template-columns:1fr auto}.operations-ledger-row .operations-detail{grid-column:1/-1}.operations-ledger-row b{text-align:left}.report-section-actions{justify-content:flex-start}.supply-history-toolbar,.operations-toolbar{align-items:stretch}}
+@media(max-width:430px){.operations-summary-grid{grid-template-columns:1fr}.operations-ledger-row{grid-template-columns:1fr}}
 @media(max-width:1050px){.session-report-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.report-range-buttons,.session-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.session-report-actions{width:100%;align-items:flex-start}}
 @media(max-width:430px){.session-report-metrics{grid-template-columns:1fr}}
@@ -785,6 +788,27 @@ body{font-size:14px}
     <article class="kpi"><div class="kpi-head"><span class="kpi-label">Average order</span><span class="kpi-icon">↗</span></div><div id="overviewAverageOrder" class="kpi-value">₹0</div><div class="kpi-foot"><span>Per paid session order</span></div></article>
     <article class="kpi"><div class="kpi-head"><span class="kpi-label">Live menu</span><span class="kpi-icon">▦</span></div><div id="overviewMenuCount" class="kpi-value">0</div><div class="kpi-foot"><span id="overviewMenuFoot" class="positive">0 active items</span></div></article>
   </div>
+  <article class="panel operations-summary-panel">
+    <div class="panel-head"><div><div class="panel-title">Operations summary</div><div class="panel-sub">Net sales, stock supply costs and daily expenses</div></div><span id="overviewOperationsRangeLabel" class="panel-meta">Today</span></div>
+    <div class="orders-history-toolbar operations-toolbar">
+      <button id="overviewOperationsCustomToggle" class="secondary" type="button" aria-expanded="false">CUSTOM DATE</button>
+      <button id="overviewOperationsToday" class="secondary" type="button">TODAY</button>
+      <button id="overviewOperationsDownload" class="primary" type="button">DOWNLOAD HISTORY</button>
+    </div>
+    <div id="overviewOperationsCustomPanel" class="orders-custom-date-panel hidden">
+      <label><span>FROM DATE</span><input id="overviewOperationsFrom" type="date"></label>
+      <label><span>TO DATE</span><input id="overviewOperationsTo" type="date"></label>
+      <button id="overviewOperationsApply" class="primary" type="button">VIEW RECORDS</button>
+      <button id="overviewOperationsClear" class="secondary" type="button">CLEAR</button>
+    </div>
+    <div class="operations-summary-grid">
+      <div><span>NET SALES</span><strong id="overviewOperationsSales">₹0</strong></div>
+      <div><span>STOCK SUPPLY COST</span><strong id="overviewOperationsStock">₹0</strong></div>
+      <div><span>DAILY EXPENSES</span><strong id="overviewOperationsExpenses">₹0</strong></div>
+      <div class="net"><span>OPERATIONAL AMOUNT</span><strong id="overviewOperationsNet">₹0</strong></div>
+    </div>
+    <div id="overviewOperationsLedger" class="operations-ledger"></div>
+  </article>
   <div class="command">
     <article class="panel live"><div class="panel-head"><div><div class="panel-title">Live orders</div><div class="panel-sub">Current queue from active outlet sessions</div></div><span id="overviewLiveCount" class="panel-meta">0 LIVE</span></div><div id="overviewLiveOrders" class="overview-live-orders"><div class="empty"><div><div class="empty-icon">⌁</div><strong>Your order queue is clear.</strong><p>New POS orders will appear here automatically.</p></div></div></div></article>
     <div class="side-panels">
@@ -1238,6 +1262,18 @@ body{font-size:14px}
   </article>
   <article class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Billing history</div><h2>Supply bills</h2></div><span id="inventoryBillCount">0 bills</span></div>
+    <div class="orders-history-toolbar supply-history-toolbar">
+      <button id="supplyHistoryCustomToggle" class="secondary" type="button" aria-expanded="false">CUSTOM DATE</button>
+      <button id="supplyHistoryShowAll" class="secondary" type="button">SEE ALL RECORDS</button>
+      <button id="supplyHistoryDownload" class="primary" type="button">DOWNLOAD HISTORY</button>
+      <span id="supplyHistoryRangeLabel">All supply bills</span>
+    </div>
+    <div id="supplyHistoryCustomPanel" class="orders-custom-date-panel hidden">
+      <label><span>FROM DATE</span><input id="supplyHistoryFrom" type="date"></label>
+      <label><span>TO DATE</span><input id="supplyHistoryTo" type="date"></label>
+      <button id="supplyHistoryApply" class="primary" type="button">VIEW RECORDS</button>
+      <button id="supplyHistoryClear" class="secondary" type="button">CLEAR</button>
+    </div>
     <div id="inventoryBillsList" class="inventory-bills-list"></div>
   </article>
   <article class="inventory-panel inventory-table-panel">
@@ -1365,7 +1401,7 @@ body{font-size:14px}
     <div id="customDatePanel" class="report-panel custom-date-panel hidden">
       <label class="custom-date-field"><span>FROM DATE</span><input id="reportDateFrom" type="date"></label>
       <label class="custom-date-field"><span>TO DATE</span><input id="reportDateTo" type="date"></label>
-      <button id="applyCustomDateBtn" class="primary" type="button">APPLY DATES</button>
+      <button id="applyCustomDateBtn" class="primary" type="button">VIEW RECORDS</button>
     </div>
     <div class="report-summary-grid">
       <div class="report-stat-card"><span>TOTAL SALES</span><strong id="reportsTotalSales">₹0</strong></div>
@@ -1374,7 +1410,7 @@ body{font-size:14px}
       <div class="report-stat-card"><span>PAID ITEMS</span><strong id="reportsTotalItems">0</strong></div>
     </div>
     <div class="report-panel">
-      <div class="report-section-head"><div><div class="eyebrow">Financial summary</div><h2>Sales and expenses</h2></div><span>Supply bills and owner-entered daily expenses for this range</span></div>
+      <div class="report-section-head"><div><div class="eyebrow">Financial summary</div><h2>Sales, stock and expenses</h2></div><div class="report-section-actions"><span>Supply bills and owner-entered daily expenses for this range</span><button id="reportsOperationsDownload" class="primary" type="button">DOWNLOAD OPERATIONS</button></div></div>
       <div class="report-summary-grid">
         <div class="report-stat-card"><span>SALES</span><strong id="financialSales">₹0</strong></div>
         <div class="report-stat-card"><span>STOCK SUPPLY COST</span><strong id="financialSupply">₹0</strong></div>
@@ -1382,6 +1418,10 @@ body{font-size:14px}
         <div class="report-stat-card"><span>TOTAL EXPENSES</span><strong id="financialTotalExpenses">₹0</strong></div>
         <div class="report-stat-card free"><span>NET AFTER EXPENSES</span><strong id="financialNet">₹0</strong></div>
       </div>
+    </div>
+    <div class="report-panel">
+      <div class="report-section-head"><div><div class="eyebrow">Unified history</div><h2>Daily expenses and stock supply</h2></div><span>Use the report date buttons above to change this list</span></div>
+      <div id="reportOperationsLedger" class="operations-ledger"></div>
     </div>
     <div class="report-split-grid">
       <div class="report-panel">
