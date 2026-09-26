@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js';
 import { filterHistory, historyBounds } from '../lib/history.js';
 import { calculateSuggestedRequirements } from '../lib/stock-requirements.js';
+import { calculateCurrentStockValue } from '../lib/inventory-valuation.js';
 
 const ROLE_PERMISSIONS = {
   ADMIN: ['overview', 'pos', 'orders', 'menu', 'inventory', 'daily-expenses', 'outlets', 'staff', 'reports', 'settings'],
@@ -22,6 +23,7 @@ const state = {
   reportRange: 'SESSION',
   overviewOperationsFrom: '',
   overviewOperationsTo: '',
+  overviewOperationsMode: 'SESSION',
   ordersArchiveOpen: false,
   orderHistoryRecords: null,
   orderHistoryRangeLabel: 'Latest order history',
@@ -3397,13 +3399,7 @@ function renderInventory() {
   const balances = state.inventory.balances.filter(row => !outletId || row.outlet_id === outletId);
   const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at');
   const movements = inventoryHistoryRows(state.inventory.movements, 'occurred_at');
-  const priceByItem = new Map();
-  state.inventory.items.forEach(item => priceByItem.set(item.id, Number(item.default_supply_price || 0)));
-  [...state.inventory.bills].reverse().forEach(bill => (bill.supply_bill_items || []).forEach(line => priceByItem.set(`${bill.outlet_id}:${line.item_id}`, Number(line.unit_price || 0))));
-  const stockValue = balances.reduce((sum, row) => {
-    const item = inventoryItem(row.item_id);
-    return sum + inventoryDisplayQuantity(item, row.quantity_on_hand) * (priceByItem.get(`${row.outlet_id}:${row.item_id}`) ?? priceByItem.get(row.item_id) ?? 0);
-  }, 0);
+  const stockValue = calculateCurrentStockValue({ items: state.inventory.items, balances, bills: state.inventory.bills, outletId });
   const lowCount = balances.filter(row => {
     const item = inventoryItem(row.item_id);
     return inventoryDisplayQuantity(item, row.quantity_on_hand) <= Number(item?.low_stock_threshold || 0);
@@ -3993,7 +3989,11 @@ function wireDashboardActions() {
     const open = panel?.classList.contains('hidden');
     panel?.classList.toggle('hidden', !open);
     $('#overviewOperationsCustomToggle')?.setAttribute('aria-expanded', String(Boolean(open)));
-    if (open) renderOverviewOperations();
+    if (open) {
+      const today = localDateInputValue();
+      if ($('#overviewOperationsFrom') && !$('#overviewOperationsFrom').value) $('#overviewOperationsFrom').value = today;
+      if ($('#overviewOperationsTo') && !$('#overviewOperationsTo').value) $('#overviewOperationsTo').value = today;
+    }
   });
   $('#overviewOperationsApply')?.addEventListener('click', () => {
     const from = $('#overviewOperationsFrom')?.value || '';
@@ -4001,18 +4001,18 @@ function wireDashboardActions() {
     try {
       historyBounds(from, to);
       if (!from || !to) throw new Error('Select both From and To dates.');
+      state.overviewOperationsMode = 'CUSTOM';
       state.overviewOperationsFrom = from;
       state.overviewOperationsTo = to;
       renderOverviewOperations();
     } catch (error) { toast(error.message, 'bad'); }
   });
   $('#overviewOperationsToday')?.addEventListener('click', () => {
-    const today = localDateInputValue();
-    state.overviewOperationsFrom = today;
-    state.overviewOperationsTo = today;
+    state.overviewOperationsMode = 'SESSION';
     renderOverviewOperations();
   });
   $('#overviewOperationsClear')?.addEventListener('click', () => {
+    state.overviewOperationsMode = 'SESSION';
     state.overviewOperationsFrom = '';
     state.overviewOperationsTo = '';
     $('#overviewOperationsCustomPanel')?.classList.add('hidden');
@@ -4021,7 +4021,8 @@ function wireDashboardActions() {
   });
   $('#overviewOperationsDownload')?.addEventListener('click', () => {
     const bounds = overviewOperationsBounds();
-    downloadOperationsHistory(operationsSnapshot(bounds), bounds.from === bounds.to ? bounds.from : `${bounds.from} to ${bounds.to}`, 'overview-operations');
+    const label = bounds.session ? 'Current open session' : (bounds.from === bounds.to ? bounds.from : `${bounds.from} to ${bounds.to}`);
+    downloadOperationsHistory(operationsSnapshot(bounds), label, 'overview-operations');
   });
   ['#overviewOperationsLedger', '#reportOperationsLedger'].forEach(selector => {
     $(selector)?.addEventListener('click', event => {
@@ -4689,6 +4690,7 @@ function renderOperationsLedger(target, snapshot) {
 }
 
 function overviewOperationsBounds() {
+  if (state.overviewOperationsMode === 'SESSION') return { session: true, from: '', to: '' };
   const today = localDateInputValue();
   const from = state.overviewOperationsFrom || today;
   const to = state.overviewOperationsTo || today;
@@ -4708,9 +4710,9 @@ function renderOverviewOperations() {
   if ($('#overviewOperationsStock')) $('#overviewOperationsStock').textContent = formatReportMoney(snapshot.stock);
   if ($('#overviewOperationsExpenses')) $('#overviewOperationsExpenses').textContent = formatReportMoney(snapshot.dailyExpenses);
   if ($('#overviewOperationsNet')) $('#overviewOperationsNet').textContent = formatReportMoney(snapshot.net);
-  if ($('#overviewOperationsRangeLabel')) $('#overviewOperationsRangeLabel').textContent = bounds.from === bounds.to ? bounds.from : `${bounds.from} to ${bounds.to}`;
-  if ($('#overviewOperationsFrom')) $('#overviewOperationsFrom').value = bounds.from;
-  if ($('#overviewOperationsTo')) $('#overviewOperationsTo').value = bounds.to;
+  if ($('#overviewOperationsRangeLabel')) $('#overviewOperationsRangeLabel').textContent = bounds.session ? 'Current open session' : (bounds.from === bounds.to ? bounds.from : `${bounds.from} to ${bounds.to}`);
+  if ($('#overviewOperationsFrom') && bounds.from) $('#overviewOperationsFrom').value = bounds.from;
+  if ($('#overviewOperationsTo') && bounds.to) $('#overviewOperationsTo').value = bounds.to;
   renderOperationsLedger('#overviewOperationsLedger', snapshot);
 }
 
