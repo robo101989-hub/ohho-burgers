@@ -4659,6 +4659,10 @@ function operationsSnapshot(bounds) {
 
 function operationsLedgerRows(snapshot) {
   return [
+    ...snapshot.orders.map(row => ({
+      type: 'NET SALE', date: row.created_at, outletId: row.outlet_id,
+      detail: `Order #${row.order_number || row.id || ''}`, amount: Number(row.total || 0)
+    })),
     ...snapshot.bills.map(row => ({
       type: 'STOCK SUPPLY', date: row.supplied_at, outletId: row.outlet_id,
       detail: row.bill_number || 'Supply bill', amount: Number(row.total_amount || 0), billId: row.id
