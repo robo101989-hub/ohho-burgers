@@ -34,3 +34,19 @@ test('uses weighted received cost so one bad cross-unit receipt cannot replace t
   });
   assert.equal(value, 1750);
 });
+
+test('normalizes historical receipt quantities after a Master Item unit conversion', () => {
+  const value = calculateCurrentStockValue({
+    items: [{ id: 'cheese', supply_unit: 'KG', billing_unit: 'KG', inventory_unit: 'G', base_unit: 'G', default_supply_price: 500 }],
+    balances: [{ outlet_id: 'outlet', item_id: 'cheese', quantity_on_hand: 3000 }],
+    bills: [{
+      outlet_id: 'outlet', supplied_at: '2026-09-26T10:00:00Z', receipt_status: 'RECEIVED',
+      supply_bill_items: [{ item_id: 'cheese', inventory_unit: 'EACH', base_quantity: 3, line_total: 1500 }]
+    }],
+    movements: [{
+      outlet_id: 'outlet', item_id: 'cheese', occurred_at: '2026-09-27T10:00:00Z',
+      movement_type: 'ADJUSTMENT', rule_snapshot: { oldUnit: 'EACH', newUnit: 'G', factor: 1000 }
+    }]
+  });
+  assert.equal(value, 1500);
+});

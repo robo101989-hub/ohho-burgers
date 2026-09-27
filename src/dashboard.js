@@ -3581,7 +3581,7 @@ function renderInventory() {
   const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at');
   const allMovements = inventoryHistoryRows(state.inventory.movements, 'occurred_at');
   const movements = state.inventory.historyItemId ? allMovements.filter(row => row.item_id === state.inventory.historyItemId) : allMovements;
-  const stockValue = calculateCurrentStockValue({ items: state.inventory.items, balances, bills: state.inventory.bills, outletId });
+  const stockValue = calculateCurrentStockValue({ items: state.inventory.items, balances, bills: state.inventory.bills, movements: state.inventory.movements, outletId });
   const lowCount = balances.filter(row => {
     const item = inventoryItem(row.item_id);
     return inventoryDisplayQuantity(item, row.quantity_on_hand) <= Number(item?.low_stock_threshold || 0);
