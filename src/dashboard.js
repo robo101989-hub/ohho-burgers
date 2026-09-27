@@ -3246,7 +3246,11 @@ function fillInventoryControls() {
   inventorySelectOptions($('#stockRequestCategory'), state.inventory.stockCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), $('#stockRequestCategory')?.value);
   inventorySelectOptions($('#expenseCategory'), state.inventory.expenseCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), $('#expenseCategory')?.value);
   inventorySelectOptions($('#recipeMenuItem'), state.inventory.menuItems.map(row => ({ value: row.id, label: row.name })), $('#recipeMenuItem')?.value);
-  inventorySelectOptions($('#recipeStockItem'), state.inventory.items.filter(row => row.active !== false).map(row => ({ value: row.id, label: `${row.name} · ${inventoryInternalUnit(row)}` })), $('#recipeStockItem')?.value);
+  const previousRecipeCategory = $('#recipeStockCategory')?.value || '';
+  inventorySelectOptions($('#recipeStockCategory'), state.inventory.stockCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), previousRecipeCategory);
+  const recipeCategoryId = $('#recipeStockCategory')?.value || '';
+  const recipeStockItems = state.inventory.items.filter(row => row.active !== false && (!recipeCategoryId || row.category_id === recipeCategoryId));
+  inventorySelectOptions($('#recipeStockItem'), recipeStockItems.map(row => ({ value: row.id, label: `${row.name} · ${inventoryInternalUnit(row)}` })), $('#recipeStockItem')?.value);
   inventorySelectOptions($('#wastageMenuItem'), state.inventory.menuItems.map(row => ({ value: row.id, label: row.name })), $('#wastageMenuItem')?.value);
   inventorySelectOptions($('#wastageStockItem'), state.inventory.items.filter(row => row.active !== false).map(row => ({ value: row.id, label: `${row.name} · ${inventoryInternalUnit(row)}` })), $('#wastageStockItem')?.value);
   inventorySelectOptions($('#packagingRuleItem'), state.inventory.items.filter(row => row.active !== false).map(row => ({ value: row.id, label: `${row.name} · ${inventoryInternalUnit(row)}` })), $('#packagingRuleItem')?.value);
@@ -4210,6 +4214,7 @@ function wireInventoryActions() {
   $('#inventoryCreateItem')?.addEventListener('click', createInventoryItem);
   ['#inventoryRequestUnit','#inventorySupplyUnit','#inventoryInternalUnit'].forEach(selector => $(selector)?.addEventListener('change', syncCreateConversionDefaults));
   $('#recipeMenuItem')?.addEventListener('change', renderRecipeIngredients);
+  $('#recipeStockCategory')?.addEventListener('change', () => { fillInventoryControls(); updateRecipeQuantityUnit(); });
   $('#recipeStockItem')?.addEventListener('change', updateRecipeQuantityUnit);
   $('#saveRecipeIngredient')?.addEventListener('click', saveRecipeIngredient);
   $('#packagingConsumptionType')?.addEventListener('change', updatePackagingRuleFields);
