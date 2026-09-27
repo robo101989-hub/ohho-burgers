@@ -3260,6 +3260,7 @@ function fillInventoryControls() {
   const admin = state.profile?.role === 'ADMIN';
   const owner = state.profile?.role === 'OWNER';
   if ($('#inventoryAdminWorkspace')) $('#inventoryAdminWorkspace').style.display = admin ? '' : 'none';
+  $$('#inventoryQuickNav [data-admin-only]').forEach(button => button.classList.toggle('hidden', !admin));
   if ($('#inventoryPageTitle')) $('#inventoryPageTitle').textContent = admin ? 'Stock & Supply Management' : 'Stock Requirements & Supply Bills';
   if ($('#inventoryMasterPanel')) $('#inventoryMasterPanel').style.display = admin ? '' : 'none';
   if ($('#openingStockPanel')) $('#openingStockPanel').style.display = admin ? '' : 'none';
@@ -3610,7 +3611,8 @@ function renderInventory() {
   if (billsList) billsList.innerHTML = bills.length ? bills.map(bill => {
     const outstanding = Math.max(0, Number(bill.total_amount || 0) - Number(bill.paid_amount || 0));
     const receiptStatus = bill.receipt_status || 'RECEIVED';
-    return `<div class="inventory-bill"><div class="inventory-bill-top"><div><h3>${escapeHtml(bill.bill_number)}</h3><div class="inventory-bill-meta">${escapeHtml(inventoryOutlet(bill.outlet_id)?.name || 'Outlet')} · ${inventoryDate(bill.supplied_at)} · <span class="inventory-status ${receiptStatus === 'RECEIVED' ? 'in' : 'low'}">${receiptStatus === 'RECEIVED' ? 'RECEIVED' : 'AWAITING RECEIPT'}</span></div></div><div class="inventory-bill-total"><strong>${formatReportMoney(bill.total_amount)}</strong><span>${escapeHtml(bill.payment_status)} · DUE ${formatReportMoney(outstanding)}</span></div></div><div class="inventory-bill-items">${(bill.supply_bill_items || []).map(line => { const item = inventoryItem(line.item_id); const billed = `${inventoryQty(line.quantity)} ${unitLabel(line.unit, line.quantity)}`; return `<span>${escapeHtml(line.item_name)} · Inventory +${inventoryQty(line.base_quantity)} ${escapeHtml(unitLabel(line.inventory_unit || item?.inventory_unit || item?.base_unit, line.base_quantity))} · Supply ${billed} × ${formatReportMoney(line.unit_price)}</span>`; }).join('')}</div><div class="inventory-bill-actions"><button class="secondary" data-inventory-view="${bill.id}">VIEW BILL</button><button class="secondary" data-inventory-print="${bill.id}">PRINT / SAVE PDF</button><button class="secondary" data-inventory-bill-csv="${bill.id}">DOWNLOAD CSV</button>${state.profile?.role === 'OWNER' && receiptStatus === 'PENDING' ? `<button class="primary" data-inventory-receive="${bill.id}">CONFIRM STOCK RECEIPT</button>` : ''}${state.profile?.role === 'ADMIN' && outstanding > 0 ? `<button class="primary" data-inventory-pay="${bill.id}">RECORD PAYMENT</button>` : ''}</div></div>`;
+    const lines = bill.supply_bill_items || [];
+    return `<div class="inventory-bill"><div class="inventory-bill-top"><div><h3>${escapeHtml(bill.bill_number)}</h3><div class="inventory-bill-meta">${escapeHtml(inventoryOutlet(bill.outlet_id)?.name || 'Outlet')} · ${inventoryDate(bill.supplied_at)} · <span class="inventory-status ${receiptStatus === 'RECEIVED' ? 'in' : 'low'}">${receiptStatus === 'RECEIVED' ? 'RECEIVED' : 'AWAITING RECEIPT'}</span></div></div><div class="inventory-bill-total"><strong>${formatReportMoney(bill.total_amount)}</strong><span>${escapeHtml(bill.payment_status)} · DUE ${formatReportMoney(outstanding)}</span></div></div><details class="inventory-bill-detail"><summary>${lines.length} ITEM${lines.length === 1 ? '' : 'S'} IN THIS BILL</summary><div class="inventory-bill-items">${lines.map(line => { const item = inventoryItem(line.item_id); const billed = `${inventoryQty(line.quantity)} ${unitLabel(line.unit, line.quantity)}`; return `<span>${escapeHtml(line.item_name)} · Inventory +${inventoryQty(line.base_quantity)} ${escapeHtml(unitLabel(line.inventory_unit || item?.inventory_unit || item?.base_unit, line.base_quantity))} · Supply ${billed} × ${formatReportMoney(line.unit_price)}</span>`; }).join('')}</div></details><div class="inventory-bill-actions"><button class="secondary" data-inventory-view="${bill.id}">VIEW BILL</button><button class="secondary" data-inventory-print="${bill.id}">PRINT / SAVE PDF</button><button class="secondary" data-inventory-bill-csv="${bill.id}">DOWNLOAD CSV</button>${state.profile?.role === 'OWNER' && receiptStatus === 'PENDING' ? `<button class="primary" data-inventory-receive="${bill.id}">CONFIRM STOCK RECEIPT</button>` : ''}${state.profile?.role === 'ADMIN' && outstanding > 0 ? `<button class="primary" data-inventory-pay="${bill.id}">RECORD PAYMENT</button>` : ''}</div></div>`;
   }).join('') : '<div class="inventory-empty">No supply bills in this period.</div>';
 
   const movementList = $('#inventoryMovementList');
@@ -4063,6 +4065,17 @@ async function recordInventoryPayment(bill) {
 
 function wireInventoryActions() {
   const refreshSessionRecords = async () => { await loadSalesReports(); await loadInventory(); };
+  $('#inventoryQuickNav')?.addEventListener('click', event => {
+    const button = event.target.closest('[data-inventory-scroll]');
+    const target = button && document.getElementById(button.dataset.inventoryScroll);
+    if (!target) return;
+    if (target instanceof HTMLDetailsElement) target.open = true;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  $$('#inventoryAdminWorkspace .inventory-tool-card').forEach(section => section.addEventListener('toggle', () => {
+    if (!section.open) return;
+    $$('#inventoryAdminWorkspace .inventory-tool-card').forEach(other => { if (other !== section) other.open = false; });
+  }));
   $('#inventoryRefreshBtn')?.addEventListener('click', () => refreshSessionRecords().catch(error => toast(error.message, 'bad')));
   $('#inventoryApplyFilter')?.addEventListener('click', () => {
     try {

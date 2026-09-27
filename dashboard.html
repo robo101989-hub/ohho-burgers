@@ -1152,6 +1152,44 @@ body{font-size:14px}
 #inventory .inventory-setup-details>summary small{color:#d9ba23;font-size:10px}
 #inventory .inventory-setup-details>summary strong{font-size:16px;font-weight:720}
 #inventory .inventory-setup-details>summary b{min-width:58px;text-align:center;border:1px solid #4b4320;background:#211d0b;color:#f1cd25}
+#inventory .inventory-setup-details>summary b{font-size:0}
+#inventory .inventory-setup-details>summary b::after{content:"OPEN";font-size:10px}
+#inventory .inventory-setup-details[open]>summary b::after{content:"CLOSE"}
+#inventory .inventory-admin-grid{grid-template-columns:1fr;gap:12px}
+#inventory .inventory-billing-panel{padding:24px}
+#inventory .inventory-billing-panel .inventory-form-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+#inventory .admin-tools-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#inventory .inventory-tool-card{border:1px solid #30322f;border-radius:12px;background:#0c0d0c;overflow:hidden}
+#inventory .inventory-tool-card>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:76px;padding:17px 18px;cursor:pointer;list-style:none}
+#inventory .inventory-tool-card>summary::-webkit-details-marker{display:none}
+#inventory .inventory-tool-card>summary span{display:grid;gap:5px}
+#inventory .inventory-tool-card>summary small{color:#d9ba23;font-size:9px;font-weight:760;letter-spacing:.8px;text-transform:uppercase}
+#inventory .inventory-tool-card>summary strong{font-size:15px;color:#f4f4ef}
+#inventory .inventory-tool-card>summary b{min-width:70px;padding:7px 9px;border:1px solid #3d3f3a;border-radius:7px;color:#b5b7b0;font-size:9px;text-align:center}
+#inventory .inventory-tool-card>summary b{font-size:0}
+#inventory .inventory-tool-card>summary b::after{content:"OPEN";font-size:9px}
+#inventory .inventory-tool-card[open]>summary{border-bottom:1px solid #2d2f2c;background:#121310}
+#inventory .inventory-tool-card[open]>summary b{border-color:#5b4d13;background:#211d0b;color:#f1cd25}
+#inventory .inventory-tool-card[open]>summary b::after{content:"CLOSE"}
+#inventory .inventory-tool-card[open]{grid-column:1/-1}
+#inventory .inventory-tool-body{padding:18px}
+#inventory .inventory-tool-card .daily-expense-list{max-height:270px;overflow:auto;margin-top:12px;padding-right:4px}
+#inventory .opening-stock-details>summary{padding:3px 2px}
+#inventory .opening-stock-details .opening-stock-body{padding-top:18px}
+#inventory #openingStockItems{max-height:430px;overflow:auto;margin-top:12px;padding-right:6px}
+#inventory #inventoryMasterList{max-height:560px;overflow:auto;padding-right:5px}
+#inventory #inventoryMovementList{max-height:620px;overflow:auto;padding-right:5px}
+#inventory .inventory-bill-detail{margin-top:12px;border:1px solid #2d2f2c;border-radius:9px;background:#0d0e0d}
+#inventory .inventory-bill-detail>summary{display:flex;align-items:center;justify-content:space-between;min-height:40px;padding:0 12px;cursor:pointer;list-style:none;color:#d9ba23;font-size:10px;font-weight:760}
+#inventory .inventory-bill-detail>summary::-webkit-details-marker{display:none}
+#inventory .inventory-bill-detail>summary::after{content:"SHOW +";color:#9a9c96;font-size:9px}
+#inventory .inventory-bill-detail[open]>summary::after{content:"HIDE −"}
+#inventory .inventory-bill-detail .inventory-bill-items{margin:0;padding:0 12px 12px}
+#inventory .inventory-quick-nav{position:sticky;top:12px;z-index:25;display:flex;gap:8px;overflow-x:auto;margin:0 0 14px;padding:9px;border:1px solid #30322f;border-radius:12px;background:rgba(13,14,13,.94);backdrop-filter:blur(14px);box-shadow:0 12px 30px rgba(0,0,0,.24)}
+#inventory .inventory-quick-nav button{flex:0 0 auto;min-height:38px;padding:0 13px;border:1px solid #353733;border-radius:8px;background:#151614;color:#c7c9c3;font-size:10px;font-weight:760;letter-spacing:.35px}
+#inventory .inventory-quick-nav button:hover{border-color:#6a5a17;color:#ffd21c;background:#1a180f}
+@media(max-width:1000px){#inventory .inventory-billing-panel .inventory-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){#inventory .admin-tools-grid,#inventory .inventory-billing-panel .inventory-form-grid{grid-template-columns:1fr}#inventory .inventory-billing-panel{padding:16px}#inventory .inventory-tool-card>summary{min-height:68px;padding:14px}}
 #inventory .inventory-master-item{min-height:82px;padding:14px;border-color:#30322f;border-radius:11px;background:#151614}
 #inventory .inventory-master-item:hover{border-color:#4a4630;background:#181814}
 #inventory .inventory-master-rate button{min-height:auto;padding:4px 0;color:#c3c5bf}
@@ -1196,6 +1234,15 @@ body{font-size:14px}
     <article><span>SUPPLY AMOUNT DUE</span><strong id="inventoryDue">₹0</strong><small>Unpaid balance</small></article>
     <article><span>STOCK RECEIVED THIS SESSION</span><strong id="inventoryToday">0</strong><small>Current open-session entries</small></article>
   </div>
+  <nav id="inventoryQuickNav" class="inventory-quick-nav" aria-label="Stock and supply sections">
+    <button type="button" data-inventory-scroll="stockRequestAdminPanel">REQUIREMENTS</button>
+    <button type="button" data-inventory-scroll="inventoryBillingPanel" data-admin-only>BILLING</button>
+    <button type="button" data-inventory-scroll="inventoryAdminSetup" data-admin-only>SETUP</button>
+    <button type="button" data-inventory-scroll="openingStockPanel" data-admin-only>OPENING STOCK</button>
+    <button type="button" data-inventory-scroll="outletStockPanel">LIVE STOCK</button>
+    <button type="button" data-inventory-scroll="inventoryRecords">SUPPLY BILLS</button>
+    <button type="button" data-inventory-scroll="inventoryMovementPanel">STOCK HISTORY</button>
+  </nav>
   <article id="wastagePanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">One-tap kitchen record</div><h2>Record Wastage</h2></div><span>Stock updates when saved</span></div>
     <div class="inventory-form-grid">
@@ -1230,7 +1277,7 @@ body{font-size:14px}
     <div id="stockRequestList" class="stock-request-list"></div>
   </article>
   <div id="inventoryAdminWorkspace" class="inventory-admin-grid">
-    <article class="inventory-panel">
+    <article id="inventoryBillingPanel" class="inventory-panel inventory-billing-panel">
       <div class="inventory-panel-head"><div><div class="eyebrow">Central billing</div><h2>Generate stock bill</h2></div></div>
       <div class="inventory-form-grid">
         <label><span>OUTLET</span><select id="supplyOutlet"></select></label>
@@ -1245,9 +1292,12 @@ body{font-size:14px}
       <div class="supply-total"><span>BILL TOTAL</span><strong id="supplyBillTotal">₹0</strong></div>
       <button id="supplyGenerateBill" class="primary inventory-wide-btn" type="button">GENERATE SUPPLY BILL</button>
     </article>
-    <details class="inventory-panel inventory-setup-details">
-      <summary><span><small>ADMIN SETUP</small><strong>Manage items &amp; categories</strong></span><b>OPEN</b></summary>
-      <div class="inventory-panel-head"><div><div class="eyebrow">Master items</div><h2>Add stock item</h2></div></div>
+    <details id="inventoryAdminSetup" class="inventory-panel inventory-setup-details">
+      <summary><span><small>ADMIN SETUP</small><strong>Items, recipes &amp; automation</strong></span><b>OPEN</b></summary>
+      <div class="admin-tools-grid">
+      <details class="inventory-tool-card">
+      <summary><span><small>Master items</small><strong>Create a stock item</strong></span><b>OPEN</b></summary>
+      <div class="inventory-tool-body">
       <div class="inventory-form-grid item-create-grid">
         <label><span>ITEM NAME</span><input id="inventoryItemName" type="text" placeholder="Chicken"></label>
         <label><span>SKU</span><input id="inventoryItemSku" type="text" placeholder="CHICKEN"></label>
@@ -1261,8 +1311,12 @@ body{font-size:14px}
         <label><span>TARGET STOCK</span><input id="inventoryItemTarget" type="number" min="0" step="0.001" placeholder="100"></label>
         <label><span>DEFAULT PRICE</span><input id="inventoryItemPrice" type="number" min="0" step="0.01" placeholder="₹0"></label>
       </div>
-      <button id="inventoryCreateItem" class="secondary inventory-wide-btn" type="button">CREATE STOCK ITEM</button>
-      <div class="inventory-panel-head adjustment-head"><div><div class="eyebrow">POS automation</div><h2>Menu recipes</h2></div><span>Recipe consumption for one menu item</span></div>
+      <button id="inventoryCreateItem" class="primary inventory-wide-btn" type="button">CREATE STOCK ITEM</button>
+      </div>
+      </details>
+      <details class="inventory-tool-card">
+      <summary><span><small>POS automation</small><strong>Menu recipes</strong></span><b>OPEN</b></summary>
+      <div class="inventory-tool-body">
       <div class="inventory-form-grid">
         <label><span>MENU ITEM</span><select id="recipeMenuItem"></select></label>
         <label><span>STOCK ITEM</span><select id="recipeStockItem"></select></label>
@@ -1271,7 +1325,11 @@ body{font-size:14px}
       </div>
       <button id="saveRecipeIngredient" class="secondary inventory-wide-btn" type="button">ADD / UPDATE INGREDIENT</button>
       <div id="recipeIngredientList" class="daily-expense-list"></div>
-      <div class="inventory-panel-head adjustment-head"><div><div class="eyebrow">Order-type automation</div><h2>Packaging rules</h2></div><span>Deduct packaging only when its rule applies</span></div>
+      </div>
+      </details>
+      <details class="inventory-tool-card">
+      <summary><span><small>Order-type automation</small><strong>Packaging rules</strong></span><b>OPEN</b></summary>
+      <div class="inventory-tool-body">
       <div class="inventory-form-grid">
         <label><span>PACKAGING ITEM</span><select id="packagingRuleItem"></select></label>
         <label><span>USED FOR</span><span class="packaging-order-types"><label><input id="packagingDineIn" type="checkbox"> Dine-In</label><label><input id="packagingTakeaway" type="checkbox" checked> Takeaway</label><label><input id="packagingDelivery" type="checkbox"> Delivery</label></span></label>
@@ -1282,27 +1340,37 @@ body{font-size:14px}
       </div>
       <button id="savePackagingRule" class="secondary inventory-wide-btn" type="button">SAVE PACKAGING RULE</button>
       <div id="packagingRuleList" class="daily-expense-list"></div>
-      <div class="inventory-panel-head adjustment-head"><div><div class="eyebrow">Item categories</div><h2>Category management</h2></div></div>
+      </div>
+      </details>
+      <details class="inventory-tool-card">
+      <summary><span><small>Item organisation</small><strong>Stock categories</strong></span><b>OPEN</b></summary>
+      <div class="inventory-tool-body">
       <div class="inventory-form-grid"><label><span>CATEGORY NAME</span><input id="stockCategoryName" type="text" maxlength="80" placeholder="Chicken"></label></div>
       <button id="createStockCategory" class="secondary inventory-wide-btn" type="button">CREATE CATEGORY</button>
       <div id="stockCategoryList" class="daily-expense-list"></div>
+      </div>
+      </details>
+      </div>
     </details>
   </div>
-  <article id="openingStockPanel" class="inventory-panel inventory-table-panel">
-    <div class="inventory-panel-head"><div><div class="eyebrow">Admin control</div><h2>Opening Stock Setup</h2></div><span id="openingStockStatus">Set the physical starting balance once</span></div>
+  <details id="openingStockPanel" class="inventory-panel inventory-table-panel inventory-setup-details opening-stock-details">
+    <summary><span><small>ADMIN CONTROL</small><strong>Opening stock &amp; physical corrections</strong></span><b>OPEN</b></summary>
+    <div class="opening-stock-body">
+    <div class="inventory-panel-head"><div><div class="eyebrow">Physical balance</div><h2>Opening Stock Setup</h2></div><span id="openingStockStatus">Set the physical starting balance once</span></div>
     <div class="inventory-form-grid">
       <label><span>OUTLET</span><select id="openingStockOutlet"></select></label>
       <label><span>REASON / NOTE</span><input id="openingStockReason" type="text" maxlength="500" placeholder="Required for later corrections"></label>
     </div>
     <div id="openingStockItems" class="daily-expense-list"></div>
     <button id="confirmOpeningStock" class="primary inventory-wide-btn" type="button">CONFIRM OPENING STOCK</button>
-  </article>
+    </div>
+  </details>
   <details id="inventoryMasterPanel" class="inventory-panel inventory-table-panel inventory-setup-details">
     <summary><span><small>ITEM DIRECTORY</small><strong>Items, units &amp; fixed prices</strong></span><b>OPEN</b></summary>
     <div class="inventory-master-toolbar"><label><span>CATEGORY</span><select id="inventoryMasterCategory"></select></label><label><span>SEARCH ITEM</span><input id="inventoryMasterSearch" type="search" placeholder="Search name or SKU"></label></div>
     <div id="inventoryMasterList" class="inventory-master-groups"></div>
   </details>
-  <article class="inventory-panel inventory-table-panel">
+  <article id="outletStockPanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Live balances</div><h2>Outlet stock</h2></div><span id="inventoryStockCount">0 items</span></div>
     <div class="inventory-table-wrap"><div class="inventory-table-head"><span>ITEM</span><span>OUTLET</span><span>RECEIVED THIS SESSION</span><span>USED / WASTE THIS SESSION</span><span>CURRENT STOCK</span><span>STATUS</span></div><div id="inventoryStockList"></div></div>
   </article>
