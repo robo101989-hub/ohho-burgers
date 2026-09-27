@@ -3,6 +3,7 @@ import { filterHistory, historyBounds } from '../lib/history.js';
 import { calculateSuggestedRequirements } from '../lib/stock-requirements.js';
 import { calculateCurrentStockValue } from '../lib/inventory-valuation.js';
 import { defaultNetQuantity, standardConversion, unitLabel, stockRequestUnit, requestSupplyQuantities } from '../lib/inventory-measurements.js';
+import { recordIsInSessions, selectCompletedSessions } from '../lib/session-reporting.js';
 
 const ROLE_PERMISSIONS = {
   ADMIN: ['overview', 'pos', 'orders', 'menu', 'inventory', 'daily-expenses', 'outlets', 'staff', 'reports', 'settings'],
@@ -4897,6 +4898,7 @@ function operationInRange(row, field, bounds) {
     const openedAt = outlet?.current_session_started_at || outlet?.updated_at;
     return Boolean(outlet?.status === 'ACTIVE' && openedAt && timestamp >= new Date(openedAt).getTime());
   }
+  if (bounds.sessions) return recordIsInSessions(row, field, bounds.sessions);
   const start = bounds.start instanceof Date ? bounds.start.getTime() : bounds.start;
   const end = bounds.end instanceof Date ? bounds.end.getTime() : bounds.end;
   return (!start || timestamp >= start) && (!end || timestamp < end);
@@ -4942,7 +4944,13 @@ function renderOperationsLedger(target, snapshot) {
       <strong class="operations-detail">${escapeHtml(row.detail)}</strong>
       <span>${escapeHtml(inventoryOutlet(row.outletId)?.name || state.outlets.find(outlet => outlet.id === row.outletId)?.name || 'Outlet')}</span>
       <div><b>${formatReportMoney(row.amount)}</b>${row.billId ? `<button class="secondary" type="button" data-operations-view-bill="${row.billId}">VIEW BILL</button>` : ''}</div>
-    </div>`).join('') : '<div class="operations-ledger-empty">No stock supply or daily expense records in this date range.</div>';
+    </div>`).join('') : '<div class="operations-ledger-empty">No sales, stock supply or daily expense records in the selected sessions.</div>';
+}
+
+function completedSessionsForRange(range, from = '', to = '') {
+  const outletId = selectedOperationsOutletId();
+  const reports = outletId ? (state.salesReports || []).filter(report => report.outlet_id === outletId) : (state.salesReports || []);
+  return selectCompletedSessions(reports, { range, from, to });
 }
 
 function overviewOperationsBounds() {
@@ -4951,8 +4959,8 @@ function overviewOperationsBounds() {
   const from = state.overviewOperationsFrom || today;
   const to = state.overviewOperationsTo || today;
   try {
-    const { start, end } = historyBounds(from, to);
-    return { start, end, from, to };
+    historyBounds(from, to);
+    return { ...completedSessionsForRange('CUSTOM', from, to), from, to };
   } catch {
     return { invalid: true, from, to };
   }
@@ -4966,7 +4974,8 @@ function renderOverviewOperations() {
   if ($('#overviewOperationsStock')) $('#overviewOperationsStock').textContent = formatReportMoney(snapshot.stock);
   if ($('#overviewOperationsExpenses')) $('#overviewOperationsExpenses').textContent = formatReportMoney(snapshot.dailyExpenses);
   if ($('#overviewOperationsNet')) $('#overviewOperationsNet').textContent = formatReportMoney(snapshot.net);
-  if ($('#overviewOperationsRangeLabel')) $('#overviewOperationsRangeLabel').textContent = bounds.session ? 'Current open session' : (bounds.from === bounds.to ? bounds.from : `${bounds.from} to ${bounds.to}`);
+  if ($('#overviewOperationsTitle')) $('#overviewOperationsTitle').textContent = bounds.session ? 'Current session operations' : 'Completed session operations';
+  if ($('#overviewOperationsRangeLabel')) $('#overviewOperationsRangeLabel').textContent = bounds.session ? 'Current open session' : `${bounds.sessions?.length || 0} complete session${bounds.sessions?.length === 1 ? '' : 's'} · closed ${bounds.from === bounds.to ? bounds.from : `${bounds.from} to ${bounds.to}`}`;
   if ($('#overviewOperationsFrom') && bounds.from) $('#overviewOperationsFrom').value = bounds.from;
   if ($('#overviewOperationsTo') && bounds.to) $('#overviewOperationsTo').value = bounds.to;
   renderOperationsLedger('#overviewOperationsLedger', snapshot);
@@ -5028,46 +5037,20 @@ function applySessionHistoryDates() {
 function reportDateBounds() {
   const range = state.reportRange || 'SESSION';
   if (range === 'SESSION') return { start: null, end: null, session: true };
-  if (range === 'ALL') return { start: null, end: null };
-
-  if (range === 'CUSTOM') {
-    const fromValue = $('#reportDateFrom')?.value;
-    const toValue = $('#reportDateTo')?.value;
-    if (!fromValue || !toValue || fromValue > toValue) {
-      return { start: null, end: null, invalid: true };
-    }
-    const start = new Date(`${fromValue}T00:00:00`);
-    const end = new Date(`${toValue}T00:00:00`);
-    end.setDate(end.getDate() + 1);
-    return { start, end };
-  }
-
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  if (range === '7_DAYS') start.setDate(start.getDate() - 6);
-  if (range === '30_DAYS') start.setDate(start.getDate() - 29);
-  return { start, end: null };
+  const from = range === 'CUSTOM' ? $('#reportDateFrom')?.value || '' : '';
+  const to = range === 'CUSTOM' ? $('#reportDateTo')?.value || '' : '';
+  return { ...completedSessionsForRange(range, from, to), from, to };
 }
 
 function filteredSessionReports() {
-  const { start, end, invalid, session } = reportDateBounds();
+  const { invalid, session, sessions } = reportDateBounds();
   if (invalid) return [];
-  if (session) {
-    const latestByOutlet = new Set();
-    return (state.salesReports || []).filter(report => {
-      if (latestByOutlet.has(report.outlet_id)) return false;
-      latestByOutlet.add(report.outlet_id);
-      return true;
-    });
-  }
-  return (state.salesReports || []).filter(report => {
-    const closedAt = new Date(report.closed_at).getTime();
-    return (!start || closedAt >= start.getTime()) && (!end || closedAt < end.getTime());
-  });
+  if (session) return [];
+  return sessions || [];
 }
 
 function filteredReportOrders() {
-  const { start, end, invalid, session } = reportDateBounds();
+  const { invalid, session, sessions } = reportDateBounds();
   if (invalid) return [];
   return (state.reportOrders || []).filter(order => {
     const createdAt = new Date(order.created_at).getTime();
@@ -5081,11 +5064,7 @@ function filteredReportOrders() {
         createdAt >= new Date(startedAt).getTime()
       );
     }
-    return (
-      isReportableOrder(order) &&
-      (!start || createdAt >= start.getTime()) &&
-      (!end || createdAt < end.getTime())
-    );
+    return isReportableOrder(order) && recordIsInSessions(order, 'created_at', sessions);
   });
 }
 
@@ -5261,17 +5240,17 @@ function csvCell(value) {
 function reportExportScope() {
   const rangeLabels = {
     SESSION: 'Current Session',
-    TODAY: 'Today',
-    '7_DAYS': 'Last 7 Days',
-    '30_DAYS': 'Last 30 Days',
-    ALL: 'All Time'
+    TODAY: 'Sessions Closed Today',
+    '7_DAYS': 'Sessions Closed in Last 7 Days',
+    '30_DAYS': 'Sessions Closed in Last 30 Days',
+    ALL: 'All Completed Sessions'
   };
   let rangeLabel = rangeLabels[state.reportRange] || 'Selected Range';
 
   if (state.reportRange === 'CUSTOM') {
     const from = $('#reportDateFrom')?.value || '—';
     const to = $('#reportDateTo')?.value || '—';
-    rangeLabel = `${from} to ${to}`;
+    rangeLabel = `Sessions Closed ${from} to ${to}`;
   }
 
   const outlet = state.selectedOutlet === 'ALL'
@@ -5462,7 +5441,7 @@ async function clearSelectedReportLogs() {
   }
 
   if (state.reportRange === 'SESSION') {
-    toast('Choose Today, Last 7 Days, Last 30 Days, Custom Date or All Time to clear report logs.', 'bad');
+    toast('Choose Today’s Sessions, Last 7 Days, Last 30 Days, Custom Sessions or All Sessions to clear completed session logs.', 'bad');
     return;
   }
 
@@ -5473,11 +5452,11 @@ async function clearSelectedReportLogs() {
   }
 
   const labels = {
-    TODAY: 'today',
-    '7_DAYS': 'the last 7 days',
-    '30_DAYS': 'the last 30 days',
-    CUSTOM: 'the custom date range',
-    ALL: 'all time'
+    TODAY: 'sessions closed today',
+    '7_DAYS': 'sessions closed in the last 7 days',
+    '30_DAYS': 'sessions closed in the last 30 days',
+    CUSTOM: 'the selected completed sessions',
+    ALL: 'all completed sessions'
   };
   const scope = state.selectedOutlet === 'ALL'
     ? 'all outlets'

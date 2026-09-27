@@ -803,16 +803,16 @@ body{font-size:14px}
     <div id="ownerLatestRequirement" class="stock-request-list"></div>
   </article>
   <article class="panel operations-summary-panel">
-    <div class="panel-head"><div><div class="panel-title">Current session operations</div><div class="panel-sub">From outlet opening until closing: net sales, stock supply costs and daily expenses</div></div><span id="overviewOperationsRangeLabel" class="panel-meta">Current open session</span></div>
+    <div class="panel-head"><div><div id="overviewOperationsTitle" class="panel-title">Current session operations</div><div class="panel-sub">From outlet opening until closing: net sales, stock supply costs and daily expenses</div></div><span id="overviewOperationsRangeLabel" class="panel-meta">Current open session</span></div>
     <div class="orders-history-toolbar operations-toolbar">
-      <button id="overviewOperationsCustomToggle" class="secondary" type="button" aria-expanded="false">CUSTOM DATE</button>
+      <button id="overviewOperationsCustomToggle" class="secondary" type="button" aria-expanded="false">CUSTOM SESSIONS</button>
       <button id="overviewOperationsToday" class="secondary" type="button">CURRENT SESSION</button>
       <button id="overviewOperationsDownload" class="primary" type="button">DOWNLOAD HISTORY</button>
     </div>
     <div id="overviewOperationsCustomPanel" class="orders-custom-date-panel hidden">
-      <label><span>FROM DATE</span><input id="overviewOperationsFrom" type="date"></label>
-      <label><span>TO DATE</span><input id="overviewOperationsTo" type="date"></label>
-      <button id="overviewOperationsApply" class="primary" type="button">VIEW RECORDS</button>
+      <label><span>SESSION CLOSED FROM</span><input id="overviewOperationsFrom" type="date"></label>
+      <label><span>SESSION CLOSED TO</span><input id="overviewOperationsTo" type="date"></label>
+      <button id="overviewOperationsApply" class="primary" type="button">VIEW COMPLETE SESSIONS</button>
       <button id="overviewOperationsClear" class="secondary" type="button">CLEAR</button>
     </div>
     <div class="operations-summary-grid">
@@ -1432,21 +1432,21 @@ body{font-size:14px}
     <div class="report-panel report-toolbar">
       <div><div class="eyebrow">Session reports</div><h2>SESSION SALES</h2></div>
       <div class="report-toolbar-actions">
-        <div class="report-range-buttons" role="group" aria-label="Sales report date range">
+        <div class="report-range-buttons" role="group" aria-label="Completed session range">
           <button type="button" class="report-range-btn active" data-report-range="SESSION" aria-pressed="true">SESSION SALE</button>
-          <button type="button" class="report-range-btn" data-report-range="TODAY" aria-pressed="false">TODAY</button>
-          <button type="button" class="report-range-btn" data-report-range="7_DAYS" aria-pressed="false">LAST 7 DAYS</button>
-          <button type="button" class="report-range-btn" data-report-range="30_DAYS" aria-pressed="false">LAST 30 DAYS</button>
-          <button type="button" class="report-range-btn" data-report-range="CUSTOM" aria-pressed="false">CUSTOM DATE</button>
-          <button type="button" class="report-range-btn" data-report-range="ALL" aria-pressed="false">ALL TIME</button>
+          <button type="button" class="report-range-btn" data-report-range="TODAY" aria-pressed="false">TODAY SESSIONS</button>
+          <button type="button" class="report-range-btn" data-report-range="7_DAYS" aria-pressed="false">7-DAY SESSIONS</button>
+          <button type="button" class="report-range-btn" data-report-range="30_DAYS" aria-pressed="false">30-DAY SESSIONS</button>
+          <button type="button" class="report-range-btn" data-report-range="CUSTOM" aria-pressed="false">CUSTOM SESSIONS</button>
+          <button type="button" class="report-range-btn" data-report-range="ALL" aria-pressed="false">ALL SESSIONS</button>
         </div>
         <button class="secondary report-export-btn" id="reportsExportBtn" type="button">DOWNLOAD FULL REPORT</button>
       </div>
     </div>
     <div id="customDatePanel" class="report-panel custom-date-panel hidden">
-      <label class="custom-date-field"><span>FROM DATE</span><input id="reportDateFrom" type="date"></label>
-      <label class="custom-date-field"><span>TO DATE</span><input id="reportDateTo" type="date"></label>
-      <button id="applyCustomDateBtn" class="primary" type="button">VIEW RECORDS</button>
+      <label class="custom-date-field"><span>SESSION CLOSED FROM</span><input id="reportDateFrom" type="date"></label>
+      <label class="custom-date-field"><span>SESSION CLOSED TO</span><input id="reportDateTo" type="date"></label>
+      <button id="applyCustomDateBtn" class="primary" type="button">VIEW COMPLETE SESSIONS</button>
     </div>
     <div class="report-summary-grid">
       <div class="report-stat-card"><span>TOTAL SALES</span><strong id="reportsTotalSales">₹0</strong></div>
@@ -1465,7 +1465,7 @@ body{font-size:14px}
       </div>
     </div>
     <div class="report-panel">
-      <div class="report-section-head"><div><div class="eyebrow">Unified history</div><h2>Daily expenses and stock supply</h2></div><span>Use the report date buttons above to change this list</span></div>
+      <div class="report-section-head"><div><div class="eyebrow">Unified history</div><h2>Daily expenses and stock supply</h2></div><span>Every total follows the selected opening-to-closing sessions</span></div>
       <div id="reportOperationsLedger" class="operations-ledger"></div>
     </div>
     <div class="report-split-grid">
@@ -1495,15 +1495,15 @@ body{font-size:14px}
     <div class="report-panel">
       <div class="report-section-head"><div><div class="eyebrow">Opening to closing</div><h2>Session history <span id="reportsSessionCount" class="session-count-pill">0</span></h2></div><div class="report-section-actions"><span>Each row is one complete outlet session</span><button class="secondary report-clear-btn" id="reportsClearLogBtn" type="button">CLEAR LOG</button></div></div>
       <div class="orders-history-toolbar session-history-toolbar">
-        <button id="sessionHistoryCustomToggle" class="secondary" type="button" aria-expanded="false">CUSTOM DATE</button>
+        <button id="sessionHistoryCustomToggle" class="secondary" type="button" aria-expanded="false">CUSTOM SESSIONS</button>
         <button id="sessionHistoryShowAllBtn" class="secondary" type="button">SEE ALL RECORDS</button>
         <button id="sessionHistoryDownloadBtn" class="primary" type="button">DOWNLOAD CSV</button>
         <span id="sessionHistoryRangeLabel">Current session range</span>
       </div>
       <div id="sessionHistoryCustomPanel" class="orders-custom-date-panel hidden">
-        <label><span>FROM DATE</span><input id="sessionHistoryDateFrom" type="date"></label>
-        <label><span>TO DATE</span><input id="sessionHistoryDateTo" type="date"></label>
-        <button id="sessionHistoryApplyBtn" class="primary" type="button">VIEW RECORDS</button>
+        <label><span>SESSION CLOSED FROM</span><input id="sessionHistoryDateFrom" type="date"></label>
+        <label><span>SESSION CLOSED TO</span><input id="sessionHistoryDateTo" type="date"></label>
+        <button id="sessionHistoryApplyBtn" class="primary" type="button">VIEW COMPLETE SESSIONS</button>
         <button id="sessionHistoryClearBtn" class="secondary" type="button">CLEAR</button>
       </div>
       <div id="salesReportsList" class="sales-reports-list"><div class="orders-loading">Loading sales reports…</div></div>
