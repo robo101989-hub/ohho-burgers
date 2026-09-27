@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { recordIsInSessions, selectCompletedSessions } from '../lib/session-reporting.js';
+import { recordIsInOpenSessions, recordIsInSessions, selectCompletedSessions } from '../lib/session-reporting.js';
 
 const sessions = [
   { id: 'overnight', outlet_id: 'a', opened_at: '2026-09-26T18:00:00Z', closed_at: '2026-09-27T03:00:00Z' },
@@ -31,4 +31,11 @@ test('last seven days selects sessions by close time but keeps earlier opening r
   const recent = selectCompletedSessions(sessions, { range: '7_DAYS', now: new Date('2026-09-27T12:00:00+05:30') });
   assert.deepEqual(recent.sessions.map(row => row.id), ['overnight', 'other-outlet']);
   assert.equal(recordIsInSessions({ outlet_id: 'a', supplied_at: '2026-09-26T19:00:00Z' }, 'supplied_at', recent.sessions), true);
+});
+
+test('current session records start at outlet opening time and can cross midnight', () => {
+  const outlets = [{ id: 'a', status: 'ACTIVE', current_session_started_at: '2026-09-27T17:00:00+05:30' }];
+  assert.equal(recordIsInOpenSessions({ outlet_id: 'a', occurred_at: '2026-09-28T00:30:00+05:30' }, 'occurred_at', outlets), true);
+  assert.equal(recordIsInOpenSessions({ outlet_id: 'a', occurred_at: '2026-09-27T16:59:59+05:30' }, 'occurred_at', outlets), false);
+  assert.equal(recordIsInOpenSessions({ outlet_id: 'b', occurred_at: '2026-09-28T00:30:00+05:30' }, 'occurred_at', outlets), false);
 });

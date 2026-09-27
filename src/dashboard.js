@@ -1,9 +1,9 @@
 import { supabase } from './supabase.js';
-import { filterHistory, historyBounds } from '../lib/history.js';
+import { historyBounds } from '../lib/history.js';
 import { calculateSuggestedRequirements } from '../lib/stock-requirements.js';
 import { calculateCurrentStockValue } from '../lib/inventory-valuation.js';
 import { defaultNetQuantity, standardConversion, unitLabel, stockRequestUnit, requestSupplyQuantities } from '../lib/inventory-measurements.js';
-import { recordIsInSessions, selectCompletedSessions } from '../lib/session-reporting.js';
+import { recordIsInOpenSessions, recordIsInSessions, selectCompletedSessions } from '../lib/session-reporting.js';
 
 const ROLE_PERMISSIONS = {
   ADMIN: ['overview', 'pos', 'orders', 'menu', 'inventory', 'daily-expenses', 'outlets', 'staff', 'reports', 'settings'],
@@ -38,7 +38,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
-  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, historyItemId: null, loaded: false },
+  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, historyItemId: null, historyMode: 'ALL', historyFrom: '', historyTo: '', expenseHistoryMode: 'CURRENT', expenseHistoryFrom: '', expenseHistoryTo: '', loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -294,7 +294,7 @@ function injectStyles() {
       .order-action-btn{min-height:44px;padding:12px;font-size:9px}
     }
     @media(max-width:1050px){.outlet-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.outlet-grid,.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.modal-head,.outlet-form{padding:18px}.outlet-card{min-height:0}.outlet-links{flex-wrap:wrap}}
-    .inventory-head-actions{display:flex;gap:8px;flex-wrap:wrap}.inventory-filterbar{display:grid;grid-template-columns:minmax(180px,1fr) 150px 150px auto auto;gap:9px;align-items:end;margin-bottom:13px}.inventory-filterbar label,.inventory-form-grid label,.inventory-notes{display:grid;gap:6px}.inventory-filterbar label span,.inventory-form-grid label span,.inventory-notes span{color:#777;font:900 7px var(--mono);letter-spacing:1px}.inventory-filterbar input,.inventory-filterbar select,.inventory-form-grid input,.inventory-form-grid select,.inventory-notes input{height:40px;width:100%;border:1px solid #303030;border-radius:8px;background:#0d0d0d;color:#eee;padding:0 11px;outline:0;color-scheme:dark}.inventory-filterbar input:focus,.inventory-filterbar select:focus,.inventory-form-grid input:focus,.inventory-form-grid select:focus,.inventory-notes input:focus{border-color:#ffd21c}.inventory-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:13px}.inventory-summary article{background:#0d0d0d;border:1px solid #252525;border-radius:13px;padding:16px}.inventory-summary span{display:block;color:#777;font:900 7px var(--mono);letter-spacing:1px}.inventory-summary strong{display:block;margin-top:7px;color:#f5f5f0;font:950 24px var(--mono)}.inventory-summary small{display:block;margin-top:5px;color:#5f5f5f;font-size:9px}.inventory-admin-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:12px;margin-bottom:12px}.inventory-panel{background:#0d0d0d;border:1px solid #252525;border-radius:14px;padding:17px}.inventory-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}.inventory-panel-head h2{margin:3px 0 0;font-size:18px}.inventory-panel-head>span{color:#777;font:800 8px var(--mono)}.inventory-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.item-create-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.inventory-wide-btn{width:100%;margin-top:10px}.inventory-notes{margin-top:10px}.supply-lines{display:grid;gap:7px;margin-top:11px}.supply-line{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:9px 10px;border:1px solid #282828;border-radius:8px;background:#101010}.supply-line strong{font-size:10px}.supply-line small{display:block;color:#777;margin-top:3px;font-size:8px}.supply-line b{color:#ffd21c;font:900 10px var(--mono)}.supply-line button{border:1px solid #492525;background:#1a0d0d;color:#ff8c8c;border-radius:6px;padding:6px 8px}.supply-empty{padding:18px;text-align:center;border:1px dashed #303030;border-radius:8px;color:#666;font-size:9px}.supply-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #272727}.supply-total span{color:#777;font:900 8px var(--mono)}.supply-total strong{color:#ffd21c;font:950 22px var(--mono)}.adjustment-head{margin-top:25px;padding-top:18px;border-top:1px solid #292929}.inventory-table-panel{margin-top:12px}.inventory-table-wrap{overflow-x:auto}.inventory-table-head,.inventory-stock-row{display:grid;grid-template-columns:minmax(160px,1.2fr) minmax(120px,1fr) 110px 110px 120px 105px;gap:10px;align-items:center;min-width:760px}.inventory-table-head{padding:9px 11px;color:#5e5e5e;font:900 7px var(--mono);letter-spacing:.8px;border-bottom:1px solid #282828}.inventory-stock-row{padding:12px 11px;border-bottom:1px solid #202020;color:#aaa;font-size:10px}.inventory-stock-row:last-child{border-bottom:0}.inventory-stock-row strong{color:#eee}.inventory-qty{color:#ffd21c;font:900 11px var(--mono)}.inventory-status{width:max-content;border-radius:6px;padding:5px 7px;font:900 7px var(--mono);letter-spacing:.5px}.inventory-status.in{color:#72d56b;background:#0d170d;border:1px solid #253b25}.inventory-status.low{color:#ffd21c;background:#191509;border:1px solid #4c411b}.inventory-status.out{color:#ff8c8c;background:#1c0d0d;border:1px solid #482121}.inventory-bills-list,.inventory-movement-list{display:grid;gap:8px}.inventory-bill{border:1px solid #292929;border-radius:10px;padding:13px;background:#101010}.inventory-bill-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.inventory-bill h3{margin:0;font-size:13px}.inventory-bill-meta{color:#777;font-size:8px;margin-top:5px}.inventory-bill-total{text-align:right}.inventory-bill-total strong{display:block;color:#ffd21c;font:950 17px var(--mono)}.inventory-bill-total span{display:block;margin-top:3px;color:#888;font:900 7px var(--mono)}.inventory-bill-items{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}.inventory-bill-items span{border:1px solid #2c2c2c;border-radius:6px;padding:6px 8px;color:#aaa;font-size:8px}.inventory-bill-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.inventory-bill-actions button{padding:8px 10px;font:900 7px var(--mono)}.inventory-movement{display:grid;grid-template-columns:120px minmax(130px,1fr) 130px 100px minmax(140px,1fr);gap:10px;padding:11px;border-bottom:1px solid #202020;align-items:center;color:#888;font-size:9px}.inventory-movement strong{color:#eee}.inventory-movement .positive{color:#72d56b}.inventory-movement .negative{color:#ff8c8c}.inventory-empty{padding:35px;text-align:center;border:1px dashed #303030;border-radius:10px;color:#666;font-size:10px}.inventory-admin-grid.owner-view{grid-template-columns:1fr}.inventory-admin-grid.owner-view>article:first-child{display:none}
+    .inventory-head-actions{display:flex;gap:8px;flex-wrap:wrap}.inventory-filterbar{display:grid;grid-template-columns:minmax(180px,1fr) 160px 160px repeat(3,auto);gap:9px;align-items:end;margin-bottom:13px}.inventory-filter-status{grid-column:1/-1}.inventory-filterbar label,.inventory-form-grid label,.inventory-notes{display:grid;gap:6px}.inventory-filterbar label span,.inventory-form-grid label span,.inventory-notes span{color:#777;font:900 7px var(--mono);letter-spacing:1px}.inventory-filterbar input,.inventory-filterbar select,.inventory-form-grid input,.inventory-form-grid select,.inventory-notes input{height:40px;width:100%;border:1px solid #303030;border-radius:8px;background:#0d0d0d;color:#eee;padding:0 11px;outline:0;color-scheme:dark}.inventory-filterbar input:focus,.inventory-filterbar select:focus,.inventory-form-grid input:focus,.inventory-form-grid select:focus,.inventory-notes input:focus{border-color:#ffd21c}.inventory-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:13px}.inventory-summary article{background:#0d0d0d;border:1px solid #252525;border-radius:13px;padding:16px}.inventory-summary span{display:block;color:#777;font:900 7px var(--mono);letter-spacing:1px}.inventory-summary strong{display:block;margin-top:7px;color:#f5f5f0;font:950 24px var(--mono)}.inventory-summary small{display:block;margin-top:5px;color:#5f5f5f;font-size:9px}.inventory-admin-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:12px;margin-bottom:12px}.inventory-panel{background:#0d0d0d;border:1px solid #252525;border-radius:14px;padding:17px}.inventory-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}.inventory-panel-head h2{margin:3px 0 0;font-size:18px}.inventory-panel-head>span{color:#777;font:800 8px var(--mono)}.inventory-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.item-create-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.inventory-wide-btn{width:100%;margin-top:10px}.inventory-notes{margin-top:10px}.supply-lines{display:grid;gap:7px;margin-top:11px}.supply-line{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:9px 10px;border:1px solid #282828;border-radius:8px;background:#101010}.supply-line strong{font-size:10px}.supply-line small{display:block;color:#777;margin-top:3px;font-size:8px}.supply-line b{color:#ffd21c;font:900 10px var(--mono)}.supply-line button{border:1px solid #492525;background:#1a0d0d;color:#ff8c8c;border-radius:6px;padding:6px 8px}.supply-empty{padding:18px;text-align:center;border:1px dashed #303030;border-radius:8px;color:#666;font-size:9px}.supply-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #272727}.supply-total span{color:#777;font:900 8px var(--mono)}.supply-total strong{color:#ffd21c;font:950 22px var(--mono)}.adjustment-head{margin-top:25px;padding-top:18px;border-top:1px solid #292929}.inventory-table-panel{margin-top:12px}.inventory-table-wrap{overflow-x:auto}.inventory-table-head,.inventory-stock-row{display:grid;grid-template-columns:minmax(160px,1.2fr) minmax(120px,1fr) 110px 110px 120px 105px;gap:10px;align-items:center;min-width:760px}.inventory-table-head{padding:9px 11px;color:#5e5e5e;font:900 7px var(--mono);letter-spacing:.8px;border-bottom:1px solid #282828}.inventory-stock-row{padding:12px 11px;border-bottom:1px solid #202020;color:#aaa;font-size:10px}.inventory-stock-row:last-child{border-bottom:0}.inventory-stock-row strong{color:#eee}.inventory-qty{color:#ffd21c;font:900 11px var(--mono)}.inventory-status{width:max-content;border-radius:6px;padding:5px 7px;font:900 7px var(--mono);letter-spacing:.5px}.inventory-status.in{color:#72d56b;background:#0d170d;border:1px solid #253b25}.inventory-status.low{color:#ffd21c;background:#191509;border:1px solid #4c411b}.inventory-status.out{color:#ff8c8c;background:#1c0d0d;border:1px solid #482121}.inventory-bills-list,.inventory-movement-list{display:grid;gap:8px}.inventory-bill{border:1px solid #292929;border-radius:10px;padding:13px;background:#101010}.inventory-bill-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.inventory-bill h3{margin:0;font-size:13px}.inventory-bill-meta{color:#777;font-size:8px;margin-top:5px}.inventory-bill-total{text-align:right}.inventory-bill-total strong{display:block;color:#ffd21c;font:950 17px var(--mono)}.inventory-bill-total span{display:block;margin-top:3px;color:#888;font:900 7px var(--mono)}.inventory-bill-items{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}.inventory-bill-items span{border:1px solid #2c2c2c;border-radius:6px;padding:6px 8px;color:#aaa;font-size:8px}.inventory-bill-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.inventory-bill-actions button{padding:8px 10px;font:900 7px var(--mono)}.inventory-movement{display:grid;grid-template-columns:120px minmax(130px,1fr) 130px 100px minmax(140px,1fr);gap:10px;padding:11px;border-bottom:1px solid #202020;align-items:center;color:#888;font-size:9px}.inventory-movement strong{color:#eee}.inventory-movement .positive{color:#72d56b}.inventory-movement .negative{color:#ff8c8c}.inventory-empty{padding:35px;text-align:center;border:1px dashed #303030;border-radius:10px;color:#666;font-size:10px}.inventory-admin-grid.owner-view{grid-template-columns:1fr}.inventory-admin-grid.owner-view>article:first-child{display:none}
     .inventory-master-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.inventory-master-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px;border:1px solid #292929;border-radius:9px;background:#101010}.inventory-master-item strong{display:block;font-size:10px}.inventory-master-item small{display:block;margin-top:4px;color:#777;font-size:8px}.inventory-master-rate{text-align:right}.inventory-master-rate b{display:block;color:#ffd21c;font:900 11px var(--mono)}.inventory-master-rate button{margin-top:5px;border:0;background:transparent;color:#aaa;font:900 7px var(--mono);cursor:pointer}.inventory-master-rate button:hover{color:#ffd21c}.pos-supply-notice{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:13px;padding:14px 16px;border:1px solid #5b4a0f;border-radius:12px;background:linear-gradient(105deg,#211b05,#111);box-shadow:0 10px 30px rgba(0,0,0,.25)}.pos-supply-notice.hidden{display:none}.pos-supply-notice strong{display:block;color:#ffd21c;font-size:12px}.pos-supply-notice span{display:block;margin-top:4px;color:#bbb;font-size:9px}.pos-supply-notice-actions{display:flex;gap:7px;flex-shrink:0}.pos-supply-notice button{padding:9px 11px;font:900 7px var(--mono)}.request-date-row{display:grid;grid-template-columns:180px 180px 1fr;gap:9px;margin-bottom:13px}.request-date-row label{display:grid;gap:6px}.request-date-row span{color:#777;font:900 7px var(--mono);letter-spacing:1px}.request-date-row input,.request-date-row select{height:40px;border:1px solid #303030;border-radius:8px;background:#101010;color:#eee;padding:0 11px;color-scheme:dark}.request-group+.request-group{margin-top:16px}.request-group h3{margin:0 0 8px;color:#ffd21c;font:900 9px var(--mono);letter-spacing:1px}.request-items{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.request-item{display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:9px;align-items:center;padding:11px;border:1px solid #292929;border-radius:9px;background:#101010}.request-item strong{display:block;font-size:10px}.request-item small{display:block;margin-top:4px;color:#777;font-size:8px}.request-item input{width:100%;height:36px;border:1px solid #343434;border-radius:7px;background:#080808;color:#fff;padding:0 9px}.stock-request-list,.daily-expense-list{display:grid;gap:8px}.stock-request-card{padding:13px;border:1px solid #292929;border-radius:10px;background:#101010}.stock-request-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.stock-request-top strong{display:block;font-size:12px}.stock-request-top span{display:block;margin-top:4px;color:#777;font-size:8px}.stock-request-items{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.stock-request-items span{padding:6px 8px;border:1px solid #303030;border-radius:6px;color:#bbb;font-size:8px}.stock-request-card button{margin-top:10px;padding:8px 10px;font:900 7px var(--mono)}.inventory-expense-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.daily-expense-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:10px;border-bottom:1px solid #242424}.daily-expense-row strong{display:block;font-size:10px}.daily-expense-row span{display:block;margin-top:4px;color:#777;font-size:8px}.daily-expense-row b{color:#ffcf2c;font:900 11px var(--mono)}
     @media(max-width:1000px){.inventory-filterbar{grid-template-columns:1fr 1fr 1fr}.inventory-admin-grid,.inventory-expense-grid{grid-template-columns:1fr}.inventory-summary{grid-template-columns:repeat(2,1fr)}.inventory-master-list,.request-items{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:650px){.inventory-head-actions{width:100%}.inventory-head-actions button{flex:1}.inventory-filterbar{grid-template-columns:1fr 1fr}.inventory-filterbar label:first-child{grid-column:1/-1}.inventory-summary{grid-template-columns:1fr 1fr}.inventory-summary article{padding:13px}.inventory-summary strong{font-size:19px}.inventory-form-grid,.item-create-grid,.request-date-row{grid-template-columns:1fr}.inventory-panel{padding:13px}.inventory-movement{grid-template-columns:1fr 1fr}.inventory-movement span:last-child{grid-column:1/-1}.inventory-bill-top{display:block}.inventory-bill-total{text-align:left;margin-top:9px}.inventory-master-list,.request-items{grid-template-columns:1fr}.pos-supply-notice{align-items:flex-start;flex-direction:column}.pos-supply-notice-actions{width:100%}.pos-supply-notice button{flex:1}}
@@ -3203,13 +3203,21 @@ function inventoryDate(value) {
   return value ? new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 }
 function inventorySelectedOutletId() { return $('#inventoryOutletFilter')?.value || ''; }
+function completedInventorySessions(outletId, from = '', to = '') {
+  const reports = (state.salesReports || []).filter(report => !outletId || report.outlet_id === outletId);
+  return selectCompletedSessions(reports, { range: from || to ? 'CUSTOM' : 'ALL', from, to });
+}
+function inventorySessionRows(rows, field, outletId, from = '', to = '') {
+  const bounds = completedInventorySessions(outletId, from, to);
+  if (bounds.invalid) throw new Error('Choose both session closing dates, with From on or before To.');
+  return (rows || []).filter(row => (!outletId || row.outlet_id === outletId) && recordIsInSessions(row, field, bounds.sessions));
+}
 function inventoryHistoryRows(rows, field) {
-  return filterHistory(rows, {
-    outletId: inventorySelectedOutletId(),
-    from: state.inventory.historyFrom || '',
-    to: state.inventory.historyTo || '',
-    field
-  });
+  if (state.inventory.historyMode === 'CURRENT') return currentInventorySessionRows(rows, field, inventorySelectedOutletId());
+  return inventorySessionRows(rows, field, inventorySelectedOutletId(), state.inventory.historyFrom, state.inventory.historyTo);
+}
+function currentInventorySessionRows(rows, field, outletId = '') {
+  return (rows || []).filter(row => (!outletId || row.outlet_id === outletId) && recordIsInOpenSessions(row, field, state.inventory.outlets));
 }
 
 function inventorySelectOptions(select, items, selected = '') {
@@ -3318,17 +3326,22 @@ function renderDailyExpenses() {
   const list = $('#dailyExpenseList');
   if (!list) return;
   const outletId = $('#expenseOutletFilter')?.value || '';
-  const from = $('#expenseFrom')?.value ? new Date(`${$('#expenseFrom').value}T00:00:00`).getTime() : null;
-  const toDate = $('#expenseTo')?.value ? new Date(`${$('#expenseTo').value}T00:00:00`) : null;
-  if (toDate) toDate.setDate(toDate.getDate() + 1);
-  const to = toDate?.getTime() || null;
+  const from = state.inventory.expenseHistoryFrom || '';
+  const to = state.inventory.expenseHistoryTo || '';
   const admin = state.profile?.role === 'ADMIN';
   const owner = state.profile?.role === 'OWNER';
-  const rows = state.inventory.expenses.filter(row => { const time = new Date(row.occurred_at).getTime(); return (!outletId || row.outlet_id === outletId) && (!from || time >= from) && (!to || time < to); }).sort((a,b) => new Date(b.occurred_at) - new Date(a.occurred_at));
+  const currentMode = state.inventory.expenseHistoryMode === 'CURRENT';
+  const sessionBounds = currentMode ? null : completedInventorySessions(outletId, from, to);
+  const rows = (currentMode
+    ? currentInventorySessionRows(state.inventory.expenses, 'occurred_at', outletId)
+    : inventorySessionRows(state.inventory.expenses, 'occurred_at', outletId, from, to)
+  ).sort((a,b) => new Date(b.occurred_at) - new Date(a.occurred_at));
   const total = rows.reduce((sum,row) => sum + Number(row.amount || 0), 0);
   if ($('#expenseTodayTotal')) $('#expenseTodayTotal').textContent = formatReportMoney(total);
-  if ($('#dailyExpenseHeading')) $('#dailyExpenseHeading').textContent = admin ? 'All outlet expenses' : 'My expense history';
-  list.innerHTML = rows.length ? rows.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.description || row.category_name || row.category || 'Expense')}</strong><span>${escapeHtml(inventoryOutlet(row.outlet_id)?.name || 'Outlet')} · ${escapeHtml(row.category_name || row.category || 'Other')} · ${inventoryDate(row.occurred_at)}</span></div><b>${formatReportMoney(row.amount)}</b>${owner ? `<div class="inventory-bill-actions"><button class="secondary" type="button" data-edit-expense="${row.id}">EDIT</button><button class="secondary" type="button" data-delete-expense="${row.id}">DELETE</button></div>` : ''}</div>`).join('') : '<div class="inventory-empty">No daily expenses recorded.</div>';
+  if ($('#dailyExpenseHeading')) $('#dailyExpenseHeading').textContent = currentMode ? 'Current session expenses' : (admin ? 'Completed session expenses' : 'My completed session expenses');
+  const sessionCount = currentMode ? state.inventory.outlets.filter(outlet => (!outletId || outlet.id === outletId) && outlet.status === 'ACTIVE' && outlet.current_session_started_at).length : sessionBounds.sessions.length;
+  if ($('#expenseFilterStatus')) $('#expenseFilterStatus').textContent = `${sessionCount} session${sessionCount === 1 ? '' : 's'} · ${rows.length} expense${rows.length === 1 ? '' : 's'}`;
+  list.innerHTML = rows.length ? rows.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.description || row.category_name || row.category || 'Expense')}</strong><span>${escapeHtml(inventoryOutlet(row.outlet_id)?.name || 'Outlet')} · ${escapeHtml(row.category_name || row.category || 'Other')} · ${inventoryDate(row.occurred_at)}</span></div><b>${formatReportMoney(row.amount)}</b>${owner ? `<div class="inventory-bill-actions"><button class="secondary" type="button" data-edit-expense="${row.id}">EDIT</button><button class="secondary" type="button" data-delete-expense="${row.id}">DELETE</button></div>` : ''}</div>`).join('') : `<div class="inventory-empty">No expenses in the selected ${currentMode ? 'current' : 'completed'} sessions.</div>`;
 }
 
 function renderStockCategories() {
@@ -3529,8 +3542,7 @@ function renderSupplyNotification() {
 }
 
 function inventoryMovementTotals(outletId, itemId) {
-  const today = new Date().toLocaleDateString('en-CA');
-  const rows = state.inventory.movements.filter(row => row.outlet_id === outletId && row.item_id === itemId && new Date(row.occurred_at).toLocaleDateString('en-CA') === today);
+  const rows = currentInventorySessionRows(state.inventory.movements, 'occurred_at', outletId).filter(row => row.item_id === itemId);
   return {
     received: rows.filter(row => row.movement_type === 'STOCK_RECEIVED').reduce((sum, row) => sum + Number(row.quantity_delta || 0), 0),
     used: Math.abs(rows.filter(row => ['USAGE', 'WASTE', 'SALE_DEDUCTION', 'PACKAGING_CONSUMPTION'].includes(row.movement_type)).reduce((sum, row) => sum + Number(row.quantity_delta || 0), 0))
@@ -3550,19 +3562,21 @@ function renderInventory() {
     return inventoryDisplayQuantity(item, row.quantity_on_hand) <= Number(item?.low_stock_threshold || 0);
   }).length;
   const due = state.inventory.bills.filter(row => !outletId || row.outlet_id === outletId).reduce((sum, bill) => sum + Math.max(0, Number(bill.total_amount || 0) - Number(bill.paid_amount || 0)), 0);
-  const today = new Date().toLocaleDateString('en-CA');
-  const todayReceived = state.inventory.movements.filter(row => !outletId || row.outlet_id === outletId).filter(row => row.movement_type === 'STOCK_RECEIVED' && new Date(row.occurred_at).toLocaleDateString('en-CA') === today).length;
+  const sessionReceived = currentInventorySessionRows(state.inventory.movements, 'occurred_at', outletId).filter(row => row.movement_type === 'STOCK_RECEIVED').length;
   if ($('#inventoryStockValue')) $('#inventoryStockValue').textContent = formatReportMoney(stockValue);
   if ($('#inventoryLowCount')) $('#inventoryLowCount').textContent = String(lowCount);
   if ($('#inventoryDue')) $('#inventoryDue').textContent = formatReportMoney(due);
-  if ($('#inventoryToday')) $('#inventoryToday').textContent = String(todayReceived);
+  if ($('#inventoryToday')) $('#inventoryToday').textContent = String(sessionReceived);
   if ($('#inventoryStockCount')) $('#inventoryStockCount').textContent = `${balances.length} item${balances.length === 1 ? '' : 's'}`;
   if ($('#inventoryBillCount')) $('#inventoryBillCount').textContent = `${bills.length} bill${bills.length === 1 ? '' : 's'}`;
-  if ($('#inventoryFilterStatus')) $('#inventoryFilterStatus').textContent = `${bills.length} bill${bills.length === 1 ? '' : 's'} · ${movements.length} movement${movements.length === 1 ? '' : 's'}`;
+  const currentHistory = state.inventory.historyMode === 'CURRENT';
+  const sessionBounds = currentHistory ? null : completedInventorySessions(outletId, state.inventory.historyFrom, state.inventory.historyTo);
+  const sessionCount = currentHistory ? state.inventory.outlets.filter(outlet => (!outletId || outlet.id === outletId) && outlet.status === 'ACTIVE' && outlet.current_session_started_at).length : sessionBounds.sessions.length;
+  if ($('#inventoryFilterStatus')) $('#inventoryFilterStatus').textContent = `${sessionCount} session${sessionCount === 1 ? '' : 's'} · ${bills.length} bill${bills.length === 1 ? '' : 's'} · ${movements.length} movement${movements.length === 1 ? '' : 's'}`;
   if ($('#supplyHistoryRangeLabel')) {
     const from = state.inventory.historyFrom || '';
     const to = state.inventory.historyTo || '';
-    $('#supplyHistoryRangeLabel').textContent = from || to ? `${from || 'Beginning'} to ${to || 'Today'}` : 'All supply bills';
+    $('#supplyHistoryRangeLabel').textContent = currentHistory ? 'Current open sessions' : (from || to ? `Sessions closed ${from} to ${to}` : 'All completed sessions');
   }
 
   const masterList = $('#inventoryMasterList');
@@ -4004,8 +4018,9 @@ function downloadSupplyHistoryCsv() {
   if (!bills.length) return toast('There are no supply bills to download for this range.', 'bad');
   const rows = [
     ['OHHO BURGERS SUPPLY BILL HISTORY'],
-    ['From', state.inventory.historyFrom || 'Beginning'],
-    ['To', state.inventory.historyTo || 'Today'],
+    ['Session selection', state.inventory.historyMode === 'CURRENT' ? 'Current open sessions' : state.inventory.historyMode === 'ALL' ? 'All completed sessions' : 'Completed sessions by closing date'],
+    ['Session closed from', state.inventory.historyFrom || 'Beginning'],
+    ['Session closed to', state.inventory.historyTo || 'Latest'],
     ['Generated At', new Date().toLocaleString('en-IN')],
     [],
     ['Bill Number','Date','Outlet','Item','Inventory Quantity','Inventory Unit','Billing Quantity','Billing Unit','Rate','Line Total','Bill Total','Receipt Status','Payment Status','Paid','Due'],
@@ -4041,29 +4056,44 @@ async function recordInventoryPayment(bill) {
 }
 
 function wireInventoryActions() {
-  $('#inventoryRefreshBtn')?.addEventListener('click', () => loadInventory().catch(error => toast(error.message, 'bad')));
+  const refreshSessionRecords = async () => { await loadSalesReports(); await loadInventory(); };
+  $('#inventoryRefreshBtn')?.addEventListener('click', () => refreshSessionRecords().catch(error => toast(error.message, 'bad')));
   $('#inventoryApplyFilter')?.addEventListener('click', () => {
     try {
       const from = $('#inventoryFrom')?.value || '';
       const to = $('#inventoryTo')?.value || '';
-      historyBounds(from, to);
+      if (!from || !to) throw new Error('Choose both session closing dates.');
+      const bounds = completedInventorySessions(inventorySelectedOutletId(), from, to);
+      if (bounds.invalid) throw new Error('The From date must be on or before the To date.');
+      state.inventory.historyMode = 'CUSTOM';
       state.inventory.historyFrom = from;
       state.inventory.historyTo = to;
       renderInventory();
       const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at').length;
       const movements = inventoryHistoryRows(state.inventory.movements, 'occurred_at').length;
       $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      toast(`Showing ${bills} bill${bills === 1 ? '' : 's'} and ${movements} stock movement${movements === 1 ? '' : 's'}.`, 'ok');
+      toast(`Showing ${bounds.sessions.length} completed session${bounds.sessions.length === 1 ? '' : 's'}, ${bills} bill${bills === 1 ? '' : 's'} and ${movements} stock movement${movements === 1 ? '' : 's'}.`, 'ok');
     } catch (error) { toast(error.message, 'bad'); }
   });
   $('#inventoryAllRecords')?.addEventListener('click', () => {
     if ($('#inventoryFrom')) $('#inventoryFrom').value = '';
     if ($('#inventoryTo')) $('#inventoryTo').value = '';
+    state.inventory.historyMode = 'ALL';
     state.inventory.historyFrom = '';
     state.inventory.historyTo = '';
     renderInventory();
     $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    toast(`Showing all ${inventoryHistoryRows(state.inventory.bills, 'supplied_at').length} supply bills and ${inventoryHistoryRows(state.inventory.movements, 'occurred_at').length} stock movements.`, 'ok');
+    toast(`Showing all completed sessions: ${inventoryHistoryRows(state.inventory.bills, 'supplied_at').length} supply bills and ${inventoryHistoryRows(state.inventory.movements, 'occurred_at').length} stock movements.`, 'ok');
+  });
+  $('#inventoryCurrentSession')?.addEventListener('click', () => {
+    if ($('#inventoryFrom')) $('#inventoryFrom').value = '';
+    if ($('#inventoryTo')) $('#inventoryTo').value = '';
+    state.inventory.historyMode = 'CURRENT';
+    state.inventory.historyFrom = '';
+    state.inventory.historyTo = '';
+    renderInventory();
+    $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast('Showing current open-session stock records.', 'ok');
   });
   $('#supplyHistoryCustomToggle')?.addEventListener('click', () => {
     const panel = $('#supplyHistoryCustomPanel');
@@ -4080,15 +4110,30 @@ function wireInventoryActions() {
     const from = $('#supplyHistoryFrom')?.value || '';
     const to = $('#supplyHistoryTo')?.value || '';
     try {
-      historyBounds(from, to);
+      if (!from || !to) throw new Error('Choose both session closing dates.');
+      const bounds = completedInventorySessions(inventorySelectedOutletId(), from, to);
+      if (bounds.invalid) throw new Error('The From date must be on or before the To date.');
+      state.inventory.historyMode = 'CUSTOM';
       state.inventory.historyFrom = from;
       state.inventory.historyTo = to;
       if ($('#inventoryFrom')) $('#inventoryFrom').value = from;
       if ($('#inventoryTo')) $('#inventoryTo').value = to;
       renderInventory();
+      toast(`Showing records from ${bounds.sessions.length} completed session${bounds.sessions.length === 1 ? '' : 's'}.`, 'ok');
     } catch (error) { toast(error.message, 'bad'); }
   });
   $('#supplyHistoryShowAll')?.addEventListener('click', () => {
+    state.inventory.historyMode = 'ALL';
+    state.inventory.historyFrom = '';
+    state.inventory.historyTo = '';
+    if ($('#inventoryFrom')) $('#inventoryFrom').value = '';
+    if ($('#inventoryTo')) $('#inventoryTo').value = '';
+    if ($('#supplyHistoryFrom')) $('#supplyHistoryFrom').value = '';
+    if ($('#supplyHistoryTo')) $('#supplyHistoryTo').value = '';
+    renderInventory();
+  });
+  $('#supplyHistoryCurrentSession')?.addEventListener('click', () => {
+    state.inventory.historyMode = 'CURRENT';
     state.inventory.historyFrom = '';
     state.inventory.historyTo = '';
     if ($('#inventoryFrom')) $('#inventoryFrom').value = '';
@@ -4104,7 +4149,7 @@ function wireInventoryActions() {
     $('#supplyHistoryCustomToggle')?.setAttribute('aria-expanded', 'false');
   });
   $('#supplyHistoryDownload')?.addEventListener('click', downloadSupplyHistoryCsv);
-  $('#inventoryOutletFilter')?.addEventListener('change', () => loadInventory().catch(error => toast(error.message, 'bad')));
+  $('#inventoryOutletFilter')?.addEventListener('change', () => refreshSessionRecords().catch(error => toast(error.message, 'bad')));
   $('#inventoryDownloadBtn')?.addEventListener('click', () => { try { downloadInventoryReport(); } catch (error) { toast(error.message, 'bad'); } });
   $('#supplyItemSearch')?.addEventListener('focus', event => renderSupplyItemPicker(event.target.value, true));
   $('#supplyItemSearch')?.addEventListener('input', event => { if ($('#supplyItem')) $('#supplyItem').value = ''; if ($('#supplyPrice')) $('#supplyPrice').value = ''; renderSupplyItemPicker(event.target.value, true); });
@@ -4167,10 +4212,43 @@ function wireInventoryActions() {
   $('#stockRequestOutlet')?.addEventListener('change', () => { state.inventory.activeDraftId = null; state.inventory.requestLines = []; renderStockRequestCatalogue(); });
   $('#saveDailyExpense')?.addEventListener('click', saveDailyExpense);
   $('#cancelExpenseEdit')?.addEventListener('click', resetExpenseForm);
-  $('#expenseRefreshBtn')?.addEventListener('click', () => loadInventory().catch(error => toast(error.message, 'bad')));
-  $('#expenseApplyFilter')?.addEventListener('click', renderDailyExpenses);
+  $('#expenseRefreshBtn')?.addEventListener('click', () => refreshSessionRecords().catch(error => toast(error.message, 'bad')));
+  $('#expenseApplyFilter')?.addEventListener('click', () => {
+    try {
+      const from = $('#expenseFrom')?.value || '';
+      const to = $('#expenseTo')?.value || '';
+      if (!from || !to) throw new Error('Choose both session closing dates.');
+      const bounds = completedInventorySessions($('#expenseOutletFilter')?.value || '', from, to);
+      if (bounds.invalid) throw new Error('The From date must be on or before the To date.');
+      state.inventory.expenseHistoryMode = 'CUSTOM';
+      state.inventory.expenseHistoryFrom = from;
+      state.inventory.expenseHistoryTo = to;
+      renderDailyExpenses();
+      $('#dailyExpenseList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      toast(`Showing expenses from ${bounds.sessions.length} completed session${bounds.sessions.length === 1 ? '' : 's'}.`, 'ok');
+    } catch (error) { toast(error.message, 'bad'); }
+  });
   $('#expenseOutletFilter')?.addEventListener('change', renderDailyExpenses);
-  $('#expenseAllRecords')?.addEventListener('click', () => { if ($('#expenseFrom')) $('#expenseFrom').value = ''; if ($('#expenseTo')) $('#expenseTo').value = ''; renderDailyExpenses(); });
+  $('#expenseAllRecords')?.addEventListener('click', () => {
+    if ($('#expenseFrom')) $('#expenseFrom').value = '';
+    if ($('#expenseTo')) $('#expenseTo').value = '';
+    state.inventory.expenseHistoryMode = 'ALL';
+    state.inventory.expenseHistoryFrom = '';
+    state.inventory.expenseHistoryTo = '';
+    renderDailyExpenses();
+    $('#dailyExpenseList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast('Showing expenses from all completed sessions.', 'ok');
+  });
+  $('#expenseCurrentSession')?.addEventListener('click', () => {
+    if ($('#expenseFrom')) $('#expenseFrom').value = '';
+    if ($('#expenseTo')) $('#expenseTo').value = '';
+    state.inventory.expenseHistoryMode = 'CURRENT';
+    state.inventory.expenseHistoryFrom = '';
+    state.inventory.expenseHistoryTo = '';
+    renderDailyExpenses();
+    $('#dailyExpenseList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast('Showing current open-session expenses.', 'ok');
+  });
   $('#createStockCategory')?.addEventListener('click', () => createManagedCategory('stock'));
   $('#createExpenseCategory')?.addEventListener('click', () => createManagedCategory('expense'));
   $('#cancelStockRequestEdit')?.addEventListener('click', resetStockRequestEditor);

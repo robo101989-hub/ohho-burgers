@@ -1130,7 +1130,7 @@ body{font-size:14px}
 #inventory .inventory-filterbar label span,#inventory .inventory-form-grid label span,#inventory .inventory-notes span,#daily-expenses .inventory-filterbar label span,#daily-expenses .inventory-form-grid label span{color:#a3a59f;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:10px;font-weight:720;letter-spacing:.45px}
 #inventory .inventory-filterbar input,#inventory .inventory-filterbar select,#inventory .inventory-form-grid input,#inventory .inventory-form-grid select,#inventory .inventory-notes input,#daily-expenses .inventory-filterbar input,#daily-expenses .inventory-filterbar select,#daily-expenses .inventory-form-grid input,#daily-expenses .inventory-form-grid select{height:44px;border-color:#383a37;border-radius:9px;background:#0b0c0b;color:var(--ops-text);font-size:13px;box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}
 #inventory .inventory-filterbar input:focus,#inventory .inventory-filterbar select:focus,#inventory .inventory-form-grid input:focus,#inventory .inventory-form-grid select:focus,#daily-expenses input:focus,#daily-expenses select:focus{border-color:#d7b30f;box-shadow:0 0 0 3px rgba(255,210,28,.11)}
-#inventory .inventory-filter-status{align-self:center;color:#ffd21c;font-size:10px;font-weight:750;letter-spacing:.35px;white-space:nowrap}
+#inventory .inventory-filter-status,#daily-expenses .inventory-filter-status{grid-column:1/-1;align-self:center;color:#ffd21c;font-size:10px;font-weight:750;letter-spacing:.35px;white-space:nowrap}
 #inventory .inventory-summary{gap:12px;margin:14px 0 16px}
 #inventory .inventory-summary article{position:relative;overflow:hidden;min-height:112px;padding:19px;background:linear-gradient(145deg,#151614,#101110);border-color:var(--ops-border);border-radius:14px;box-shadow:0 10px 26px rgba(0,0,0,.13)}
 #inventory .inventory-summary article:before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:3px;border-radius:0 3px 3px 0;background:#ffd21c}
@@ -1183,17 +1183,18 @@ body{font-size:14px}
   </div>
   <div class="inventory-filterbar">
     <label><span>OUTLET</span><select id="inventoryOutletFilter"></select></label>
-    <label><span>FROM</span><input id="inventoryFrom" type="date"></label>
-    <label><span>TO</span><input id="inventoryTo" type="date"></label>
-    <button id="inventoryApplyFilter" class="secondary" type="button">VIEW RECORDS</button>
-    <button id="inventoryAllRecords" class="secondary" type="button">SEE ALL</button>
-    <span id="inventoryFilterStatus" class="inventory-filter-status" aria-live="polite">All records</span>
+    <label><span>SESSION CLOSED FROM</span><input id="inventoryFrom" type="date"></label>
+    <label><span>SESSION CLOSED TO</span><input id="inventoryTo" type="date"></label>
+    <button id="inventoryApplyFilter" class="secondary" type="button">VIEW SESSION RECORDS</button>
+    <button id="inventoryCurrentSession" class="secondary" type="button">CURRENT SESSION</button>
+    <button id="inventoryAllRecords" class="secondary" type="button">ALL SESSIONS</button>
+    <span id="inventoryFilterStatus" class="inventory-filter-status" aria-live="polite">All completed sessions</span>
   </div>
   <div class="inventory-summary">
     <article><span>CURRENT STOCK VALUE</span><strong id="inventoryStockValue">₹0</strong><small>At weighted received cost</small></article>
     <article><span>LOW / OUT OF STOCK</span><strong id="inventoryLowCount">0</strong><small>Needs attention</small></article>
     <article><span>SUPPLY AMOUNT DUE</span><strong id="inventoryDue">₹0</strong><small>Unpaid balance</small></article>
-    <article><span>STOCK RECEIVED TODAY</span><strong id="inventoryToday">0</strong><small>Supply entries</small></article>
+    <article><span>STOCK RECEIVED THIS SESSION</span><strong id="inventoryToday">0</strong><small>Current open-session entries</small></article>
   </div>
   <article id="wastagePanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">One-tap kitchen record</div><h2>Record Wastage</h2></div><span>Stock updates when saved</span></div>
@@ -1303,20 +1304,21 @@ body{font-size:14px}
   </details>
   <article class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Live balances</div><h2>Outlet stock</h2></div><span id="inventoryStockCount">0 items</span></div>
-    <div class="inventory-table-wrap"><div class="inventory-table-head"><span>ITEM</span><span>OUTLET</span><span>RECEIVED TODAY</span><span>USED / WASTE</span><span>CLOSING STOCK</span><span>STATUS</span></div><div id="inventoryStockList"></div></div>
+    <div class="inventory-table-wrap"><div class="inventory-table-head"><span>ITEM</span><span>OUTLET</span><span>RECEIVED THIS SESSION</span><span>USED / WASTE THIS SESSION</span><span>CURRENT STOCK</span><span>STATUS</span></div><div id="inventoryStockList"></div></div>
   </article>
   <article id="inventoryRecords" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Billing history</div><h2>Supply bills</h2></div><span id="inventoryBillCount">0 bills</span></div>
     <div class="orders-history-toolbar supply-history-toolbar">
-      <button id="supplyHistoryCustomToggle" class="secondary" type="button" aria-expanded="false">CUSTOM DATE</button>
-      <button id="supplyHistoryShowAll" class="secondary" type="button">SEE ALL RECORDS</button>
+      <button id="supplyHistoryCustomToggle" class="secondary" type="button" aria-expanded="false">CUSTOM SESSIONS</button>
+      <button id="supplyHistoryCurrentSession" class="secondary" type="button">CURRENT SESSION</button>
+      <button id="supplyHistoryShowAll" class="secondary" type="button">ALL SESSIONS</button>
       <button id="supplyHistoryDownload" class="primary" type="button">DOWNLOAD HISTORY</button>
-      <span id="supplyHistoryRangeLabel">All supply bills</span>
+      <span id="supplyHistoryRangeLabel">All completed sessions</span>
     </div>
     <div id="supplyHistoryCustomPanel" class="orders-custom-date-panel hidden">
-      <label><span>FROM DATE</span><input id="supplyHistoryFrom" type="date"></label>
-      <label><span>TO DATE</span><input id="supplyHistoryTo" type="date"></label>
-      <button id="supplyHistoryApply" class="primary" type="button">VIEW RECORDS</button>
+      <label><span>SESSION CLOSED FROM</span><input id="supplyHistoryFrom" type="date"></label>
+      <label><span>SESSION CLOSED TO</span><input id="supplyHistoryTo" type="date"></label>
+      <button id="supplyHistoryApply" class="primary" type="button">VIEW SESSION RECORDS</button>
       <button id="supplyHistoryClear" class="secondary" type="button">CLEAR</button>
     </div>
     <div id="inventoryBillsList" class="inventory-bills-list"></div>
@@ -1327,9 +1329,9 @@ body{font-size:14px}
   </article>
 </section>
 <section id="daily-expenses" class="section">
-  <div class="page-head"><div><div class="eyebrow">Outlet expense book</div><h1>Daily Expense Management</h1><p>Owners record actual outlet expenses. Admin manages categories and views every outlet.</p></div><button id="expenseRefreshBtn" class="primary" type="button">REFRESH</button></div>
-  <div class="expense-flow"><div><b>1</b><span><strong>OWNER ADDS EXPENSE</strong><small>Daily Expenses → category, amount and note</small></span></div><div><b>2</b><span><strong>ADMIN CHECKS HERE</strong><small>Daily Expenses → filter any outlet and date</small></span></div><div><b>3</b><span><strong>FINAL REPORT</strong><small>Reports → sales, stock cost, expenses and net</small></span></div></div>
-  <div class="inventory-filterbar expense-filterbar"><label><span>OUTLET</span><select id="expenseOutletFilter"></select></label><label><span>FROM</span><input id="expenseFrom" type="date"></label><label><span>TO</span><input id="expenseTo" type="date"></label><button id="expenseApplyFilter" class="secondary" type="button">VIEW RECORDS</button><button id="expenseAllRecords" class="secondary" type="button">SEE ALL</button></div>
+  <div class="page-head"><div><div class="eyebrow">Outlet session expense book</div><h1>Session Expense Management</h1><p>Owners record actual outlet expenses. Admin reviews them inside complete opening-to-closing sessions.</p></div><button id="expenseRefreshBtn" class="primary" type="button">REFRESH</button></div>
+  <div class="expense-flow"><div><b>1</b><span><strong>OWNER ADDS EXPENSE</strong><small>Expenses → category, amount and note</small></span></div><div><b>2</b><span><strong>ADMIN CHECKS HERE</strong><small>Expenses → filter by outlet and completed session</small></span></div><div><b>3</b><span><strong>FINAL REPORT</strong><small>Reports → session sales, stock cost, expenses and net</small></span></div></div>
+  <div class="inventory-filterbar expense-filterbar"><label><span>OUTLET</span><select id="expenseOutletFilter"></select></label><label><span>SESSION CLOSED FROM</span><input id="expenseFrom" type="date"></label><label><span>SESSION CLOSED TO</span><input id="expenseTo" type="date"></label><button id="expenseApplyFilter" class="secondary" type="button">VIEW SESSION RECORDS</button><button id="expenseCurrentSession" class="secondary" type="button">CURRENT SESSION</button><button id="expenseAllRecords" class="secondary" type="button">ALL SESSIONS</button><span id="expenseFilterStatus" class="inventory-filter-status" aria-live="polite">Current open session</span></div>
   <div id="expenseCategoryAdminPanel" class="inventory-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Admin setup</div><h2>Expense categories</h2></div><span>Owners select from this list</span></div>
     <div class="inventory-form-grid"><label><span>CATEGORY NAME</span><input id="expenseCategoryName" type="text" maxlength="80" placeholder="Electricity"></label></div>
