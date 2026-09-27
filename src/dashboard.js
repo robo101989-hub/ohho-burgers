@@ -2564,6 +2564,10 @@ function renderMenuManagement() {
   const list = $('#menuManagementList');
   if (!list) return;
 
+  const canManageMenu = ['ADMIN', 'OWNER'].includes(state.profile?.role);
+  const addMenuButton = $('#menuAddItemBtn');
+  if (addMenuButton) addMenuButton.classList.toggle('hidden', !canManageMenu);
+
   renderMenuManagementTableHead();
 
   const search = ($('#menuManagementSearch')?.value || '').trim().toLowerCase();
@@ -2851,13 +2855,15 @@ function wireMenuManagementActions() {
   $('#menuAvailabilityFilter')?.addEventListener('change', renderMenuManagement);
   $('#menuFavouriteFilter')?.addEventListener('change', renderMenuManagement);
 
-  const canManageMenu = ['ADMIN', 'OWNER'].includes(state.profile?.role);
   const addMenuButton = $('#menuAddItemBtn');
   if (addMenuButton) {
-    addMenuButton.style.display = canManageMenu ? '' : 'none';
-    if (canManageMenu) {
-      addMenuButton.addEventListener('click', () => openMenuItemModal());
-    }
+    addMenuButton.addEventListener('click', () => {
+      if (!['ADMIN', 'OWNER'].includes(state.profile?.role)) {
+        toast('You do not have permission to add menu items.', 'bad');
+        return;
+      }
+      openMenuItemModal();
+    });
   }
 
   $('#menuManagementList')?.addEventListener('click', async event => {
