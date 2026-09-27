@@ -31,7 +31,17 @@ test('Admin cannot access Owner edit action and can release unbilled processing'
   assert.equal(context.canEditStockRequest(request), false);
   const card = context.stockRequestCard({ ...request, processing_started_at: '2026-09-27' });
   assert.match(card, /ALLOW OWNER TO EDIT/);
+  assert.match(card, /CANCEL REQUEST/);
+  assert.match(card, /VIEW OUTLET INVENTORY/);
   assert.doesNotMatch(card, /data-edit-stock-draft/);
+});
+
+test('fulfilled request links directly to its related bill and outlet inventory', () => {
+  const { context } = fixture('ADMIN');
+  const card = context.stockRequestCard({ ...request, status: 'FULFILLED', bill_id: 'bill-1' });
+  assert.match(card, /data-request-view-bill="bill-1"/);
+  assert.match(card, /data-request-view-stock="outlet"/);
+  assert.doesNotMatch(card, /CANCEL REQUEST/);
 });
 test('requirement history filters the outlet while home shows latest assigned requirement', () => {
   const { state, context, elements } = fixture();

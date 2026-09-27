@@ -1188,6 +1188,8 @@ body{font-size:14px}
 #inventory .inventory-quick-nav{position:sticky;top:12px;z-index:25;display:flex;gap:8px;overflow-x:auto;margin:0 0 14px;padding:9px;border:1px solid #30322f;border-radius:12px;background:rgba(13,14,13,.94);backdrop-filter:blur(14px);box-shadow:0 12px 30px rgba(0,0,0,.24)}
 #inventory .inventory-quick-nav button{flex:0 0 auto;min-height:38px;padding:0 13px;border:1px solid #353733;border-radius:8px;background:#151614;color:#c7c9c3;font-size:10px;font-weight:760;letter-spacing:.35px}
 #inventory .inventory-quick-nav button:hover{border-color:#6a5a17;color:#ffd21c;background:#1a180f}
+.request-operations-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:-3px 0 16px;padding:12px;border:1px solid #30322f;border-radius:11px;background:#0c0d0c}.request-operations-toolbar button{min-height:38px!important;padding:8px 12px!important}.supply-submit-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.supply-submit-actions .inventory-wide-btn{margin:0}
+@media(max-width:760px){.request-operations-toolbar button{flex:1 1 calc(50% - 8px)}.supply-submit-actions{grid-template-columns:1fr}}
 #inventory .inventory-quick-nav button:focus-visible{outline:2px solid #ffd21c;outline-offset:2px}
 #inventory #stockRequestAdminPanel{scroll-margin-top:96px}
 #inventory .stock-request-list{gap:12px}
@@ -1308,6 +1310,14 @@ body{font-size:14px}
   </article>
   <article id="stockRequestAdminPanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Franchise demand</div><h2>Stock requirements</h2></div><span id="stockRequestHistoryHint">Use a request to prepare its supply bill</span></div>
+    <div id="requestOperationsToolbar" class="request-operations-toolbar" data-admin-only>
+      <button id="requestDirectStock" class="primary" type="button">＋ DIRECT STOCK ENTRY</button>
+      <button id="requestViewLiveStock" class="secondary" type="button">LIVE INVENTORY</button>
+      <button id="requestViewCurrentBills" class="secondary" type="button">CURRENT SESSION BILLS</button>
+      <button id="requestViewCustomBills" class="secondary" type="button">CUSTOM SESSIONS</button>
+      <button id="requestViewAllBills" class="secondary" type="button">ALL SUPPLY BILLS</button>
+      <button id="requestViewStockHistory" class="secondary" type="button">STOCK HISTORY</button>
+    </div>
     <div id="stockRequestList" class="stock-request-list"></div>
   </article>
   <div id="inventoryAdminWorkspace" class="inventory-admin-grid">
@@ -1324,7 +1334,10 @@ body{font-size:14px}
       <div id="supplyBillLines" class="supply-lines"></div>
       <label class="inventory-notes"><span>NOTES</span><input id="supplyNotes" type="text" maxlength="500" placeholder="Delivery or payment note"></label>
       <div class="supply-total"><span>BILL TOTAL</span><strong id="supplyBillTotal">₹0</strong></div>
-      <button id="supplyGenerateBill" class="primary inventory-wide-btn" type="button">GENERATE SUPPLY BILL</button>
+      <div class="supply-submit-actions">
+        <button id="supplyGenerateBill" class="secondary inventory-wide-btn" type="button">SEND BILL TO OWNER</button>
+        <button id="supplyReceiveDirect" class="primary inventory-wide-btn" type="button">ADD &amp; RECEIVE DIRECTLY</button>
+      </div>
     </article>
     <details id="inventoryAdminSetup" class="inventory-panel inventory-setup-details">
       <summary><span><small>ADMIN SETUP</small><strong>Items, recipes &amp; automation</strong></span><b>OPEN</b></summary>
