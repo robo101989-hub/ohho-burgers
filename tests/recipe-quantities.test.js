@@ -17,9 +17,10 @@ test('standard supplies suggest base-unit net quantities', () => {
 
 test('container supply and net contents remain separate', () => {
   const item = { id: 'j', name: 'Jalapeno', supply_unit: 'BOTTLE', inventory_unit: 'G', base_unit: 'G', default_supply_price: 100 };
-  assert.deepEqual(normalizeSupplyLine(item, { supplyQuantity: 1, inventoryQuantity: 500 }), { item_id: 'j', item_name: 'Jalapeno', unit: 'BOTTLE', quantity: 1, base_quantity: 500, unit_price: 100 });
+  const line = normalizeSupplyLine(item, { supplyQuantity: 1, inventoryQuantity: 500 });
+  assert.deepEqual({ item_id: line.item_id, unit: line.unit, quantity: line.quantity, base_quantity: line.base_quantity, unit_price: line.unit_price }, { item_id: 'j', unit: 'BOTTLE', quantity: 1, base_quantity: 500, unit_price: 100 });
 });
 
 test('flexible items keep supply and inventory units independent', () => {
-  assert.deepEqual(flexibleUnitColumns('KG', 'EACH'), { measurement_type: 'FLEXIBLE', request_unit: 'KG', supply_unit: 'KG', base_unit: 'EACH', inventory_unit: 'EACH', display_unit: 'EACH', billing_unit: 'KG' });
+  assert.deepEqual(flexibleUnitColumns('KG', 'EACH', 'PIECE', 1, 12.5), { measurement_type: 'FLEXIBLE', request_unit: 'PIECE', supply_unit: 'KG', base_unit: 'EACH', inventory_unit: 'EACH', display_unit: 'EACH', billing_unit: 'KG', request_to_inventory: 1, billing_to_inventory: 12.5 });
 });

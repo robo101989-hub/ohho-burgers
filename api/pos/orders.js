@@ -356,7 +356,7 @@ export default async function handler(req, res) {
       });
     }
 
-    if (!["DINE_IN", "TAKEAWAY"].includes(orderType)) {
+    if (!["DINE_IN", "TAKEAWAY", "DELIVERY"].includes(orderType)) {
       return res.status(400).json({
         error: "Invalid order type"
       });

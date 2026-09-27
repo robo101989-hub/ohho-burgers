@@ -3,9 +3,14 @@ import assert from 'node:assert/strict';
 import { stockRequestUnit, requestSupplyQuantities } from '../lib/inventory-measurements.js';
 
 test('piece request does not become an invented kilogram billing weight', () => {
-  const item = { supply_unit: 'KG', inventory_unit: 'EACH' };
+  const item = { request_unit: 'PIECE', billing_unit: 'KG', supply_unit: 'KG', inventory_unit: 'EACH', request_to_inventory: 1, billing_to_inventory: 12.5 };
   assert.equal(stockRequestUnit(item), 'PIECE');
-  assert.deepEqual(requestSupplyQuantities(item, 'PIECE', 80), { inventoryQuantity: 80, billingQuantity: '' });
+  assert.deepEqual(requestSupplyQuantities(item, 'PIECE', 80), { inventoryQuantity: 80, billingQuantity: 6.4 });
+});
+
+test('30 patties at 80g each automatically bill as 2.4kg', () => {
+  const item = { request_unit: 'PIECE', billing_unit: 'KG', inventory_unit: 'EACH', request_to_inventory: 1, billing_to_inventory: 12.5 };
+  assert.deepEqual(requestSupplyQuantities(item, 'PIECE', 30), { inventoryQuantity: 30, billingQuantity: 2.4 });
 });
 
 test('matching billing units retain quantity and convert inventory', () => {

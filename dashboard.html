@@ -630,7 +630,7 @@ body{font-size:14px}
 .pos-catalog,.pos-cart-panel{background:#0d0d0d;border:1px solid #252525;border-radius:16px}
 .pos-catalog{padding:18px}
 .pos-mode-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
-.pos-order-type{display:grid;grid-template-columns:1fr 1fr;background:#111;border:1px solid #292929;border-radius:9px;padding:3px}
+.pos-order-type{display:grid;grid-template-columns:repeat(3,1fr);background:#111;border:1px solid #292929;border-radius:9px;padding:3px}
 .pos-type-btn,.pos-payment-btn{border:0;background:transparent;color:#777;font:900 10px var(--mono);letter-spacing:.8px;border-radius:6px;padding:11px 15px;cursor:pointer}
 .pos-type-btn.active,.pos-payment-btn.active{background:var(--yellow);color:#111}
 .pos-table-wrap{display:flex;align-items:center;gap:8px}
@@ -862,6 +862,7 @@ body{font-size:14px}
         <div class="pos-order-type" role="group" aria-label="Order type">
           <button type="button" class="pos-type-btn active" data-order-type="TAKEAWAY">TAKEAWAY</button>
           <button type="button" class="pos-type-btn" data-order-type="DINE_IN">DINE-IN</button>
+          <button type="button" class="pos-type-btn" data-order-type="DELIVERY">DELIVERY</button>
         </div>
         <div id="posTableWrap" class="pos-table-wrap hidden">
           <label for="posTableNumber">TABLE</label>
@@ -1172,6 +1173,8 @@ body{font-size:14px}
 #daily-expenses .daily-expense-row span{font-size:10px!important;color:#9b9d97}
 #daily-expenses .daily-expense-row b{font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:13px;font-weight:760}
 @media(max-width:760px){#inventory .page-head,#daily-expenses .page-head{align-items:flex-start}.inventory-head-actions{width:100%}#inventory .inventory-summary article{min-height:98px;padding:16px}#inventory .inventory-panel,#daily-expenses .inventory-panel{padding:16px}}
+.packaging-order-types{display:flex;flex-wrap:wrap;gap:10px;min-height:42px;align-items:center}.packaging-order-types label{display:flex!important;align-items:center;gap:5px;color:#ddd!important;font-size:11px!important}.packaging-order-types input{width:auto!important;height:auto!important}.inventory-master-edit-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:22px}.inventory-master-edit-form label{display:grid;gap:7px}.inventory-master-edit-form label>span{font-size:10px;font-weight:750;letter-spacing:.5px;color:#999}.inventory-master-edit-form input,.inventory-master-edit-form select{height:43px;border:1px solid #363833;border-radius:8px;background:#10110f;color:#f4f4ef;padding:0 12px}.inventory-active-toggle{display:flex!important;align-items:center;gap:8px;grid-column:1/-1}.inventory-active-toggle input{width:auto;height:auto}.inventory-edit-help{grid-column:1/-1;color:#a9aaa2;font-size:12px;line-height:1.6;margin:0;padding:12px;background:#171813;border-left:3px solid #ffd21c}@media(max-width:650px){.inventory-master-edit-form{grid-template-columns:1fr;padding:16px}.inventory-active-toggle,.inventory-edit-help{grid-column:auto}}
+.inventory-history-link{display:block;margin-top:5px;border:0;background:transparent;color:#ffd21c;font-size:9px;font-weight:800;padding:0;cursor:pointer}#inventoryMovementPanel .inventory-panel-head>div:last-child{text-align:right}
 </style>
 <section id="inventory" class="section">
   <div class="page-head inventory-page-head">
@@ -1248,8 +1251,11 @@ body{font-size:14px}
         <label><span>ITEM NAME</span><input id="inventoryItemName" type="text" placeholder="Chicken"></label>
         <label><span>SKU</span><input id="inventoryItemSku" type="text" placeholder="CHICKEN"></label>
         <label><span>CATEGORY</span><select id="inventoryItemCategory"></select></label>
-        <label><span>SUPPLY / BILLING UNIT</span><select id="inventorySupplyUnit"><option value="KG">Kg</option><option value="G">Gram</option><option value="L">Litre</option><option value="ML">Millilitre</option><option value="PIECE">Piece</option><option value="BOTTLE">Bottle</option><option value="PACK">Pack</option><option value="CAN">Can</option><option value="BOX">Box</option></select></label>
+        <label><span>OWNER REQUEST UNIT</span><select id="inventoryRequestUnit"><option value="KG">Kg</option><option value="G">Gram</option><option value="L">Litre</option><option value="ML">Millilitre</option><option value="PIECE">Piece / Portion</option><option value="BOTTLE">Bottle</option><option value="PACK">Packet</option><option value="CAN">Can</option><option value="BOX">Box</option></select></label>
+        <label><span>SUPPLY / BILLING UNIT</span><select id="inventorySupplyUnit"><option value="KG">Kg</option><option value="G">Gram</option><option value="L">Litre</option><option value="ML">Millilitre</option><option value="PIECE">Piece</option><option value="BOTTLE">Bottle</option><option value="PACK">Packet</option><option value="CAN">Can</option><option value="BOX">Box</option></select></label>
         <label><span>INVENTORY / RECIPE UNIT</span><select id="inventoryInternalUnit"><option value="G">Gram (g)</option><option value="ML">Millilitre (ml)</option><option value="EACH">Piece (pc)</option></select></label>
+        <label><span>1 REQUEST UNIT ADDS</span><input id="inventoryRequestConversion" type="number" min="0.000001" step="0.001" placeholder="Inventory quantity"></label>
+        <label><span>1 BILLING UNIT ADDS</span><input id="inventoryBillingConversion" type="number" min="0.000001" step="0.001" placeholder="Inventory quantity"></label>
         <label><span>LOW STOCK AT</span><input id="inventoryItemThreshold" type="number" min="0" step="0.001" placeholder="2"></label>
         <label><span>TARGET STOCK</span><input id="inventoryItemTarget" type="number" min="0" step="0.001" placeholder="100"></label>
         <label><span>DEFAULT PRICE</span><input id="inventoryItemPrice" type="number" min="0" step="0.01" placeholder="₹0"></label>
@@ -1264,6 +1270,17 @@ body{font-size:14px}
       </div>
       <button id="saveRecipeIngredient" class="secondary inventory-wide-btn" type="button">ADD / UPDATE INGREDIENT</button>
       <div id="recipeIngredientList" class="daily-expense-list"></div>
+      <div class="inventory-panel-head adjustment-head"><div><div class="eyebrow">Order-type automation</div><h2>Packaging rules</h2></div><span>Deduct packaging only when its rule applies</span></div>
+      <div class="inventory-form-grid">
+        <label><span>PACKAGING ITEM</span><select id="packagingRuleItem"></select></label>
+        <label><span>USED FOR</span><span class="packaging-order-types"><label><input id="packagingDineIn" type="checkbox"> Dine-In</label><label><input id="packagingTakeaway" type="checkbox" checked> Takeaway</label><label><input id="packagingDelivery" type="checkbox"> Delivery</label></span></label>
+        <label><span>CONSUMPTION TYPE</span><select id="packagingConsumptionType"><option value="PER_ORDER">Once per order</option><option value="PER_MENU_ITEM">Per menu item</option><option value="PER_MENU_CATEGORY">Per menu category</option></select></label>
+        <label><span>QUANTITY</span><input id="packagingQuantity" type="number" min="0.001" step="0.001" value="1"></label>
+        <label id="packagingMenuItemField" class="hidden"><span>MENU ITEM</span><select id="packagingMenuItem"></select></label>
+        <label id="packagingMenuCategoryField" class="hidden"><span>MENU CATEGORY</span><select id="packagingMenuCategory"></select></label>
+      </div>
+      <button id="savePackagingRule" class="secondary inventory-wide-btn" type="button">SAVE PACKAGING RULE</button>
+      <div id="packagingRuleList" class="daily-expense-list"></div>
       <div class="inventory-panel-head adjustment-head"><div><div class="eyebrow">Item categories</div><h2>Category management</h2></div></div>
       <div class="inventory-form-grid"><label><span>CATEGORY NAME</span><input id="stockCategoryName" type="text" maxlength="80" placeholder="Chicken"></label></div>
       <button id="createStockCategory" class="secondary inventory-wide-btn" type="button">CREATE CATEGORY</button>
@@ -1304,8 +1321,8 @@ body{font-size:14px}
     </div>
     <div id="inventoryBillsList" class="inventory-bills-list"></div>
   </article>
-  <article class="inventory-panel inventory-table-panel">
-    <div class="inventory-panel-head"><div><div class="eyebrow">Audit trail</div><h2>Stock history</h2></div><span>Every receipt, usage and adjustment</span></div>
+  <article id="inventoryMovementPanel" class="inventory-panel inventory-table-panel">
+    <div class="inventory-panel-head"><div><div class="eyebrow">Audit trail</div><h2>Stock history</h2></div><div><span id="inventoryMovementFilterLabel">Every receipt, usage and adjustment</span> <button id="inventoryMovementClearItem" class="secondary hidden" type="button">SHOW ALL ITEMS</button></div></div>
     <div id="inventoryMovementList" class="inventory-movement-list"></div>
   </article>
 </section>
@@ -1552,6 +1569,28 @@ body{font-size:14px}
 </section>
 </div>
 </main>
+</div>
+
+<div id="inventoryItemModal" class="menu-item-modal hidden" aria-hidden="true">
+  <div class="menu-item-modal-backdrop" data-inventory-modal-close></div>
+  <div class="menu-item-modal-panel" role="dialog" aria-modal="true" aria-labelledby="inventoryItemModalTitle">
+    <div class="menu-item-modal-head"><div><div class="eyebrow">Master Item</div><h2 id="inventoryItemModalTitle">Edit Master Item</h2></div><button type="button" class="menu-modal-close" data-inventory-modal-close aria-label="Close">×</button></div>
+    <div class="inventory-master-edit-form">
+      <label><span>ITEM NAME</span><input id="editInventoryName"></label>
+      <label><span>CATEGORY</span><select id="editInventoryCategory"></select></label>
+      <label><span>REQUEST UNIT</span><select id="editInventoryRequestUnit"></select></label>
+      <label><span>BILLING UNIT</span><select id="editInventoryBillingUnit"></select></label>
+      <label><span>INVENTORY UNIT</span><select id="editInventoryUnit"><option value="G">Gram (g)</option><option value="ML">Millilitre (ml)</option><option value="EACH">Piece (pc)</option></select></label>
+      <label><span>1 REQUEST UNIT ADDS</span><input id="editInventoryRequestConversion" type="number" min="0.000001" step="0.001"></label>
+      <label><span>1 BILLING UNIT ADDS</span><input id="editInventoryBillingConversion" type="number" min="0.000001" step="0.001"></label>
+      <label><span>PRICE / BILLING UNIT</span><input id="editInventoryPrice" type="number" min="0" step="0.01"></label>
+      <label><span>LOW STOCK AT</span><input id="editInventoryThreshold" type="number" min="0" step="0.001"></label>
+      <label><span>TARGET STOCK</span><input id="editInventoryTarget" type="number" min="0" step="0.001"></label>
+      <label class="inventory-active-toggle"><input id="editInventoryActive" type="checkbox"><span>Active for new operations</span></label>
+      <p class="inventory-edit-help">Completed bills and stock movements keep their original snapshots. If the inventory unit changes, current balances are converted and an audited correction is recorded.</p>
+    </div>
+    <div class="menu-item-modal-actions"><button type="button" class="secondary" data-inventory-modal-close>CANCEL</button><button id="saveInventoryItemChanges" type="button" class="primary">SAVE CHANGES</button></div>
+  </div>
 </div>
 
 <script type="module" src="/src/dashboard.js"></script></body>

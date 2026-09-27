@@ -2,7 +2,7 @@ import { supabase } from './supabase.js';
 import { filterHistory, historyBounds } from '../lib/history.js';
 import { calculateSuggestedRequirements } from '../lib/stock-requirements.js';
 import { calculateCurrentStockValue } from '../lib/inventory-valuation.js';
-import { defaultNetQuantity, unitLabel, stockRequestUnit, requestSupplyQuantities } from '../lib/inventory-measurements.js';
+import { defaultNetQuantity, standardConversion, unitLabel, stockRequestUnit, requestSupplyQuantities } from '../lib/inventory-measurements.js';
 
 const ROLE_PERMISSIONS = {
   ADMIN: ['overview', 'pos', 'orders', 'menu', 'inventory', 'daily-expenses', 'outlets', 'staff', 'reports', 'settings'],
@@ -37,7 +37,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
-  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], recipes: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, loaded: false },
+  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, historyItemId: null, loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -3234,6 +3234,9 @@ function fillInventoryControls() {
   inventorySelectOptions($('#recipeStockItem'), state.inventory.items.filter(row => row.active !== false).map(row => ({ value: row.id, label: `${row.name} · ${inventoryInternalUnit(row)}` })), $('#recipeStockItem')?.value);
   inventorySelectOptions($('#wastageMenuItem'), state.inventory.menuItems.map(row => ({ value: row.id, label: row.name })), $('#wastageMenuItem')?.value);
   inventorySelectOptions($('#wastageStockItem'), state.inventory.items.filter(row => row.active !== false).map(row => ({ value: row.id, label: `${row.name} · ${inventoryInternalUnit(row)}` })), $('#wastageStockItem')?.value);
+  inventorySelectOptions($('#packagingRuleItem'), state.inventory.items.filter(row => row.active !== false).map(row => ({ value: row.id, label: `${row.name} · ${inventoryInternalUnit(row)}` })), $('#packagingRuleItem')?.value);
+  inventorySelectOptions($('#packagingMenuItem'), state.inventory.menuItems.map(row => ({ value: row.id, label: row.name })), $('#packagingMenuItem')?.value);
+  inventorySelectOptions($('#packagingMenuCategory'), state.inventory.menuCategories.map(row => ({ value: row.id, label: row.name })), $('#packagingMenuCategory')?.value);
   const selectedSupplyItem = inventoryItem($('#supplyItem')?.value);
   if (!selectedSupplyItem && $('#supplyItem')) $('#supplyItem').value = '';
   if (selectedSupplyItem && $('#supplyItemSearch') && !$('#supplyItemSearch').value) $('#supplyItemSearch').value = selectedSupplyItem.name;
@@ -3283,7 +3286,7 @@ function stockRequestCard(request, latest = false) {
   const label = request.processing_started_at && request.status === 'SUBMITTED' ? 'PROCESSING' : request.status;
   const editable = canEditStockRequest(request);
   const items = request.franchise_stock_request_items || [];
-  return `<div class="stock-request-card"><div class="stock-request-top"><div><strong>${latest ? 'LATEST · ' : ''}${escapeHtml(inventoryOutlet(request.outlet_id)?.name || 'Outlet')} · Needed ${escapeHtml(request.required_for)}</strong><span>Updated ${inventoryDate(request.updated_at || request.created_at)} · ${items.length} item${items.length === 1 ? '' : 's'}${request.notes ? ` · ${escapeHtml(request.notes)}` : ''}</span></div><span class="inventory-status ${request.status === 'FULFILLED' ? 'in' : 'low'}">${escapeHtml(label)}</span></div><div class="stock-request-items">${items.map(item => `<span>${escapeHtml(item.item_name)} · ${inventoryQty(item.quantity)} ${escapeHtml(unitLabel(item.unit, item.quantity))}</span>`).join('')}</div>${owner ? (editable ? `<button class="primary" type="button" data-edit-stock-draft="${request.id}">EDIT REQUIREMENT</button><p>You can change this requirement until Admin starts preparing the supply.</p>` : `<button class="secondary" type="button" disabled>EDIT UNAVAILABLE</button><p>${request.created_by !== state.session?.user?.id ? 'Only the Owner who created this requirement can edit it.' : 'This requirement is being processed or has been completed. Contact Admin for changes.'}</p>`) : ''}${state.profile?.role === 'ADMIN' && ['SUBMITTED','PARTIAL'].includes(request.status) ? `<button class="primary" type="button" data-use-stock-request="${request.id}">${request.processing_started_at ? 'CONTINUE' : 'PREPARE'} SUPPLY BILL</button>${request.processing_started_at && !request.bill_id ? `<button class="secondary" type="button" data-release-stock-request="${request.id}">ALLOW OWNER TO EDIT</button>` : ''}` : ''}</div>`;
+  return `<div class="stock-request-card"><div class="stock-request-top"><div><strong>${latest ? 'LATEST · ' : ''}${escapeHtml(inventoryOutlet(request.outlet_id)?.name || 'Outlet')} · Needed ${escapeHtml(request.required_for)}</strong><span>Updated ${inventoryDate(request.updated_at || request.created_at)} · ${items.length} item${items.length === 1 ? '' : 's'}${request.notes ? ` · ${escapeHtml(request.notes)}` : ''}</span></div><span class="inventory-status ${request.status === 'FULFILLED' ? 'in' : 'low'}">${escapeHtml(label)}</span></div><div class="stock-request-items">${items.map(item => `<span><b>${escapeHtml(item.item_name)}</b> · Requested ${inventoryQty(item.quantity)} ${escapeHtml(unitLabel(item.unit, item.quantity))}${Number(item.billing_quantity)>0 ? ` · Billing ${inventoryQty(item.billing_quantity)} ${escapeHtml(unitLabel(item.billing_unit,item.billing_quantity))}` : ''}${Number(item.inventory_quantity)>0 ? ` · Inventory +${inventoryQty(item.inventory_quantity)} ${escapeHtml(unitLabel(item.inventory_unit,item.inventory_quantity))}` : ''}</span>`).join('')}</div>${owner ? (editable ? `<button class="primary" type="button" data-edit-stock-draft="${request.id}">EDIT REQUIREMENT</button><p>You can change this requirement until Admin starts preparing the supply.</p>` : `<button class="secondary" type="button" disabled>EDIT UNAVAILABLE</button><p>${request.created_by !== state.session?.user?.id ? 'Only the Owner who created this requirement can edit it.' : 'This requirement is being processed or has been completed. Contact Admin for changes.'}</p>`) : ''}${state.profile?.role === 'ADMIN' && ['SUBMITTED','PARTIAL'].includes(request.status) ? `<button class="primary" type="button" data-use-stock-request="${request.id}">${request.processing_started_at ? 'CONTINUE' : 'PREPARE'} SUPPLY BILL</button>${request.processing_started_at && !request.bill_id ? `<button class="secondary" type="button" data-release-stock-request="${request.id}">ALLOW OWNER TO EDIT</button>` : ''}` : ''}</div>`;
 }
 
 function renderStockRequests() {
@@ -3351,6 +3354,61 @@ function renderRecipeIngredients() {
     const quantity = Number(row.base_quantity || 0);
     return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Stock item')}</strong><span>${inventoryQty(quantity)} ${escapeHtml(inventoryInternalUnit(item, quantity))} per menu item${row.is_packaging ? ' · OPTIONAL PACKAGING' : ''}</span></div><div class="inventory-row-actions"><button class="secondary danger" type="button" data-delete-recipe-item="${row.inventory_item_id}">REMOVE</button></div></div>`;
   }).join('') : '<div class="inventory-empty">No recipe ingredients configured for this menu item.</div>';
+}
+
+function updatePackagingRuleFields() {
+  const type = $('#packagingConsumptionType')?.value || 'PER_ORDER';
+  $('#packagingMenuItemField')?.classList.toggle('hidden', type !== 'PER_MENU_ITEM');
+  $('#packagingMenuCategoryField')?.classList.toggle('hidden', type !== 'PER_MENU_CATEGORY');
+}
+
+function renderPackagingRules() {
+  const list = $('#packagingRuleList');
+  if (!list) return;
+  const rules = state.inventory.packagingRules || [];
+  list.innerHTML = rules.length ? rules.map(rule => {
+    const item = inventoryItem(rule.item_id) || {};
+    const target = rule.consumption_type === 'PER_MENU_ITEM'
+      ? state.inventory.menuItems.find(row => row.id === rule.menu_item_id)?.name
+      : rule.consumption_type === 'PER_MENU_CATEGORY'
+        ? state.inventory.menuCategories.find(row => row.id === rule.menu_category_id)?.name : 'whole order';
+    return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Packaging item')}</strong><span>${escapeHtml((rule.order_types || []).join(' · '))} · ${escapeHtml(rule.consumption_type.replaceAll('_',' '))} · ${inventoryQty(rule.consumption_quantity)} ${escapeHtml(inventoryInternalUnit(item, rule.consumption_quantity))} · ${escapeHtml(target || 'Unknown mapping')}${rule.active === false ? ' · INACTIVE' : ''}</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-packaging-rule="${rule.id}">EDIT</button><button class="secondary danger" type="button" data-deactivate-packaging-rule="${rule.id}">DEACTIVATE</button></div></div>`;
+  }).join('') : '<div class="inventory-empty">No order-type packaging rules configured.</div>';
+}
+
+function editPackagingRule(rule) {
+  state.inventory.editingPackagingRuleId = rule.id;
+  if ($('#packagingRuleItem')) $('#packagingRuleItem').value = rule.item_id;
+  if ($('#packagingConsumptionType')) $('#packagingConsumptionType').value = rule.consumption_type;
+  if ($('#packagingQuantity')) $('#packagingQuantity').value = Number(rule.consumption_quantity);
+  if ($('#packagingMenuItem')) $('#packagingMenuItem').value = rule.menu_item_id || '';
+  if ($('#packagingMenuCategory')) $('#packagingMenuCategory').value = rule.menu_category_id || '';
+  if ($('#packagingDineIn')) $('#packagingDineIn').checked = rule.order_types?.includes('DINE_IN');
+  if ($('#packagingTakeaway')) $('#packagingTakeaway').checked = rule.order_types?.includes('TAKEAWAY');
+  if ($('#packagingDelivery')) $('#packagingDelivery').checked = rule.order_types?.includes('DELIVERY');
+  if ($('#savePackagingRule')) $('#savePackagingRule').textContent = 'SAVE PACKAGING CHANGES';
+  updatePackagingRuleFields();
+}
+
+async function savePackagingRule() {
+  const orderTypes = [['DINE_IN','#packagingDineIn'],['TAKEAWAY','#packagingTakeaway'],['DELIVERY','#packagingDelivery']].filter(([,selector]) => $(selector)?.checked).map(([value]) => value);
+  const button = $('#savePackagingRule'); button.disabled = true;
+  try {
+    await inventoryApi('POST', { action: 'save_packaging_rule', ruleId: state.inventory.editingPackagingRuleId, itemId: $('#packagingRuleItem')?.value, orderTypes, consumptionType: $('#packagingConsumptionType')?.value, quantity: $('#packagingQuantity')?.value, menuItemId: $('#packagingMenuItem')?.value, menuCategoryId: $('#packagingMenuCategory')?.value });
+    state.inventory.editingPackagingRuleId = null;
+    button.textContent = 'SAVE PACKAGING RULE';
+    await loadInventory();
+    toast('Packaging rule saved. Completed orders will use it automatically.', 'ok');
+  } catch (error) { toast(error.message, 'bad'); }
+  finally { button.disabled = false; }
+}
+
+async function deactivatePackagingRule(ruleId) {
+  try {
+    await inventoryApi('POST', { action: 'deactivate_packaging_rule', ruleId });
+    await loadInventory();
+    toast('Packaging rule deactivated. Its previous order history is unchanged.', 'ok');
+  } catch (error) { toast(error.message, 'bad'); }
 }
 
 function renderOpeningStock() {
@@ -3474,7 +3532,7 @@ function inventoryMovementTotals(outletId, itemId) {
   const rows = state.inventory.movements.filter(row => row.outlet_id === outletId && row.item_id === itemId && new Date(row.occurred_at).toLocaleDateString('en-CA') === today);
   return {
     received: rows.filter(row => row.movement_type === 'STOCK_RECEIVED').reduce((sum, row) => sum + Number(row.quantity_delta || 0), 0),
-    used: Math.abs(rows.filter(row => ['USAGE', 'WASTE', 'SALE_DEDUCTION'].includes(row.movement_type)).reduce((sum, row) => sum + Number(row.quantity_delta || 0), 0))
+    used: Math.abs(rows.filter(row => ['USAGE', 'WASTE', 'SALE_DEDUCTION', 'PACKAGING_CONSUMPTION'].includes(row.movement_type)).reduce((sum, row) => sum + Number(row.quantity_delta || 0), 0))
   };
 }
 
@@ -3483,7 +3541,8 @@ function renderInventory() {
   const outletId = inventorySelectedOutletId();
   const balances = state.inventory.balances.filter(row => !outletId || row.outlet_id === outletId);
   const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at');
-  const movements = inventoryHistoryRows(state.inventory.movements, 'occurred_at');
+  const allMovements = inventoryHistoryRows(state.inventory.movements, 'occurred_at');
+  const movements = state.inventory.historyItemId ? allMovements.filter(row => row.item_id === state.inventory.historyItemId) : allMovements;
   const stockValue = calculateCurrentStockValue({ items: state.inventory.items, balances, bills: state.inventory.bills, outletId });
   const lowCount = balances.filter(row => {
     const item = inventoryItem(row.item_id);
@@ -3510,9 +3569,9 @@ function renderInventory() {
     const groupName = item => state.inventory.stockCategories.find(row => row.id === item.category_id)?.name || 'Other items';
     const categoryId = $('#inventoryMasterCategory')?.value || '';
     const search = String($('#inventoryMasterSearch')?.value || '').trim().toLowerCase();
-    const filteredItems = state.inventory.items.filter(item => item.active !== false && (!categoryId || item.category_id === categoryId) && (!search || item.name.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search)));
+    const filteredItems = state.inventory.items.filter(item => (!categoryId || item.category_id === categoryId) && (!search || item.name.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search)));
     const names = [...new Set(filteredItems.map(groupName))];
-    masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · ${escapeHtml(inventoryMeasurementLabel(item).toUpperCase())} · LOW AT ${inventoryQty(item.low_stock_threshold)} · TARGET ${inventoryQty(item.target_stock_level)} ${escapeHtml(item.display_unit === 'EACH' ? 'pcs' : item.display_unit?.toLowerCase() || '')}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${inventoryBillingUnit(item)}` : 'SET RATE'}</b><div class="inventory-row-actions"><button type="button" data-inventory-edit-item="${item.id}">EDIT</button><button class="danger" type="button" data-inventory-delete-item="${item.id}">DELETE</button></div></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
+    masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}${item.active === false ? ' · INACTIVE' : ''}</strong><small>${escapeHtml(item.sku)} · REQUEST ${escapeHtml(unitLabel(item.request_unit).toUpperCase())} × ${inventoryQty(item.request_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · BILL ${escapeHtml(unitLabel(item.billing_unit || item.supply_unit).toUpperCase())} × ${inventoryQty(item.billing_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · LOW ${inventoryQty(item.low_stock_threshold)} · TARGET ${inventoryQty(item.target_stock_level)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${inventoryBillingUnit(item)}` : 'SET RATE'}</b><div class="inventory-row-actions"><button type="button" data-inventory-edit-item="${item.id}">EDIT</button><button class="danger" type="button" data-inventory-delete-item="${item.id}">DEACTIVATE</button></div></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
   }
 
   const stockList = $('#inventoryStockList');
@@ -3523,22 +3582,26 @@ function renderInventory() {
     const threshold = Number(item.low_stock_threshold || 0);
     const status = quantity <= 0 ? ['OUT OF STOCK', 'out'] : quantity <= threshold ? ['LOW STOCK', 'low'] : ['IN STOCK', 'in'];
     const totals = inventoryMovementTotals(row.outlet_id, row.item_id);
-    return `<div class="inventory-stock-row"><strong>${escapeHtml(item.name || 'Item')}</strong><span>${escapeHtml(outlet.name || 'Outlet')}</span><span>${inventoryQty(inventoryDisplayQuantity(item, totals.received))} ${escapeHtml(item.display_unit || '')}</span><span>${inventoryQty(inventoryDisplayQuantity(item, totals.used))} ${escapeHtml(item.display_unit || '')}</span><span class="inventory-qty">${inventoryQty(quantity)} ${escapeHtml(item.display_unit || '')}</span><span class="inventory-status ${status[1]}">${status[0]}</span></div>`;
+    return `<div class="inventory-stock-row"><strong>${escapeHtml(item.name || 'Item')}<button class="inventory-history-link" type="button" data-view-item-history="${row.item_id}">VIEW HISTORY</button></strong><span>${escapeHtml(outlet.name || 'Outlet')}</span><span>${inventoryQty(inventoryDisplayQuantity(item, totals.received))} ${escapeHtml(item.display_unit || '')}</span><span>${inventoryQty(inventoryDisplayQuantity(item, totals.used))} ${escapeHtml(item.display_unit || '')}</span><span class="inventory-qty">${inventoryQty(quantity)} ${escapeHtml(item.display_unit || '')}</span><span class="inventory-status ${status[1]}">${status[0]}</span></div>`;
   }).join('') : '<div class="inventory-empty">No stock balances yet. Generate the first supply bill to add stock.</div>';
 
   const billsList = $('#inventoryBillsList');
   if (billsList) billsList.innerHTML = bills.length ? bills.map(bill => {
     const outstanding = Math.max(0, Number(bill.total_amount || 0) - Number(bill.paid_amount || 0));
     const receiptStatus = bill.receipt_status || 'RECEIVED';
-    return `<div class="inventory-bill"><div class="inventory-bill-top"><div><h3>${escapeHtml(bill.bill_number)}</h3><div class="inventory-bill-meta">${escapeHtml(inventoryOutlet(bill.outlet_id)?.name || 'Outlet')} · ${inventoryDate(bill.supplied_at)} · <span class="inventory-status ${receiptStatus === 'RECEIVED' ? 'in' : 'low'}">${receiptStatus === 'RECEIVED' ? 'RECEIVED' : 'AWAITING RECEIPT'}</span></div></div><div class="inventory-bill-total"><strong>${formatReportMoney(bill.total_amount)}</strong><span>${escapeHtml(bill.payment_status)} · DUE ${formatReportMoney(outstanding)}</span></div></div><div class="inventory-bill-items">${(bill.supply_bill_items || []).map(line => { const item = inventoryItem(line.item_id); const billed = `${inventoryQty(line.quantity)} ${unitLabel(line.unit, line.quantity)}`; return `<span>${escapeHtml(line.item_name)} · Inventory +${inventoryQty(line.base_quantity)} ${escapeHtml(inventoryInternalUnit(item, line.base_quantity))} · Supply ${billed} × ${formatReportMoney(line.unit_price)}</span>`; }).join('')}</div><div class="inventory-bill-actions"><button class="secondary" data-inventory-view="${bill.id}">VIEW BILL</button><button class="secondary" data-inventory-print="${bill.id}">PRINT / SAVE PDF</button><button class="secondary" data-inventory-bill-csv="${bill.id}">DOWNLOAD CSV</button>${state.profile?.role === 'OWNER' && receiptStatus === 'PENDING' ? `<button class="primary" data-inventory-receive="${bill.id}">CONFIRM STOCK RECEIPT</button>` : ''}${state.profile?.role === 'ADMIN' && outstanding > 0 ? `<button class="primary" data-inventory-pay="${bill.id}">RECORD PAYMENT</button>` : ''}</div></div>`;
+    return `<div class="inventory-bill"><div class="inventory-bill-top"><div><h3>${escapeHtml(bill.bill_number)}</h3><div class="inventory-bill-meta">${escapeHtml(inventoryOutlet(bill.outlet_id)?.name || 'Outlet')} · ${inventoryDate(bill.supplied_at)} · <span class="inventory-status ${receiptStatus === 'RECEIVED' ? 'in' : 'low'}">${receiptStatus === 'RECEIVED' ? 'RECEIVED' : 'AWAITING RECEIPT'}</span></div></div><div class="inventory-bill-total"><strong>${formatReportMoney(bill.total_amount)}</strong><span>${escapeHtml(bill.payment_status)} · DUE ${formatReportMoney(outstanding)}</span></div></div><div class="inventory-bill-items">${(bill.supply_bill_items || []).map(line => { const item = inventoryItem(line.item_id); const billed = `${inventoryQty(line.quantity)} ${unitLabel(line.unit, line.quantity)}`; return `<span>${escapeHtml(line.item_name)} · Inventory +${inventoryQty(line.base_quantity)} ${escapeHtml(unitLabel(line.inventory_unit || item?.inventory_unit || item?.base_unit, line.base_quantity))} · Supply ${billed} × ${formatReportMoney(line.unit_price)}</span>`; }).join('')}</div><div class="inventory-bill-actions"><button class="secondary" data-inventory-view="${bill.id}">VIEW BILL</button><button class="secondary" data-inventory-print="${bill.id}">PRINT / SAVE PDF</button><button class="secondary" data-inventory-bill-csv="${bill.id}">DOWNLOAD CSV</button>${state.profile?.role === 'OWNER' && receiptStatus === 'PENDING' ? `<button class="primary" data-inventory-receive="${bill.id}">CONFIRM STOCK RECEIPT</button>` : ''}${state.profile?.role === 'ADMIN' && outstanding > 0 ? `<button class="primary" data-inventory-pay="${bill.id}">RECORD PAYMENT</button>` : ''}</div></div>`;
   }).join('') : '<div class="inventory-empty">No supply bills in this period.</div>';
 
   const movementList = $('#inventoryMovementList');
   if (movementList) movementList.innerHTML = movements.length ? movements.map(row => {
     const item = inventoryItem(row.item_id) || {};
-    const delta = inventoryDisplayQuantity(item, row.quantity_delta);
-    return `<div class="inventory-movement"><span>${inventoryDate(row.occurred_at)}</span><strong>${escapeHtml(item.name || 'Item')}</strong><span>${escapeHtml(inventoryOutlet(row.outlet_id)?.name || 'Outlet')}</span><span class="${delta >= 0 ? 'positive' : 'negative'}">${delta >= 0 ? '+' : ''}${inventoryQty(delta)} ${escapeHtml(item.display_unit || '')}</span><span>${escapeHtml(row.movement_type.replaceAll('_', ' '))}${row.notes ? ` · ${escapeHtml(row.notes)}` : ''}</span></div>`;
+    const snapshotUnit = row.inventory_unit_snapshot;
+    const delta = snapshotUnit ? Number(row.quantity_delta) : inventoryDisplayQuantity(item, row.quantity_delta);
+    return `<div class="inventory-movement"><span>${inventoryDate(row.occurred_at)}</span><strong>${escapeHtml(row.item_name_snapshot || item.name || 'Item')}</strong><span>${escapeHtml(inventoryOutlet(row.outlet_id)?.name || 'Outlet')}</span><span class="${delta >= 0 ? 'positive' : 'negative'}">${delta >= 0 ? '+' : ''}${inventoryQty(delta)} ${escapeHtml(unitLabel(snapshotUnit || item.display_unit || '', delta))}</span><span>${escapeHtml(row.movement_type.replaceAll('_', ' '))}${row.notes ? ` · ${escapeHtml(row.notes)}` : ''}</span></div>`;
   }).join('') : '<div class="inventory-empty">No stock movements in this period.</div>';
+  const historyItem = inventoryItem(state.inventory.historyItemId);
+  if ($('#inventoryMovementFilterLabel')) $('#inventoryMovementFilterLabel').textContent = historyItem ? `${historyItem.name} · ${movements.length} movements` : 'Every receipt, usage and adjustment';
+  $('#inventoryMovementClearItem')?.classList.toggle('hidden', !historyItem);
   renderSupplyLines();
   renderSupplyNotification();
   renderStockRequestCatalogue();
@@ -3547,6 +3610,7 @@ function renderInventory() {
   renderStockCategories();
   renderExpenseCategories();
   renderRecipeIngredients();
+  renderPackagingRules();
   updateRecipeQuantityUnit();
   renderOpeningStock();
 }
@@ -3562,7 +3626,9 @@ async function loadInventory() {
   state.inventory.stockCategories = payload.stockCategories || [];
   state.inventory.expenseCategories = payload.expenseCategories || [];
   state.inventory.menuItems = payload.menuItems || [];
+  state.inventory.menuCategories = payload.menuCategories || [];
   state.inventory.recipes = payload.recipes || [];
+  state.inventory.packagingRules = payload.packagingRules || [];
   state.inventory.outlets = payload.outlets || [];
   state.inventory.balances = payload.inventory || [];
   state.inventory.bills = payload.bills || [];
@@ -3638,30 +3704,41 @@ function addSupplyLine() {
   renderSupplyLines();
 }
 
-async function editInventoryItemPrice(item) {
-  const name = String(window.prompt('Stock item name:', item.name) || '').trim();
-  if (!name) return;
-  const categoryNames = state.inventory.stockCategories.filter(row => row.active !== false || row.id === item.category_id).map(row => row.name);
-  const categoryName = String(window.prompt(`Stock category (${categoryNames.join(', ')}):`, state.inventory.stockCategories.find(row => row.id === item.category_id)?.name || '') || '').trim();
-  const category = state.inventory.stockCategories.find(row => row.name.toLowerCase() === categoryName.toLowerCase());
-  if (!category) return toast('Choose an existing stock category.', 'bad');
-  const supplyUnit = String(window.prompt('Supply unit: KG, G, L, ML, PIECE, BOTTLE, PACK, CAN or BOX', item.supply_unit || item.billing_unit || 'KG') || '').toUpperCase();
-  if (!['KG','G','L','ML','PIECE','BOTTLE','PACK','CAN','BOX'].includes(supplyUnit)) return toast('Choose a valid supply unit.', 'bad');
-  const inventoryUnit = String(window.prompt('Inventory / recipe unit: G, ML or EACH', item.inventory_unit || item.base_unit || 'G') || '').toUpperCase();
-  if (!['G','ML','EACH'].includes(inventoryUnit)) return toast('Choose G, ML or EACH for internal stock.', 'bad');
-  const price = Number(window.prompt(`Fixed supply price per ${unitLabel(supplyUnit, 1)} for ${name}:`, Number(item.default_supply_price || 0).toFixed(2)));
-  if (!(price > 0)) return;
-  const existingThreshold = inventoryBaseQuantity(item, item.low_stock_threshold);
-  const existingTarget = inventoryBaseQuantity(item, item.target_stock_level);
-  const threshold = Number(window.prompt(`Low-stock alert level in ${unitLabel(inventoryUnit)}:`, existingThreshold.toString()));
-  if (!(threshold >= 0)) return toast('Enter a valid low-stock level.', 'bad');
-  const targetStockLevel = Number(window.prompt(`Target stock level in ${unitLabel(inventoryUnit)}:`, existingTarget.toString()));
-  if (!(targetStockLevel >= 0)) return toast('Enter a valid target stock level.', 'bad');
+function editInventoryItemPrice(item) {
+  state.inventory.editingItemId = item.id;
+  const unitOptions = ['KG','G','L','ML','PIECE','BOTTLE','PACK','CAN','BOX'].map(value => ({ value, label: unitLabel(value, 1) }));
+  inventorySelectOptions($('#editInventoryCategory'), state.inventory.stockCategories.filter(row => row.active !== false || row.id === item.category_id).map(row => ({ value: row.id, label: row.name })), item.category_id);
+  inventorySelectOptions($('#editInventoryRequestUnit'), unitOptions, item.request_unit);
+  inventorySelectOptions($('#editInventoryBillingUnit'), unitOptions, item.supply_unit || item.billing_unit);
+  $('#editInventoryName').value = item.name;
+  $('#editInventoryUnit').value = item.inventory_unit || item.base_unit;
+  $('#editInventoryRequestConversion').value = Number(item.request_to_inventory || 1);
+  $('#editInventoryBillingConversion').value = Number(item.billing_to_inventory || 1);
+  $('#editInventoryPrice').value = Number(item.default_supply_price || 0);
+  $('#editInventoryThreshold').value = Number(item.low_stock_threshold || 0);
+  $('#editInventoryTarget').value = Number(item.target_stock_level || 0);
+  $('#editInventoryActive').checked = item.active !== false;
+  $('#inventoryItemModal').classList.remove('hidden');
+  $('#inventoryItemModal').setAttribute('aria-hidden', 'false');
+}
+
+function closeInventoryItemModal() {
+  state.inventory.editingItemId = null;
+  $('#inventoryItemModal')?.classList.add('hidden');
+  $('#inventoryItemModal')?.setAttribute('aria-hidden', 'true');
+}
+
+async function saveInventoryItemChanges() {
+  const item = inventoryItem(state.inventory.editingItemId);
+  if (!item) return;
+  const button = $('#saveInventoryItemChanges'); button.disabled = true;
   try {
-    await inventoryApi('POST', { action: 'update_item', itemId: item.id, name, categoryId: category.id, supplyUnit, inventoryUnit, defaultSupplyPrice: price, lowStockThreshold: threshold, targetStockLevel });
+    await inventoryApi('POST', { action: 'update_item', itemId: item.id, name: $('#editInventoryName').value, categoryId: $('#editInventoryCategory').value, requestUnit: $('#editInventoryRequestUnit').value, supplyUnit: $('#editInventoryBillingUnit').value, inventoryUnit: $('#editInventoryUnit').value, requestConversion: $('#editInventoryRequestConversion').value, billingConversion: $('#editInventoryBillingConversion').value, defaultSupplyPrice: $('#editInventoryPrice').value, lowStockThreshold: $('#editInventoryThreshold').value, targetStockLevel: $('#editInventoryTarget').value, active: $('#editInventoryActive').checked });
+    closeInventoryItemModal();
     await loadInventory();
-    toast(`${item.name} stock settings updated.`, 'ok');
+    toast(`${item.name} Master Item updated. Previous transaction snapshots were preserved.`, 'ok');
   } catch (error) { toast(error.message, 'bad'); }
+  finally { button.disabled = false; }
 }
 
 async function markSupplyNotification(notificationId, openInventory = false) {
@@ -3777,7 +3854,9 @@ async function useStockRequest(request) {
     const item = inventoryItem(row.item_id) || {};
     const requestUnit = row.unit === 'EACH' ? 'PIECE' : row.unit;
     const supplyQuantity = Number(row.quantity);
-    const { inventoryQuantity, billingQuantity } = requestSupplyQuantities(item, requestUnit, supplyQuantity);
+    const calculated = requestSupplyQuantities(item, requestUnit, supplyQuantity);
+    const inventoryQuantity = Number(row.inventory_quantity) > 0 ? Number(row.inventory_quantity) : calculated.inventoryQuantity;
+    const billingQuantity = Number(row.billing_quantity) > 0 ? Number(row.billing_quantity) : calculated.billingQuantity;
     return { itemId: row.item_id, name: row.item_name, inventoryQuantity, billingQuantity, requestedQuantity: supplyQuantity, requestedUnit: requestUnit, unitPrice: Number(item.default_supply_price || row.fixed_unit_price || 0) };
   });
   if ($('#supplyOutlet')) $('#supplyOutlet').value = request.outlet_id;
@@ -3859,11 +3938,11 @@ async function editManagedCategory(type, row) {
 }
 
 async function deleteInventoryItem(item) {
-  if (!window.confirm(`Delete ${item.name}?\n\nIf it has billing or stock history, it will be archived so previous reports remain correct.`)) return;
+  if (!window.confirm(`Deactivate ${item.name}?\n\nIt will be hidden from new requirements, bills and recipes. Previous records remain unchanged.`)) return;
   try {
-    const result = await inventoryApi('POST', { action: 'delete_item', itemId: item.id });
+    await inventoryApi('POST', { action: 'delete_item', itemId: item.id });
     await loadInventory();
-    toast(result.archived ? `${item.name} archived because it has existing history.` : `${item.name} deleted.`, 'ok');
+    toast(`${item.name} deactivated. You can reactivate it from Edit.`, 'ok');
   } catch (error) { toast(error.message, 'bad'); }
 }
 
@@ -3879,10 +3958,18 @@ async function deleteManagedCategory(type, row) {
 async function createInventoryItem() {
   const button = $('#inventoryCreateItem'); button.disabled = true;
   try {
-    await inventoryApi('POST', { action: 'create_item', name: $('#inventoryItemName')?.value, sku: $('#inventoryItemSku')?.value, categoryId: $('#inventoryItemCategory')?.value, supplyUnit: $('#inventorySupplyUnit')?.value, inventoryUnit: $('#inventoryInternalUnit')?.value, lowStockThreshold: $('#inventoryItemThreshold')?.value, targetStockLevel: $('#inventoryItemTarget')?.value, defaultSupplyPrice: $('#inventoryItemPrice')?.value });
+    await inventoryApi('POST', { action: 'create_item', name: $('#inventoryItemName')?.value, sku: $('#inventoryItemSku')?.value, categoryId: $('#inventoryItemCategory')?.value, requestUnit: $('#inventoryRequestUnit')?.value, supplyUnit: $('#inventorySupplyUnit')?.value, inventoryUnit: $('#inventoryInternalUnit')?.value, requestConversion: $('#inventoryRequestConversion')?.value, billingConversion: $('#inventoryBillingConversion')?.value, lowStockThreshold: $('#inventoryItemThreshold')?.value, targetStockLevel: $('#inventoryItemTarget')?.value, defaultSupplyPrice: $('#inventoryItemPrice')?.value });
     ['inventoryItemName','inventoryItemSku','inventoryItemThreshold','inventoryItemTarget','inventoryItemPrice'].forEach(id => { if ($(`#${id}`)) $(`#${id}`).value = ''; });
     await loadInventory(); toast('Stock item created.', 'ok');
   } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
+}
+
+function syncCreateConversionDefaults() {
+  const inventoryUnit = $('#inventoryInternalUnit')?.value;
+  const request = standardConversion($('#inventoryRequestUnit')?.value, inventoryUnit);
+  const billing = standardConversion($('#inventorySupplyUnit')?.value, inventoryUnit);
+  if ($('#inventoryRequestConversion')) $('#inventoryRequestConversion').value = request > 0 ? request : '';
+  if ($('#inventoryBillingConversion')) $('#inventoryBillingConversion').value = billing > 0 ? billing : '';
 }
 
 async function confirmInventoryReceipt(bill, button) {
@@ -3903,7 +3990,7 @@ function downloadCsv(filename, rows) {
 }
 
 function downloadInventoryReport() {
-  const rows = [['Date','Outlet','Type','Item','Quantity','Unit','Balance','Notes'], ...inventoryHistoryRows(state.inventory.movements, 'occurred_at').map(row => { const item = inventoryItem(row.item_id) || {}; return [inventoryDate(row.occurred_at), inventoryOutlet(row.outlet_id)?.name || '', row.movement_type, item.name || '', inventoryDisplayQuantity(item, row.quantity_delta), item.display_unit || '', inventoryDisplayQuantity(item, row.balance_after), row.notes || '']; })];
+  const rows = [['Date','Outlet','Type','Item','Quantity','Unit','Balance','Notes'], ...inventoryHistoryRows(state.inventory.movements, 'occurred_at').map(row => { const item = inventoryItem(row.item_id) || {}; const snapshotUnit = row.inventory_unit_snapshot; return [inventoryDate(row.occurred_at), inventoryOutlet(row.outlet_id)?.name || '', row.movement_type, row.item_name_snapshot || item.name || '', snapshotUnit ? Number(row.quantity_delta) : inventoryDisplayQuantity(item, row.quantity_delta), snapshotUnit || item.display_unit || '', snapshotUnit ? Number(row.balance_after) : inventoryDisplayQuantity(item, row.balance_after), row.notes || '']; })];
   downloadCsv(`ohho-inventory-${new Date().toISOString().slice(0,10)}.csv`, rows);
 }
 
@@ -3938,7 +4025,7 @@ function printSupplyBill(bill, autoPrint = true) {
   const outlet = inventoryOutlet(bill.outlet_id);
   const popup = window.open('', '_blank', 'width=760,height=850');
   if (!popup) return toast('Allow pop-ups to view or print the invoice.', 'bad');
-  popup.document.write(`<!doctype html><html><head><title>${escapeHtml(bill.bill_number)}</title><style>body{font-family:Arial,sans-serif;padding:36px;color:#111}@media print{.invoice-tools{display:none}}h1{margin:0}.brand{font-weight:900;font-size:26px}.brand span{color:#d4a900}.meta{margin:20px 0;line-height:1.7}table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}th:last-child,td:last-child{text-align:right}.total{text-align:right;font-size:20px;font-weight:900;margin-top:20px}.status{margin-top:8px;text-align:right}</style></head><body><div class="invoice-tools"><button onclick="window.print()">Print / Save PDF</button></div><div class="brand">OHHO <span>BURGERS</span></div><h1>Franchise Supply Invoice</h1><div class="meta"><strong>${escapeHtml(bill.bill_number)}</strong><br>${escapeHtml(outlet?.name || 'Outlet')}<br>${inventoryDate(bill.supplied_at)}<br>Receipt: ${escapeHtml(bill.receipt_status || 'RECEIVED')}</div><table><thead><tr><th>Item</th><th>Inventory added</th><th>Supply quantity</th><th>Rate</th><th>Total</th></tr></thead><tbody>${(bill.supply_bill_items || []).map(line => { const item = inventoryItem(line.item_id) || {}; return `<tr><td>${escapeHtml(line.item_name)}</td><td>${inventoryQty(line.base_quantity)} ${escapeHtml(inventoryInternalUnit(item,line.base_quantity))}</td><td>${inventoryQty(line.quantity)} ${escapeHtml(unitLabel(line.unit,line.quantity))}</td><td>${formatReportMoney(line.unit_price)}</td><td>${formatReportMoney(line.line_total)}</td></tr>`; }).join('')}</tbody></table><div class="total">Total: ${formatReportMoney(bill.total_amount)}</div><div class="status">Paid: ${formatReportMoney(bill.paid_amount)} · Due: ${formatReportMoney(Number(bill.total_amount)-Number(bill.paid_amount))}</div>${autoPrint ? '<script>window.onload=()=>window.print()<\/script>' : ''}</body></html>`);
+  popup.document.write(`<!doctype html><html><head><title>${escapeHtml(bill.bill_number)}</title><style>body{font-family:Arial,sans-serif;padding:36px;color:#111}@media print{.invoice-tools{display:none}}h1{margin:0}.brand{font-weight:900;font-size:26px}.brand span{color:#d4a900}.meta{margin:20px 0;line-height:1.7}table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}th:last-child,td:last-child{text-align:right}.total{text-align:right;font-size:20px;font-weight:900;margin-top:20px}.status{margin-top:8px;text-align:right}</style></head><body><div class="invoice-tools"><button onclick="window.print()">Print / Save PDF</button></div><div class="brand">OHHO <span>BURGERS</span></div><h1>Franchise Supply Invoice</h1><div class="meta"><strong>${escapeHtml(bill.bill_number)}</strong><br>${escapeHtml(outlet?.name || 'Outlet')}<br>${inventoryDate(bill.supplied_at)}<br>Receipt: ${escapeHtml(bill.receipt_status || 'RECEIVED')}</div><table><thead><tr><th>Item</th><th>Inventory added</th><th>Supply quantity</th><th>Rate</th><th>Total</th></tr></thead><tbody>${(bill.supply_bill_items || []).map(line => { const item = inventoryItem(line.item_id) || {}; return `<tr><td>${escapeHtml(line.item_name)}</td><td>${inventoryQty(line.base_quantity)} ${escapeHtml(unitLabel(line.inventory_unit || item.inventory_unit || item.base_unit,line.base_quantity))}</td><td>${inventoryQty(line.quantity)} ${escapeHtml(unitLabel(line.unit,line.quantity))}</td><td>${formatReportMoney(line.unit_price)}</td><td>${formatReportMoney(line.line_total)}</td></tr>`; }).join('')}</tbody></table><div class="total">Total: ${formatReportMoney(bill.total_amount)}</div><div class="status">Paid: ${formatReportMoney(bill.paid_amount)} · Due: ${formatReportMoney(Number(bill.total_amount)-Number(bill.paid_amount))}</div>${autoPrint ? '<script>window.onload=()=>window.print()<\/script>' : ''}</body></html>`);
   popup.document.close();
 }
 
@@ -4031,9 +4118,21 @@ function wireInventoryActions() {
   });
   $('#supplyGenerateBill')?.addEventListener('click', generateSupplyBill);
   $('#inventoryCreateItem')?.addEventListener('click', createInventoryItem);
+  ['#inventoryRequestUnit','#inventorySupplyUnit','#inventoryInternalUnit'].forEach(selector => $(selector)?.addEventListener('change', syncCreateConversionDefaults));
   $('#recipeMenuItem')?.addEventListener('change', renderRecipeIngredients);
   $('#recipeStockItem')?.addEventListener('change', updateRecipeQuantityUnit);
   $('#saveRecipeIngredient')?.addEventListener('click', saveRecipeIngredient);
+  $('#packagingConsumptionType')?.addEventListener('change', updatePackagingRuleFields);
+  $('#savePackagingRule')?.addEventListener('click', savePackagingRule);
+  $('#packagingRuleList')?.addEventListener('click', event => {
+    const edit = event.target.closest('[data-edit-packaging-rule]');
+    const deactivate = event.target.closest('[data-deactivate-packaging-rule]');
+    const rule = state.inventory.packagingRules.find(row => row.id === (edit?.dataset.editPackagingRule || deactivate?.dataset.deactivatePackagingRule));
+    if (edit && rule) editPackagingRule(rule);
+    if (deactivate && rule) deactivatePackagingRule(rule.id);
+  });
+  $$('[data-inventory-modal-close]').forEach(button => button.addEventListener('click', closeInventoryItemModal));
+  $('#saveInventoryItemChanges')?.addEventListener('click', saveInventoryItemChanges);
   $('#openingStockOutlet')?.addEventListener('change', renderOpeningStock);
   $('#confirmOpeningStock')?.addEventListener('click', confirmOpeningStock);
   $('#recipeIngredientList')?.addEventListener('click', event => {
@@ -4043,6 +4142,8 @@ function wireInventoryActions() {
   $('#wastageType')?.addEventListener('change', updateWastageFields);
   $('#saveWastage')?.addEventListener('click', saveWastage);
   updateWastageFields();
+  updatePackagingRuleFields();
+  syncCreateConversionDefaults();
   $('#generateStockSuggestions')?.addEventListener('click', generateStockSuggestions);
   $('#saveStockRequestDraft')?.addEventListener('click', saveStockRequirementDraft);
   $('#submitStockRequest')?.addEventListener('click', submitStockRequirement);
@@ -4097,6 +4198,14 @@ function wireInventoryActions() {
   $('#stockRequestList')?.addEventListener('click', requestAction);
   $('#ownerLatestRequirement')?.addEventListener('click', requestAction);
   $('#inventoryMasterList')?.addEventListener('click', event => { const edit = event.target.closest('[data-inventory-edit-item]'); const remove = event.target.closest('[data-inventory-delete-item]'); const id = edit?.dataset.inventoryEditItem || remove?.dataset.inventoryDeleteItem; const item = id && inventoryItem(id); if (!item) return; if (edit) editInventoryItemPrice(item); if (remove) deleteInventoryItem(item); });
+  $('#inventoryStockList')?.addEventListener('click', event => {
+    const button = event.target.closest('[data-view-item-history]');
+    if (!button) return;
+    state.inventory.historyItemId = button.dataset.viewItemHistory;
+    renderInventory();
+    $('#inventoryMovementPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  $('#inventoryMovementClearItem')?.addEventListener('click', () => { state.inventory.historyItemId = null; renderInventory(); });
   $('#inventoryMasterCategory')?.addEventListener('change', renderInventory);
   $('#inventoryMasterSearch')?.addEventListener('input', renderInventory);
   $('#stockCategoryList')?.addEventListener('click', event => { const edit = event.target.closest('[data-edit-stock-category]'); const remove = event.target.closest('[data-delete-stock-category]'); const id = edit?.dataset.editStockCategory || remove?.dataset.deleteStockCategory; const row = id && state.inventory.stockCategories.find(item => item.id === id); if (!row) return; if (edit) editManagedCategory('stock', row); if (remove) deleteManagedCategory('stock', row); });
