@@ -3302,7 +3302,20 @@ function stockRequestCard(request, latest = false) {
   const label = request.processing_started_at && request.status === 'SUBMITTED' ? 'PROCESSING' : request.status;
   const editable = canEditStockRequest(request);
   const items = request.franchise_stock_request_items || [];
-  return `<div class="stock-request-card"><div class="stock-request-top"><div><strong>${latest ? 'LATEST · ' : ''}${escapeHtml(inventoryOutlet(request.outlet_id)?.name || 'Outlet')} · Needed ${escapeHtml(request.required_for)}</strong><span>Updated ${inventoryDate(request.updated_at || request.created_at)} · ${items.length} item${items.length === 1 ? '' : 's'}${request.notes ? ` · ${escapeHtml(request.notes)}` : ''}</span></div><span class="inventory-status ${request.status === 'FULFILLED' ? 'in' : 'low'}">${escapeHtml(label)}</span></div><div class="stock-request-items">${items.map(item => `<span><b>${escapeHtml(item.item_name)}</b> · Requested ${inventoryQty(item.quantity)} ${escapeHtml(unitLabel(item.unit, item.quantity))}${Number(item.billing_quantity)>0 ? ` · Billing ${inventoryQty(item.billing_quantity)} ${escapeHtml(unitLabel(item.billing_unit,item.billing_quantity))}` : ''}${Number(item.inventory_quantity)>0 ? ` · Inventory +${inventoryQty(item.inventory_quantity)} ${escapeHtml(unitLabel(item.inventory_unit,item.inventory_quantity))}` : ''}</span>`).join('')}</div>${owner ? (editable ? `<button class="primary" type="button" data-edit-stock-draft="${request.id}">EDIT REQUIREMENT</button><p>You can change this requirement until Admin starts preparing the supply.</p>` : `<button class="secondary" type="button" disabled>EDIT UNAVAILABLE</button><p>${request.created_by !== state.session?.user?.id ? 'Only the Owner who created this requirement can edit it.' : 'This requirement is being processed or has been completed. Contact Admin for changes.'}</p>`) : ''}${state.profile?.role === 'ADMIN' && ['SUBMITTED','PARTIAL'].includes(request.status) ? `<button class="primary" type="button" data-use-stock-request="${request.id}">${request.processing_started_at ? 'CONTINUE' : 'PREPARE'} SUPPLY BILL</button>${request.processing_started_at && !request.bill_id ? `<button class="secondary" type="button" data-release-stock-request="${request.id}">ALLOW OWNER TO EDIT</button>` : ''}` : ''}</div>`;
+  const statusClass = request.status === 'FULFILLED' ? 'in' : request.status === 'CANCELLED' ? 'out' : 'low';
+  const lines = items.map(item => `
+    <div class="stock-request-line">
+      <strong>${escapeHtml(item.item_name)}</strong>
+      <span><small>REQUESTED</small>${inventoryQty(item.quantity)} ${escapeHtml(unitLabel(item.unit, item.quantity))}</span>
+      <span><small>BILLING</small>${Number(item.billing_quantity) > 0 ? `${inventoryQty(item.billing_quantity)} ${escapeHtml(unitLabel(item.billing_unit, item.billing_quantity))}` : 'Pending'}</span>
+      <span><small>INVENTORY</small>${Number(item.inventory_quantity) > 0 ? `+${inventoryQty(item.inventory_quantity)} ${escapeHtml(unitLabel(item.inventory_unit, item.inventory_quantity))}` : 'Pending'}</span>
+    </div>`).join('');
+  const ownerActions = owner ? (editable
+    ? `<button class="primary" type="button" data-edit-stock-draft="${request.id}">EDIT REQUIREMENT</button><p>You can change this requirement until Admin starts preparing the supply.</p>`
+    : `<button class="secondary" type="button" disabled>EDIT UNAVAILABLE</button><p>${request.created_by !== state.session?.user?.id ? 'Only the Owner who created this requirement can edit it.' : 'This requirement is being processed or has been completed. Contact Admin for changes.'}</p>`) : '';
+  const adminActions = state.profile?.role === 'ADMIN' && ['SUBMITTED','PARTIAL'].includes(request.status)
+    ? `<button class="primary" type="button" data-use-stock-request="${request.id}">${request.processing_started_at ? 'CONTINUE' : 'PREPARE'} SUPPLY BILL</button>${request.processing_started_at && !request.bill_id ? `<button class="secondary" type="button" data-release-stock-request="${request.id}">ALLOW OWNER TO EDIT</button>` : ''}` : '';
+  return `<article class="stock-request-card${latest ? ' is-latest' : ''}"><div class="stock-request-top"><div><strong>${latest ? 'LATEST · ' : ''}${escapeHtml(inventoryOutlet(request.outlet_id)?.name || 'Outlet')} · Needed ${escapeHtml(request.required_for)}</strong><span>Updated ${inventoryDate(request.updated_at || request.created_at)} · ${items.length} item${items.length === 1 ? '' : 's'}</span></div><span class="inventory-status ${statusClass}">${escapeHtml(label)}</span></div>${request.notes ? `<p class="stock-request-note">${escapeHtml(request.notes)}</p>` : ''}<details class="stock-request-detail"><summary>${items.length} REQUESTED ITEM${items.length === 1 ? '' : 'S'}</summary><div class="stock-request-lines">${lines}</div></details>${ownerActions || adminActions ? `<div class="stock-request-actions">${adminActions}${ownerActions}</div>` : ''}</article>`;
 }
 
 function renderStockRequests() {
@@ -3311,7 +3324,12 @@ function renderStockRequests() {
     .sort((a,b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
   const outletId = inventorySelectedOutletId();
   const visible = requests.filter(request => !outletId || request.outlet_id === outletId);
-  if ($('#stockRequestList')) $('#stockRequestList').innerHTML = visible.length ? visible.map((request, index) => stockRequestCard(request, index === 0)).join('') : '<div class="inventory-empty">No requirements yet. Generate suggestions, then save or send your first requirement.</div>';
+  const active = visible.filter(request => !['FULFILLED','CANCELLED'].includes(request.status));
+  const history = visible.filter(request => ['FULFILLED','CANCELLED'].includes(request.status));
+  if ($('#stockRequestList')) $('#stockRequestList').innerHTML = visible.length ? `
+    <div class="request-queue-head"><strong>ACTIVE REQUESTS</strong><span>${active.length} awaiting action</span></div>
+    ${active.length ? active.map((request, index) => stockRequestCard(request, index === 0)).join('') : '<div class="inventory-empty">No active stock requirements.</div>'}
+    ${history.length ? `<details class="request-history"><summary><strong>COMPLETED REQUESTS</strong><span>${history.length} previous request${history.length === 1 ? '' : 's'} · OPEN +</span></summary><div class="request-history-list">${history.map(request => stockRequestCard(request)).join('')}</div></details>` : ''}` : '<div class="inventory-empty">No requirements yet. Generate suggestions, then save or send your first requirement.</div>';
   if ($('#ownerLatestRequirementPanel')) $('#ownerLatestRequirementPanel').style.display = owner ? '' : 'none';
   if ($('#ownerLatestRequirement')) $('#ownerLatestRequirement').innerHTML = requests.length ? stockRequestCard(requests[0], true) : '<div class="inventory-empty">No requirements yet. Open Stock Requirements to create one.</div>';
 }
