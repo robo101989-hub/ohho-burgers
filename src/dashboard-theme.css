@@ -90,3 +90,8 @@ body .content #inventory .local-purchase-actions{margin-top:14px}
 body .content #inventory .local-purchase-history-head{margin-top:18px;padding-top:16px}
 @media(max-width:1100px){body .content #inventory .inventory-quick-nav{grid-template-columns:repeat(3,minmax(0,1fr))}body .content #inventory .inventory-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){body .content #inventory .inventory-quick-nav{grid-template-columns:repeat(2,minmax(0,1fr))}body .content #inventory :is(.inventory-filterbar,.inventory-master-toolbar){grid-template-columns:1fr}body .content #inventory .inventory-panel{padding:14px}body .content #inventory .inventory-panel-head{gap:5px 8px}body .content #inventory .inventory-panel-head h2{font-size:16px}body .content #inventory .inventory-filter-status{grid-column:1}}
+/* Compact yellow actions; retain larger touch targets on narrow screens. */
+body .content .section:not(#costing) button.primary,
+body .content #costing button.primary{min-height:32px;height:auto;padding:7px 12px;font-size:11px;font-weight:500;line-height:1.4;border-radius:7px;letter-spacing:0;width:fit-content;max-width:100%;justify-self:start;align-self:center;white-space:normal}
+body .content #inventory button.primary.inventory-wide-btn{width:fit-content;min-width:0}
+@media(max-width:760px){body .content .section:not(#costing) button.primary,body .content #costing button.primary{min-height:40px;padding:9px 12px}}
