@@ -185,6 +185,20 @@ export default async function handler(req, res) {
         }
       }
 
+      if (outlet.status === "ACTIVE") {
+        const { error: sessionError } = await supabase
+          .from("outlet_sales_sessions")
+          .insert({
+            outlet_id: outlet.id,
+            opened_at: outlet.current_session_started_at || new Date().toISOString(),
+            opened_by: user.id
+          });
+        if (sessionError) {
+          await supabase.from("outlets").delete().eq("id", outlet.id);
+          return res.status(500).json({ error: "Unable to create the outlet sales session" });
+        }
+      }
+
       return res.status(201).json({
         success: true,
         outlet,
@@ -246,6 +260,25 @@ export default async function handler(req, res) {
       if (currentOutlet.status !== nextStatus) {
         if (nextStatus === "ACTIVE") {
           updates.current_session_started_at = now;
+          const { data: existingOpenSession, error: openSessionCheckError } = await supabase
+            .from("outlet_sales_sessions")
+            .select("id")
+            .eq("outlet_id", id)
+            .is("closed_at", null)
+            .maybeSingle();
+          if (openSessionCheckError) {
+            console.error("Unable to check the outlet sales session", openSessionCheckError);
+            return res.status(500).json({ error: "Unable to open the outlet sales session" });
+          }
+          if (!existingOpenSession) {
+            const { error: openSessionError } = await supabase
+              .from("outlet_sales_sessions")
+              .insert({ outlet_id: id, opened_at: now, opened_by: user.id });
+            if (openSessionError) {
+              console.error("Unable to open the outlet sales session", openSessionError);
+              return res.status(500).json({ error: "Unable to open the outlet sales session" });
+            }
+          }
         } else {
           const openedAt =
             currentOutlet.current_session_started_at ||
@@ -341,6 +374,28 @@ export default async function handler(req, res) {
           if (reportError) {
             console.error("Unable to archive outlet sales report", reportError);
             return res.status(500).json({ error: "Unable to archive outlet sales report" });
+          }
+
+          const complimentaryOrders = completedOrders.filter(order => order.payment_method === "COMPLIMENTARY");
+          const complimentaryValue = complimentaryOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+          const { error: closeSessionError } = await supabase
+            .from("outlet_sales_sessions")
+            .update({
+              closed_at: now,
+              closed_by: user.id,
+              paid_order_count: saleOrders.length,
+              complimentary_order_count: complimentaryOrders.length,
+              gross_sales: totals.gross,
+              cash_sales: totals.cash,
+              upi_sales: totals.upi,
+              card_sales: totals.card,
+              complimentary_value: complimentaryValue
+            })
+            .eq("outlet_id", id)
+            .is("closed_at", null);
+          if (closeSessionError) {
+            console.error("Unable to close the outlet sales session", closeSessionError);
+            return res.status(500).json({ error: "Unable to close the outlet sales session" });
           }
 
           updates.current_session_started_at = null;
