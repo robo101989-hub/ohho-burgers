@@ -21,3 +21,11 @@ test('costing shows recipe totals, incomplete costs, order usage and categories'
  $('#costingMode').value='order';render();assert.match($('#costingContent').innerHTML,/Recorded ingredients/);assert.equal($('#costingMenuFilters').hidden,true);
  $('#costingMode').value='category';render();assert.match($('#costingContent').innerHTML,/Bread/);
 });
+
+test('history controls stay visible outside the tab-specific order filter',()=>{
+ const toolbar=html.slice(html.indexOf('<div id="costingHistoryToolbar"'),html.indexOf('<div id="costingMenuFilters"'));
+ assert.ok(toolbar.includes('data-cost-history="CUSTOM"'));
+ assert.ok(!toolbar.split('>')[0].includes('hidden'));
+ const orderFilter=html.slice(html.indexOf('<div id="costingOrderFilter"'),html.indexOf('<div id="costingContent"'));
+ assert.ok(!orderFilter.includes('data-cost-history'));
+});

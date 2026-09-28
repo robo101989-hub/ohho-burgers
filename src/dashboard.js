@@ -4829,13 +4829,15 @@ function wireDashboardActions() {
   $$('[data-cost-history]').forEach(button => button.addEventListener('click', () => {
     const mode = button.dataset.costHistory;
     $('#costingCustomDates').hidden = mode !== 'CUSTOM';
-    if (mode === 'CUSTOM') return;
+    $('#costingMode').value = 'order';
+    if (mode === 'CUSTOM') { renderCostingScreen(); return; }
     state.costingHistoryMode = mode;
     renderCostingScreen();
   }));
   $('#costingHistoryApply')?.addEventListener('click', () => {
     const from = $('#costingHistoryFrom').value, to = $('#costingHistoryTo').value;
     if (!from || !to || from > to) return toast('Choose both dates, with From on or before To.', 'bad');
+    $('#costingMode').value = 'order';
     state.costingHistoryFrom = from; state.costingHistoryTo = to; state.costingHistoryMode = 'CUSTOM';
     renderCostingScreen();
   });

@@ -1,0 +1,43 @@
+/* Shared dashboard language, based on Menu & Order Costing.
+   Only presentation: keep role permissions, visibility and action states intact. */
+body .content .section:not(#costing){--surface:#11140f;--line:#33382d;--radius:14px;--shadow:0 4px 18px #0002;color:#e8eae5;font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
+body .content .section:not(#costing) :is(h1,h2,h3,h4,button,input,select,textarea,strong){font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
+body .content .section:not(#costing) :is(.hero-head,.page-head){padding:24px 26px;border:1px solid #35372d;border-radius:18px;background:radial-gradient(ellipse at top right,#39331a 0,transparent 65%),#11120f;margin-bottom:20px;gap:20px;align-items:center}
+body .content .section:not(#costing) :is(.hero-head,.page-head) h1{font-size:29px;font-weight:600;line-height:1.3;letter-spacing:-.8px;text-transform:none;margin:8px 0}
+body .content .section:not(#costing) :is(.hero-head,.page-head) p{font-size:13px;line-height:1.6;color:#b0b3a9;margin:6px 0 0}
+body .content .section:not(#costing) .eyebrow{font-size:10px;font-weight:500;letter-spacing:1.4px;color:#b4bcaa;margin-bottom:8px}
+body .content .section:not(#costing) :is(.panel,.card,.inventory-panel,.report-panel,.order-card,.outlet-card,.sales-report-card,.session-report-card,.settings-panel){background:linear-gradient(140deg,#171b13,#10130e);border:1px solid #33382d;border-radius:14px;box-shadow:0 4px 18px #0002;padding:20px}
+body .content .section:not(#costing) :is(h2,h3,.panel-title){font-weight:600;letter-spacing:-.2px;text-transform:none;line-height:1.4}
+body .content .section:not(#costing) h2{font-size:18px}
+body .content .section:not(#costing) h3{font-size:15px}
+body .content .section:not(#costing) :is(.panel-title,.card h2){font-size:17px}
+body .content .section:not(#costing) :is(.panel-head,.inventory-panel-head,.report-section-head){gap:14px;align-items:center;margin-bottom:16px}
+body .content .section:not(#costing) :is(.panel-sub,.card p,.panel-meta,.report-section-head p){font-size:12px;line-height:1.6;color:#a2aa98;font-weight:400;letter-spacing:0}
+body .content .section:not(#costing) :is(.primary,.secondary){font-size:12px;font-weight:500;text-transform:none;letter-spacing:0;min-height:38px;padding:10px 14px;border-radius:8px;line-height:1.4}
+body .content .section:not(#costing) .secondary{background:#171c13;border-color:#3b4233;color:#e4e9dc}
+body .content .section:not(#costing) .primary{background:#ffdb24;color:#171808;border-color:#ffdb24;box-shadow:0 2px 10px #0002}
+body .content .section:not(#costing) :is(button,input,select,textarea):focus-visible{outline:2px solid #ffdb24;outline-offset:3px}
+body .content .section:not(#costing) button:disabled{opacity:.45;cursor:not-allowed}
+body .content .section:not(#costing) :is(input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea){background:#191c15;border:1px solid #414638;border-radius:8px;color:#eee;font-size:13px;font-weight:400;padding:10px 12px;min-width:0;color-scheme:dark}
+body .content .section:not(#costing) :is(input:not([type=checkbox]):not([type=radio]):not([type=file]),select){min-height:40px}
+body .content .section:not(#costing) :is(.inventory-form-grid,.inventory-filterbar,.menu-form-grid,.form-grid) label>span{font-size:11px;font-weight:500;letter-spacing:.2px;color:#aeb69f}
+body .content .section:not(#costing) :is(.orders-history-toolbar,.menu-management-toolbar,.inventory-filterbar,.report-toolbar){padding:14px 16px;border:1px solid #30362a;border-radius:12px;background:#11150e;gap:10px}
+body .content .section:not(#costing) :is(.kpi,.inventory-summary article,.report-stat-card,.menu-stat-card){border:1px solid #3b422e;border-radius:12px;background:radial-gradient(ellipse at top right,#30321b,transparent 75%),#151a10;padding:18px;box-shadow:0 4px 18px #0002}
+body .content .section:not(#costing) :is(.inventory-summary strong,.report-stat-card strong,.menu-stat-card strong){font-size:27px;font-weight:600;letter-spacing:-.6px;line-height:1.3;font-variant-numeric:tabular-nums}
+body .content .section:not(#costing) :is(.inventory-summary span,.report-stat-card>span,.menu-stat-card>span){font-size:10px;font-weight:500;letter-spacing:.6px;color:#aeb69f}
+body .content .section:not(#costing) :is(.inventory-summary small,.menu-stat-card small){font-size:11px;color:#9ca68e;line-height:1.5}
+body .content .section:not(#costing) :is(td,th){font-family:Inter,ui-sans-serif,system-ui,sans-serif;padding:11px 12px;border-bottom-color:#2c3227;font-size:12px;font-weight:400;line-height:1.5;font-variant-numeric:tabular-nums}
+body .content .section:not(#costing) th{background:#1b2116;color:#aeb69f;font-size:10px;letter-spacing:.3px}
+body .content .section:not(#costing) tbody tr:hover{background:#ffffff04}
+body .content .section:not(#costing) :is(.inventory-stock-row,.inventory-movement){font-size:12px;line-height:1.5;border-bottom-color:#2c3227;padding:12px}
+body .content .section:not(#costing) :is(.inventory-stock-row strong,.inventory-movement strong){font-weight:500}
+body .content .section:not(#costing) :is(.inventory-table-head,.inventory-status){font-size:10px;font-weight:500;letter-spacing:.2px}
+body .content .section:not(#costing) :is(.inventory-qty,.inventory-bill-total strong){font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+body .content .section:not(#costing) :is(.inventory-bill,.stock-request-card){background:#151a11;border-color:#343c2b;border-radius:12px}
+body .content .section:not(#costing) :is(.inventory-empty,.supply-empty,.placeholder){border-color:#39422e;border-radius:12px;color:#a2aa98;font-size:12px;background:#11160e;padding:24px}
+body .content .section:not(#costing) :is(.section-toggle,.disclosure-action){min-height:30px;padding:6px 10px;font-size:11px}
+body .content .section:not(#costing) .section-toggle{margin-left:auto;flex-shrink:0}
+body .content .section:not(#costing) :is(.pos-menu-card,.pos-source-card){border-radius:12px;border-color:#343c2b;background:#151a11}
+body .content .section:not(#costing) .pos-menu-card h3{font-size:14px;font-weight:500}
+body .content .section:not(#costing) :is(.pos-menu-card.selected,.pos-source-card.active){border-color:#ffdb24;background:#302e18}
+@media(max-width:760px){body .content .section:not(#costing) :is(.hero-head,.page-head){padding:18px;align-items:stretch}body .content .section:not(#costing) :is(.hero-head,.page-head) h1{font-size:24px}body .content .section:not(#costing) :is(.panel,.card,.inventory-panel,.report-panel,.order-card,.outlet-card){padding:15px}body .content .section:not(#costing) :is(.panel-head,.inventory-panel-head,.report-section-head){flex-wrap:wrap}body .content .section:not(#costing) :is(.primary,.secondary){min-height:40px}body .content .section:not(#costing) :is(.kpi,.inventory-summary article,.report-stat-card){padding:14px}}
