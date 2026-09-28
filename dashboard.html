@@ -857,6 +857,34 @@ body{font-size:14px}
 </style>
 <style>
 #costing{color:#e8eae5}#costing .cost-heading{margin-bottom:24px}#costing h1{font:600 30px/1.3 var(--sans,sans-serif);letter-spacing:-.7px;margin:8px 0}#costing p{font-size:13px;line-height:1.6;color:#a2a79f;font-weight:400}#costing .cost-filters{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:20px}#costing [hidden]{display:none!important}#costing label{display:grid;gap:7px;min-width:200px;font-size:12px;color:#a2a79f}#costing select{height:40px;background:#131511;color:#eee;border:1px solid #373b32;border-radius:8px;padding:0 12px;font-size:13px}#costing .cost-layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:20px;align-items:start}#costing .cost-card{border:1px solid #33382e;background:#11140f;border-radius:12px;padding:22px;margin-bottom:18px}#costing h2{font-size:17px;font-weight:500;margin:0 0 16px}#costing .cost-card-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline}#costing .cost-card-head span,#costing .cost-summary>span{color:#969e8c;font-size:11px}#costing .cost-summary h2{margin-top:16px}#costing .cost-figure{font-size:30px;font-weight:600;color:#ffd900}#costing dl{display:grid;grid-template-columns:1fr auto;gap:16px 12px;font-size:13px;margin:24px 0}#costing dd{margin:0;text-align:right}#costing dt{color:#a2a79f}#costing .cost-note{font-size:12px;border-top:1px solid #30362b;padding-top:16px;margin-top:20px}#costing .cost-table{overflow:auto}#costing table{width:100%;border-collapse:collapse;min-width:480px;text-align:left}#costing td,#costing th{padding:13px 8px;border-bottom:1px solid #2c3227;font-size:13px;font-weight:400}#costing th{color:#969e8c;font-size:11px}#costing td:last-child,#costing th:last-child{text-align:right}#costing .cost-empty{padding:30px;border:1px dashed #33382e;border-radius:12px}@media(max-width:1000px){#costing .cost-layout{grid-template-columns:1fr}#costing .cost-filters label{flex:1;min-width:160px}}
+</style><style>
+/* Costing workspace: readable type and a clear card hierarchy. */
+#costing,#costing h1,#costing h2,#costing h3,#costing button,#costing select,#costing strong{font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;text-transform:none;letter-spacing:normal}
+#costing .cost-heading{padding:24px 26px;border:1px solid #35372d;border-radius:18px;background:radial-gradient(ellipse at top right,#39331a 0,transparent 65%),#11120f;margin-bottom:20px}
+#costing .cost-heading h1{font-size:29px;font-weight:600;letter-spacing:-.8px}#costing .cost-heading p{margin-bottom:0;color:#b0b3a9}
+#costing .cost-filters{align-items:end;padding:16px 20px;margin-bottom:14px;background:#11130f;border:1px solid #2e3229;border-radius:12px}
+#costing .cost-filters label{flex:1;min-width:160px}#costing .cost-filters select{width:100%;font-size:13px;border-color:#414638;background:#191c15}
+#costing .cost-view-tabs{display:flex;gap:4px;background:#090b08;padding:4px;border-radius:10px;flex:2;align-self:center}
+#costing .cost-view-tabs button{flex:1;border:0;background:transparent;color:#a6ad9c;padding:12px 14px;border-radius:7px;white-space:nowrap;font-size:12px;font-weight:500;cursor:pointer}
+#costing .cost-view-tabs button[aria-pressed=true]{background:#ffdb24;color:#171808;box-shadow:0 2px 10px #0003}
+#costing select:focus-visible,#costing button:focus-visible{outline:2px solid #ffdb24;outline-offset:3px}
+#costing .cost-layout{grid-template-columns:minmax(0,1fr) 300px;gap:18px}
+#costing .cost-card{padding:20px;border-color:#33382d;border-radius:14px;background:linear-gradient(140deg,#171b13,#10130e);box-shadow:0 4px 18px #0002}
+#costing .cost-card h2{font-size:16px;font-weight:600;line-height:1.4;letter-spacing:-.2px}
+#costing .cost-product{border-left:3px solid #ffdb24;display:flex;justify-content:space-between;align-items:center;gap:18px}
+#costing .cost-product h2{font-size:20px;margin:6px 0}#costing .cost-product p{margin:6px 0 0}
+#costing .cost-kicker{font-size:10px;color:#aeb69f;text-transform:uppercase;letter-spacing:1.4px}
+#costing .cost-serving{border:1px solid #444c35;border-radius:999px;padding:7px 11px;font-size:11px;white-space:nowrap;color:#c6cdbb}
+#costing .cost-summary{background:radial-gradient(ellipse at top right,#49421b,transparent 65%),#1c2014;border-color:#625c29;position:sticky;top:20px}
+#costing .cost-summary h2{color:#d6dacb;font-weight:400;font-size:14px;margin-bottom:8px}
+#costing .cost-figure{display:block;font-size:38px;letter-spacing:-1.5px;font-weight:600;line-height:1.2;margin-bottom:20px}
+#costing .cost-summary dl{gap:0;margin:16px 0}#costing .cost-summary dt,#costing .cost-summary dd{padding:13px 0;border-bottom:1px solid #ffffff12;font-size:12px;line-height:1.5}#costing .cost-summary dd{font-weight:500;color:#eff2e8}
+#costing .cost-summary .cost-note{border:0;padding:0;font-size:11px;line-height:1.7;color:#aeb69f}
+#costing .cost-table th{background:#1b2116;color:#aeb69f;font-size:10px;letter-spacing:.3px;padding:11px 12px}#costing .cost-table td{padding:11px 12px;font-size:12px;color:#dce1d4;font-variant-numeric:tabular-nums}#costing .cost-table tr:hover td{background:#ffffff04}#costing .cost-table td:last-child{color:#f1d755;font-weight:500}#costing .cost-table td:first-child{color:#f1f3eb}
+#costing .cost-card-head{align-items:start;flex-wrap:wrap;margin-bottom:6px}#costing .cost-card-head span{font-size:10px;padding-top:4px}
+#costing .cost-meter{height:7px;width:100%;accent-color:#ffdb24;display:block;margin:8px 0}#costing .cost-meter-label{font-size:11px;color:#c7cebb}
+@media(max-width:1100px){#costing .cost-layout{grid-template-columns:1fr}#costing .cost-summary{position:static}#costing .cost-view-tabs{flex-basis:100%}}
+@media(max-width:600px){#costing .cost-heading{padding:18px}#costing .cost-heading h1{font-size:24px}#costing .cost-filters{padding:12px}#costing .cost-view-tabs{flex-wrap:wrap}#costing .cost-view-tabs button{padding:10px 8px;font-size:11px}#costing .cost-product{align-items:start}#costing .cost-card{padding:15px}}
 </style></head>
 <body>
 <div class="app">
@@ -1604,7 +1632,7 @@ body{font-size:14px}
 </section>
 <section id="costing" class="section">
 <div class="cost-heading"><div class="eyebrow">Kitchen control / Costing</div><h1>Menu &amp; order costing</h1><p>Recipes linked to stock. A clear view of ingredients, packaging and cost.</p></div>
-<div class="cost-filters"><label>View<select id="costingMode"><option value="menu">Per menu item</option><option value="order">Per order</option><option value="category">Stock categories</option></select></label><label>Outlet<select id="costingOutlet"></select></label></div>
+<div class="cost-filters"><div class="cost-view-tabs" aria-label="Costing view"><button type="button" data-cost-view="menu" aria-pressed="true">Menu recipes</button><button type="button" data-cost-view="order" aria-pressed="false">Order breakdown</button><button type="button" data-cost-view="category" aria-pressed="false">Stock usage</button></div><label hidden>View<select id="costingMode"><option value="menu">Per menu item</option><option value="order">Per order</option><option value="category">Stock categories</option></select></label><label>Outlet<select id="costingOutlet"></select></label></div>
 <div id="costingMenuFilters" class="cost-filters"><label>Category<select id="costingCategory"></select></label><label>Menu item<select id="costingMenu"></select></label><label>Service<select id="costingService"><option value="DINE_IN">Dine-in</option><option value="TAKEAWAY">Takeaway / delivery</option></select></label></div>
 <div id="costingOrderFilter" class="cost-filters" hidden><label>Order · loaded order history<select id="costingOrder"></select></label></div>
 <div id="costingContent" aria-live="polite"></div></section>
