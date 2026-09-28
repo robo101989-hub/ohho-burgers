@@ -4732,13 +4732,6 @@ function wireDashboardActions() {
     const label = bounds.session ? 'Current open session' : (bounds.from === bounds.to ? bounds.from : `${bounds.from} to ${bounds.to}`);
     downloadOperationsHistory(operationsSnapshot(bounds), label, 'overview-operations');
   });
-  ['#overviewOperationsLedger', '#reportOperationsLedger'].forEach(selector => {
-    $(selector)?.addEventListener('click', event => {
-      const button = event.target.closest('[data-operations-view-bill]');
-      const bill = button && state.inventory.bills.find(row => row.id === button.dataset.operationsViewBill);
-      if (bill) printSupplyBill(bill, false);
-    });
-  });
   $('#spinSettingsOutlet')?.addEventListener('change', fillSpinSettingForm);
   $('#saveSpinSettingsBtn')?.addEventListener('click', saveSpinSettings);
   $('#addCustomerReviewBtn')?.addEventListener('click', addCustomerReview);
@@ -5438,20 +5431,6 @@ function renderUtilisation(target, bounds) {
   node.querySelectorAll('details').forEach(d=>{d.open=previous.has(d.querySelector('summary')?.textContent);});
 }
 
-function renderOperationsLedger(target, snapshot) {
-  const node = $(target);
-  if (!node) return;
-  const rows = operationsLedgerRows(snapshot);
-  node.innerHTML = rows.length ? rows.map(row => `
-    <div class="operations-ledger-row">
-      <span class="type">${escapeHtml(row.type)}</span>
-      <span>${escapeHtml(inventoryDate(row.date))}</span>
-      <strong class="operations-detail">${escapeHtml(row.detail)}</strong>
-      <span>${escapeHtml(inventoryOutlet(row.outletId)?.name || state.outlets.find(outlet => outlet.id === row.outletId)?.name || 'Outlet')}</span>
-      <div><b>${formatReportMoney(row.amount)}</b>${row.billId ? `<button class="secondary" type="button" data-operations-view-bill="${row.billId}">VIEW BILL</button>` : ''}</div>
-    </div>`).join('') : '<div class="operations-ledger-empty">No sales, stock supply or daily expense records in the selected sessions.</div>';
-}
-
 function completedSessionsForRange(range, from = '', to = '') {
   const outletId = selectedOperationsOutletId();
   const reports = outletId ? (state.salesReports || []).filter(report => report.outlet_id === outletId) : (state.salesReports || []);
@@ -5472,7 +5451,7 @@ function overviewOperationsBounds() {
 }
 
 function renderOverviewOperations() {
-  if (!$('#overviewOperationsLedger')) return;
+  if (!$('#overviewUtilisation')) return;
   const bounds = overviewOperationsBounds();
   const snapshot = operationsSnapshot(bounds);
   if ($('#overviewOperationsSales')) $('#overviewOperationsSales').textContent = formatReportMoney(snapshot.sales);
@@ -5483,7 +5462,6 @@ function renderOverviewOperations() {
   if ($('#overviewOperationsRangeLabel')) $('#overviewOperationsRangeLabel').textContent = bounds.session ? 'Current open session' : `${bounds.sessions?.length || 0} complete session${bounds.sessions?.length === 1 ? '' : 's'} · closed ${bounds.from === bounds.to ? bounds.from : `${bounds.from} to ${bounds.to}`}`;
   if ($('#overviewOperationsFrom') && bounds.from) $('#overviewOperationsFrom').value = bounds.from;
   if ($('#overviewOperationsTo') && bounds.to) $('#overviewOperationsTo').value = bounds.to;
-  renderOperationsLedger('#overviewOperationsLedger', snapshot);
   renderUtilisation('#overviewUtilisation', bounds);
 }
 
@@ -5678,7 +5656,6 @@ function renderReportDashboard() {
   if ($('#financialDailyExpenses')) $('#financialDailyExpenses').textContent = formatReportMoney(operations.dailyExpenses);
   if ($('#financialTotalExpenses')) $('#financialTotalExpenses').textContent = formatReportMoney(totalExpenses);
   if ($('#financialNet')) $('#financialNet').textContent = formatReportMoney(operations.net);
-  renderOperationsLedger('#reportOperationsLedger', operations);
   renderUtilisation('#reportUtilisation', reportDateBounds());
   renderItemWiseSales(orders);
   renderSalesReports(reports);
