@@ -4826,6 +4826,19 @@ function wireDashboardActions() {
     if (button && !button.disabled) void deleteCustomerReview(button.dataset.reviewDelete, button);
     if (event.target.closest('[data-review-retry]')) void loadCustomerReviews();
   });
+  $$('[data-cost-history]').forEach(button => button.addEventListener('click', () => {
+    const mode = button.dataset.costHistory;
+    $('#costingCustomDates').hidden = mode !== 'CUSTOM';
+    if (mode === 'CUSTOM') return;
+    state.costingHistoryMode = mode;
+    renderCostingScreen();
+  }));
+  $('#costingHistoryApply')?.addEventListener('click', () => {
+    const from = $('#costingHistoryFrom').value, to = $('#costingHistoryTo').value;
+    if (!from || !to || from > to) return toast('Choose both dates, with From on or before To.', 'bad');
+    state.costingHistoryFrom = from; state.costingHistoryTo = to; state.costingHistoryMode = 'CUSTOM';
+    renderCostingScreen();
+  });
   $('#costingOrderSearch')?.addEventListener('input',renderCostingScreen);
   $('#costingContent')?.addEventListener('click', event => { const button = event.target.closest('[data-cost-order]'); if (button) { state.costingOrderId = button.dataset.costOrder; const scroll = $('#costingOrderList')?.scrollTop || 0; renderCostingScreen(); if ($('#costingOrderList')) $('#costingOrderList').scrollTop = scroll; } });
   $$('[data-cost-view]').forEach(button => button.addEventListener('click', () => { $('#costingMode').value = button.dataset.costView; renderCostingScreen(); }));
@@ -5485,7 +5498,11 @@ function renderCostingScreen() {
   document.querySelectorAll('[data-cost-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.costView === mode)));
   const money = n => n === null ? 'Unavailable' : formatReportMoney(n);
   const table = rows => `<div class="cost-table"><table><thead><tr><th>Ingredient / stock item</th><th>Portion</th><th>Rate / unit</th><th>Cost</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${inventoryQty(r.quantity)} ${escapeHtml(unitLabel(r.unit))}</td><td>${money(r.cost === null || r.priced === false || !r.quantity ? null : r.cost/r.quantity)}</td><td>${money(r.cost === null || r.priced === false ? null : r.cost)}</td></tr>`).join('')}</tbody></table></div>`;
-  const orders = (state.reportOrders || []).filter(o=>o.outlet_id===outlet && isReportableOrder(o));
+  const historyMode = state.costingHistoryMode || 'ALL';
+  document.querySelectorAll('[data-cost-history]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.costHistory === historyMode)));
+  if ($('#costingHistoryLabel')) $('#costingHistoryLabel').textContent = historyMode === 'CUSTOM' ? `Sessions opened ${state.costingHistoryFrom} to ${state.costingHistoryTo}` : historyMode === 'CURRENT' ? 'Current open session' : 'All history';
+  const outletOrders = (state.reportOrders || []).filter(o=>o.outlet_id===outlet && isReportableOrder(o));
+  const orders = mode === 'order' ? stockHistoryRows(outletOrders, 'created_at', { mode:historyMode, outletId:outlet, sessions:inventoryHistorySessions(), from:state.costingHistoryFrom || '', to:state.costingHistoryTo || '' }) : outletOrders;
   const usage = orderUtilisation(orders,inv.movements||[],inv.items||[],inv.bills||[]);
   $('#costingMenuFilters').hidden = mode !== 'menu';
   $('#costingOrderFilter').hidden = mode !== 'order';
