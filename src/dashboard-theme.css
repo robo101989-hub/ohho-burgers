@@ -41,3 +41,52 @@ body .content .section:not(#costing) :is(.pos-menu-card,.pos-source-card){border
 body .content .section:not(#costing) .pos-menu-card h3{font-size:14px;font-weight:500}
 body .content .section:not(#costing) :is(.pos-menu-card.selected,.pos-source-card.active){border-color:#ffdb24;background:#302e18}
 @media(max-width:760px){body .content .section:not(#costing) :is(.hero-head,.page-head){padding:18px;align-items:stretch}body .content .section:not(#costing) :is(.hero-head,.page-head) h1{font-size:24px}body .content .section:not(#costing) :is(.panel,.card,.inventory-panel,.report-panel,.order-card,.outlet-card){padding:15px}body .content .section:not(#costing) :is(.panel-head,.inventory-panel-head,.report-section-head){flex-wrap:wrap}body .content .section:not(#costing) :is(.primary,.secondary){min-height:40px}body .content .section:not(#costing) :is(.kpi,.inventory-summary article,.report-stat-card){padding:14px}}
+/* Stock & Supply: consistent section rhythm and dense operational tables. */
+body .content #inventory .inventory-quick-nav{position:static;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;padding:12px;overflow:visible;box-shadow:none;margin:0 0 20px;background:#11150e}
+body .content #inventory .inventory-quick-nav button{white-space:normal;min-height:38px;padding:8px;font-size:11px;font-weight:500;letter-spacing:0;text-align:center}
+body .content #inventory .inventory-panel{margin:0 0 18px;padding:18px;scroll-margin-top:20px}
+body .content #inventory .inventory-admin-grid{gap:0;margin-bottom:0}
+body .content #inventory .inventory-panel-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;margin-bottom:16px;align-items:start}
+body .content #inventory .inventory-panel-head>div:first-child{grid-column:1;grid-row:1}
+body .content #inventory .inventory-panel-head>.section-toggle{grid-column:2;grid-row:1/3;align-self:start;margin:0}
+body .content #inventory .inventory-panel-head>span,body .content #inventory .inventory-panel-head>div:not(:first-child){grid-column:1;grid-row:2;font-size:11px;font-weight:400;color:#a2aa98;line-height:1.5}
+body .content #inventory .inventory-panel-head h2{font-size:17px;margin:0;line-height:1.4}
+body .content #inventory .inventory-panel-head p{font-size:12px;margin:5px 0 0;font-weight:400;color:#a2aa98}
+body .content #inventory .inventory-panel-head .eyebrow{font-size:9px;margin-bottom:5px;letter-spacing:1px}
+body .content #inventory .inventory-filterbar{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:16px}
+body .content #inventory .inventory-filterbar button{width:100%}
+body .content #inventory .inventory-filter-status{font-size:11px;font-weight:500;margin-top:2px}
+body .content #inventory .inventory-summary{gap:12px;margin:0 0 18px}
+body .content #inventory .inventory-summary article{min-height:110px;padding:16px}
+body .content #inventory .inventory-summary strong{font-size:25px}
+body .content #inventory .inventory-form-grid{gap:12px;align-items:end}
+body .content #inventory .inventory-form-grid label{min-width:0;gap:6px}
+body .content #inventory .inventory-form-grid label>span{font-size:10px;font-weight:500;line-height:1.5;letter-spacing:.2px}
+body .content #inventory .inventory-form-grid :is(input,select){height:40px;min-height:40px;width:100%;font-size:12px}
+body .content #inventory .inventory-master-toolbar{display:grid;grid-template-columns:minmax(150px,1fr) minmax(200px,2fr) minmax(150px,1fr);gap:12px;align-items:end;margin:0 0 12px}
+body .content #inventory .inventory-master-toolbar label{display:grid;gap:6px;min-width:0}
+body .content #inventory .inventory-master-toolbar label>span{font-size:10px;font-weight:500}
+body .content #inventory .inventory-master-toolbar :is(input,select){width:100%;height:40px;font-size:12px}
+body .content #inventory .inventory-panel p{font-size:12px;font-weight:400;line-height:1.6;color:#a2aa98}
+body .content #inventory details>summary{padding:12px 14px;min-height:48px;font-size:12px;font-weight:500;gap:10px;align-items:center}
+body .content #inventory details>summary strong{font-size:13px;font-weight:500}
+body .content #inventory details>summary .disclosure-action{margin-left:auto;flex-shrink:0;min-height:28px;padding:5px 9px}
+body .content #inventory #inventoryStockList .request-group{margin:8px 0;border-radius:9px}
+body .content #inventory :is(.inventory-table-head,.inventory-stock-row){grid-template-columns:minmax(180px,1.5fr) minmax(95px,.8fr) minmax(110px,1fr) minmax(110px,1fr) minmax(105px,1fr) 100px;gap:12px;min-width:850px;padding:10px 12px}
+body .content #inventory .inventory-table-head{font-size:10px;line-height:1.5;background:#1b2116;color:#aeb69f}
+body .content #inventory .inventory-stock-row{font-size:12px}
+body .content #inventory .inventory-history-link{font-size:9px;font-weight:500;margin-top:4px}
+body .content #inventory #inventoryMovementList{max-height:480px;overflow:auto;padding:0;border:1px solid #30362a;border-radius:9px}
+body .content #inventory .inventory-movement{grid-template-columns:145px minmax(130px,1fr) 100px 90px minmax(220px,1.6fr);min-width:780px;gap:12px;padding:12px;font-size:11px;align-items:start}
+body .content #inventory .inventory-movement-heading{position:sticky;top:0;background:#1b2116;z-index:1;color:#aeb69f;font-size:10px;font-weight:500}
+body .content #inventory .inventory-bill{padding:14px;margin:0}
+body .content #inventory .inventory-bill h3{font-size:13px;font-weight:500}
+body .content #inventory .inventory-bill-actions button{min-height:32px;padding:7px 11px;font-size:11px}
+body .content #inventory .inventory-bill-meta{font-size:11px}
+body .content #inventory .inventory-empty{padding:20px;font-size:12px;min-height:0}
+body .content #inventory .inventory-wide-btn{margin-top:14px}
+body .content #inventory .supply-total{margin-top:16px;padding-top:14px}
+body .content #inventory .local-purchase-actions{margin-top:14px}
+body .content #inventory .local-purchase-history-head{margin-top:18px;padding-top:16px}
+@media(max-width:1100px){body .content #inventory .inventory-quick-nav{grid-template-columns:repeat(3,minmax(0,1fr))}body .content #inventory .inventory-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){body .content #inventory .inventory-quick-nav{grid-template-columns:repeat(2,minmax(0,1fr))}body .content #inventory :is(.inventory-filterbar,.inventory-master-toolbar){grid-template-columns:1fr}body .content #inventory .inventory-panel{padding:14px}body .content #inventory .inventory-panel-head{gap:5px 8px}body .content #inventory .inventory-panel-head h2{font-size:16px}body .content #inventory .inventory-filter-status{grid-column:1}}

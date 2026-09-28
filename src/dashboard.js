@@ -3868,7 +3868,7 @@ function renderInventory() {
   }).join('') : '<div class="inventory-empty">No supply bills in this period.</div>';
 
   const movementList = $('#inventoryMovementList');
-  if (movementList) movementList.innerHTML = movements.length ? movements.map(row => {
+  if (movementList) movementList.innerHTML = movements.length ? '<div class="inventory-movement inventory-movement-heading"><span>Date / time</span><span>Stock item</span><span>Outlet</span><span>Change</span><span>Activity / note</span></div>' + movements.map(row => {
     const item = inventoryItem(row.item_id) || {};
     const snapshotUnit = row.inventory_unit_snapshot;
     const delta = snapshotUnit ? Number(row.quantity_delta) : inventoryDisplayQuantity(item, row.quantity_delta);
