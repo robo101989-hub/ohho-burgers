@@ -3472,16 +3472,19 @@ function renderPackagingRules() {
 function updateStaffRuleUnit() {
   const item = inventoryItem($('#staffRuleItem')?.value);
   const unit = inventoryInternalUnit(item, 2) || 'unit';
+  const perSession = $('#staffRuleBasis')?.value === 'PER_SESSION';
   if ($('#staffRuleUnit')) $('#staffRuleUnit').textContent = unit;
-  if ($('#staffRuleQuantityLabel')) $('#staffRuleQuantityLabel').textContent = `QUANTITY USED BY ONE STAFF · ${unit.toUpperCase()}`;
+  if ($('#staffRuleQuantityLabel')) $('#staffRuleQuantityLabel').textContent = `${perSession ? 'QUANTITY USED PER SESSION' : 'QUANTITY USED BY ONE STAFF'} · ${unit.toUpperCase()}`;
   if ($('#staffRuleQuantity')) $('#staffRuleQuantity').step = (item?.inventory_unit || item?.base_unit) === 'EACH' ? '1' : '0.001';
 }
 
 function resetStaffRuleEditor() {
   state.inventory.editingStaffRuleId = null;
   if ($('#staffRuleQuantity')) $('#staffRuleQuantity').value = '';
-  if ($('#saveStaffRule')) $('#saveStaffRule').textContent = 'SAVE PER-STAFF CONSUMPTION';
+  if ($('#staffRuleBasis')) $('#staffRuleBasis').value = 'PER_STAFF';
+  if ($('#saveStaffRule')) $('#saveStaffRule').textContent = 'SAVE CONSUMPTION RULE';
   $('#cancelStaffRuleEdit')?.classList.add('hidden');
+  updateStaffRuleUnit();
 }
 
 function renderStaffRules() {
@@ -3490,7 +3493,8 @@ function renderStaffRules() {
   const rules = state.inventory.staffRules || [];
   list.innerHTML = rules.length ? rules.map(rule => {
     const item = inventoryItem(rule.item_id) || {};
-    return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Consumable')}</strong><span>${inventoryQty(rule.quantity_per_staff)} ${escapeHtml(inventoryInternalUnit(item, rule.quantity_per_staff))} per working staff${rule.active === false ? ' · INACTIVE' : ''}</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-staff-rule="${rule.id}">EDIT</button><button class="secondary danger" type="button" data-deactivate-staff-rule="${rule.id}">DEACTIVATE</button></div></div>`;
+    const basis = rule.consumption_basis === 'PER_SESSION' ? 'per session' : 'per working staff';
+    return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Consumable')}</strong><span>${inventoryQty(rule.quantity_per_staff)} ${escapeHtml(inventoryInternalUnit(item, rule.quantity_per_staff))} ${basis}${rule.active === false ? ' · INACTIVE' : ''}</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-staff-rule="${rule.id}">EDIT</button><button class="secondary danger" type="button" data-deactivate-staff-rule="${rule.id}">DEACTIVATE</button></div></div>`;
   }).join('') : '<div class="inventory-empty">No staff daily-use consumables configured.</div>';
 }
 
@@ -3501,8 +3505,9 @@ function editStaffRule(rule) {
   if ($('#staffRuleCategory')) $('#staffRuleCategory').value = item.category_id || '';
   fillInventoryControls();
   if ($('#staffRuleItem')) $('#staffRuleItem').value = item.id;
+  if ($('#staffRuleBasis')) $('#staffRuleBasis').value = rule.consumption_basis === 'PER_SESSION' ? 'PER_SESSION' : 'PER_STAFF';
   if ($('#staffRuleQuantity')) $('#staffRuleQuantity').value = String(Number(rule.quantity_per_staff || 0));
-  if ($('#saveStaffRule')) $('#saveStaffRule').textContent = 'UPDATE PER-STAFF CONSUMPTION';
+  if ($('#saveStaffRule')) $('#saveStaffRule').textContent = 'UPDATE CONSUMPTION RULE';
   $('#cancelStaffRuleEdit')?.classList.remove('hidden');
   updateStaffRuleUnit();
 }
@@ -3510,11 +3515,12 @@ function editStaffRule(rule) {
 async function saveStaffRule() {
   const button = $('#saveStaffRule');
   const itemId = $('#staffRuleItem')?.value;
+  const consumptionBasis = $('#staffRuleBasis')?.value;
   const quantityPerStaff = Number($('#staffRuleQuantity')?.value);
-  if (!itemId || !(quantityPerStaff > 0)) return toast('Choose a consumable and enter the quantity used by one staff member.', 'bad');
+  if (!itemId || !(quantityPerStaff > 0)) return toast('Choose a consumable and enter its consumption quantity.', 'bad');
   button.disabled = true;
   try {
-    await inventoryApi('POST', { action: 'save_staff_consumable_rule', ruleId: state.inventory.editingStaffRuleId, itemId, quantityPerStaff });
+    await inventoryApi('POST', { action: 'save_staff_consumable_rule', ruleId: state.inventory.editingStaffRuleId, itemId, quantityPerStaff, consumptionBasis });
     resetStaffRuleEditor();
     await loadInventory();
     toast('Staff consumable rule saved.', 'ok');
@@ -3545,8 +3551,10 @@ function renderStaffConsumption() {
   if ($('#staffConsumptionStatus')) $('#staffConsumptionStatus').textContent = !openSession ? 'No open session for this outlet' : confirmed ? `Confirmed for ${confirmed.staff_count} staff` : 'Awaiting confirmation for current session';
   preview.innerHTML = count > 0 && activeRules.length ? activeRules.map(rule => {
     const item = inventoryItem(rule.item_id) || {};
-    const total = Number(rule.quantity_per_staff || 0) * count;
-    return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Consumable')}</strong><span>${inventoryQty(rule.quantity_per_staff)} × ${count} staff</span></div><b>${inventoryQty(total)} ${escapeHtml(inventoryInternalUnit(item, total))}</b></div>`;
+    const perSession = rule.consumption_basis === 'PER_SESSION';
+    const total = Number(rule.quantity_per_staff || 0) * (perSession ? 1 : count);
+    const calculation = perSession ? `${inventoryQty(rule.quantity_per_staff)} per session` : `${inventoryQty(rule.quantity_per_staff)} × ${count} staff`;
+    return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Consumable')}</strong><span>${calculation}</span></div><b>${inventoryQty(total)} ${escapeHtml(inventoryInternalUnit(item, total))}</b></div>`;
   }).join('') : `<div class="inventory-empty">${activeRules.length ? 'Enter the number of staff to preview consumption.' : state.profile?.role === 'ADMIN' ? 'Set the quantity used by one staff member above, then save it.' : 'Admin must configure staff consumable rules first.'}</div>`;
   const events = (state.inventory.staffEvents || []).filter(event => !outletId || event.outlet_id === outletId).slice(0, 8);
   history.innerHTML = events.length ? `<div class="request-group"><h3>RECENT CONFIRMATIONS</h3>${events.map(event => `<div class="daily-expense-row"><div><strong>${event.staff_count} staff confirmed</strong><span>${inventoryDate(event.confirmed_at)} · ${(event.staff_consumption_event_items || []).length} consumables</span></div></div>`).join('')}</div>` : '';
@@ -4413,6 +4421,7 @@ function wireInventoryActions() {
   });
   $('#staffRuleCategory')?.addEventListener('change', () => { fillInventoryControls(); updateStaffRuleUnit(); });
   $('#staffRuleItem')?.addEventListener('change', updateStaffRuleUnit);
+  $('#staffRuleBasis')?.addEventListener('change', updateStaffRuleUnit);
   $('#saveStaffRule')?.addEventListener('click', saveStaffRule);
   $('#cancelStaffRuleEdit')?.addEventListener('click', resetStaffRuleEditor);
   $('#staffRuleList')?.addEventListener('click', event => {

@@ -28,3 +28,15 @@ test('invalid staff counts produce no deduction preview', () => {
   assert.deepEqual(calculateStaffConsumption(rules, 0), []);
   assert.deepEqual(calculateStaffConsumption(rules, 1.5), []);
 });
+
+test('per-session consumables are not multiplied by staff count', () => {
+  assert.deepEqual(calculateStaffConsumption([
+    ...rules,
+    { item_id: 'garbage-bag', quantity_per_staff: 2, consumption_basis: 'PER_SESSION', active: true }
+  ], 5), [
+    { itemId: 'apron', quantity: 5 },
+    { itemId: 'gloves', quantity: 20 },
+    { itemId: 'head-cap', quantity: 10 },
+    { itemId: 'garbage-bag', quantity: 2 }
+  ]);
+});

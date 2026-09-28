@@ -1415,15 +1415,16 @@ body{font-size:14px}
   <article id="staffConsumptionPanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Staff consumption</div><h2>Daily-use consumables</h2></div><span id="staffConsumptionStatus">Confirm once per open session</span></div>
     <details id="staffRuleSetupPanel" class="inventory-tool-card" open>
-      <summary><span><small>ADMIN SETUP</small><strong>Consumption used by one staff member</strong></span><b>OPEN</b></summary>
+      <summary><span><small>ADMIN SETUP</small><strong>Staff and session consumable rules</strong></span><b>OPEN</b></summary>
       <div class="inventory-tool-body">
-        <p class="inventory-edit-help">Choose a stock item and enter how much one staff member uses per session. Example: Gloves = 4 pcs per staff.</p>
+        <p class="inventory-edit-help">Use Per staff for gloves, aprons and caps. Use Per session for fixed outlet usage such as garbage bags.</p>
         <div class="inventory-form-grid">
           <label><span>STOCK CATEGORY</span><select id="staffRuleCategory"></select></label>
           <label><span>CONSUMABLE ITEM</span><select id="staffRuleItem"></select></label>
+          <label><span>CONSUMPTION BASIS</span><select id="staffRuleBasis"><option value="PER_STAFF">PER STAFF</option><option value="PER_SESSION">PER SESSION</option></select></label>
           <label><span id="staffRuleQuantityLabel">QUANTITY USED BY ONE STAFF</span><div class="supply-line-actual"><input id="staffRuleQuantity" type="number" min="0.001" step="0.001" placeholder="Example: 4"><span id="staffRuleUnit">pcs</span></div></label>
         </div>
-        <div class="recipe-editor-actions"><button id="saveStaffRule" class="secondary inventory-wide-btn" type="button">SAVE PER-STAFF CONSUMPTION</button><button id="cancelStaffRuleEdit" class="secondary hidden" type="button">CANCEL EDIT</button></div>
+        <div class="recipe-editor-actions"><button id="saveStaffRule" class="secondary inventory-wide-btn" type="button">SAVE CONSUMPTION RULE</button><button id="cancelStaffRuleEdit" class="secondary hidden" type="button">CANCEL EDIT</button></div>
         <div id="staffRuleList" class="daily-expense-list"></div>
       </div>
     </details>
