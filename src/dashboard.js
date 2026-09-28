@@ -38,7 +38,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
-  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, historyItemId: null, historyMode: 'ALL', historyFrom: '', historyTo: '', expenseHistoryMode: 'CURRENT', expenseHistoryFrom: '', expenseHistoryTo: '', loaded: false },
+  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], staffRules: [], staffEvents: [], openSessions: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, editingStaffRuleId: null, historyItemId: null, historyMode: 'ALL', historyFrom: '', historyTo: '', expenseHistoryMode: 'CURRENT', expenseHistoryFrom: '', expenseHistoryTo: '', loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -3267,6 +3267,12 @@ function fillInventoryControls() {
   inventorySelectOptions($('#packagingRuleItem'), state.inventory.items.filter(row => row.active !== false).map(row => ({ value: row.id, label: `${row.name} · ${inventoryInternalUnit(row)}` })), $('#packagingRuleItem')?.value);
   inventorySelectOptions($('#packagingMenuItem'), state.inventory.menuItems.map(row => ({ value: row.id, label: row.name })), $('#packagingMenuItem')?.value);
   inventorySelectOptions($('#packagingMenuCategory'), state.inventory.menuCategories.map(row => ({ value: row.id, label: row.name })), $('#packagingMenuCategory')?.value);
+  const previousStaffCategory = $('#staffRuleCategory')?.value || '';
+  inventorySelectOptions($('#staffRuleCategory'), state.inventory.stockCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), previousStaffCategory);
+  const staffCategoryId = $('#staffRuleCategory')?.value || '';
+  const staffItems = state.inventory.items.filter(row => row.active !== false && (!staffCategoryId || row.category_id === staffCategoryId));
+  inventorySelectOptions($('#staffRuleItem'), staffItems.map(row => ({ value: row.id, label: `${row.name} · ${inventoryInternalUnit(row)}` })), $('#staffRuleItem')?.value);
+  inventorySelectOptions($('#staffConsumptionOutlet'), outletOptions, $('#staffConsumptionOutlet')?.value || inventorySelectedOutletId());
   const selectedSupplyItem = inventoryItem($('#supplyItem')?.value);
   if (!selectedSupplyItem && $('#supplyItem')) $('#supplyItem').value = '';
   if (selectedSupplyItem && $('#supplyItemSearch') && !$('#supplyItemSearch').value) $('#supplyItemSearch').value = selectedSupplyItem.name;
@@ -3275,6 +3281,7 @@ function fillInventoryControls() {
   const admin = state.profile?.role === 'ADMIN';
   const owner = state.profile?.role === 'OWNER';
   if ($('#inventoryAdminWorkspace')) $('#inventoryAdminWorkspace').style.display = admin ? '' : 'none';
+  if ($('#staffConsumptionPanel')) $('#staffConsumptionPanel').style.display = ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role) ? '' : 'none';
   if ($('#requestOperationsToolbar')) $('#requestOperationsToolbar').style.display = admin ? '' : 'none';
   $$('#inventoryQuickNav [data-admin-only]').forEach(button => button.classList.toggle('hidden', !admin));
   if ($('#inventoryPageTitle')) $('#inventoryPageTitle').textContent = admin ? 'Stock & Supply Management' : 'Stock Requirements & Supply Bills';
@@ -3461,6 +3468,104 @@ function renderPackagingRules() {
   }).join('') : '<div class="inventory-empty">No order-type packaging rules configured.</div>';
 }
 
+function updateStaffRuleUnit() {
+  const item = inventoryItem($('#staffRuleItem')?.value);
+  const unit = inventoryInternalUnit(item, 2) || 'unit';
+  if ($('#staffRuleUnit')) $('#staffRuleUnit').textContent = unit;
+  if ($('#staffRuleQuantityLabel')) $('#staffRuleQuantityLabel').textContent = `USAGE PER STAFF · ${unit.toUpperCase()}`;
+  if ($('#staffRuleQuantity')) $('#staffRuleQuantity').step = (item?.inventory_unit || item?.base_unit) === 'EACH' ? '1' : '0.001';
+}
+
+function resetStaffRuleEditor() {
+  state.inventory.editingStaffRuleId = null;
+  if ($('#staffRuleQuantity')) $('#staffRuleQuantity').value = '';
+  if ($('#saveStaffRule')) $('#saveStaffRule').textContent = 'SAVE STAFF RULE';
+  $('#cancelStaffRuleEdit')?.classList.add('hidden');
+}
+
+function renderStaffRules() {
+  const list = $('#staffRuleList');
+  if (!list) return;
+  const rules = state.inventory.staffRules || [];
+  list.innerHTML = rules.length ? rules.map(rule => {
+    const item = inventoryItem(rule.item_id) || {};
+    return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Consumable')}</strong><span>${inventoryQty(rule.quantity_per_staff)} ${escapeHtml(inventoryInternalUnit(item, rule.quantity_per_staff))} per working staff${rule.active === false ? ' · INACTIVE' : ''}</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-staff-rule="${rule.id}">EDIT</button><button class="secondary danger" type="button" data-deactivate-staff-rule="${rule.id}">DEACTIVATE</button></div></div>`;
+  }).join('') : '<div class="inventory-empty">No staff daily-use consumables configured.</div>';
+}
+
+function editStaffRule(rule) {
+  const item = inventoryItem(rule.item_id);
+  if (!item) return;
+  state.inventory.editingStaffRuleId = rule.id;
+  if ($('#staffRuleCategory')) $('#staffRuleCategory').value = item.category_id || '';
+  fillInventoryControls();
+  if ($('#staffRuleItem')) $('#staffRuleItem').value = item.id;
+  if ($('#staffRuleQuantity')) $('#staffRuleQuantity').value = String(Number(rule.quantity_per_staff || 0));
+  if ($('#saveStaffRule')) $('#saveStaffRule').textContent = 'SAVE STAFF RULE CHANGES';
+  $('#cancelStaffRuleEdit')?.classList.remove('hidden');
+  updateStaffRuleUnit();
+}
+
+async function saveStaffRule() {
+  const button = $('#saveStaffRule');
+  const itemId = $('#staffRuleItem')?.value;
+  const quantityPerStaff = Number($('#staffRuleQuantity')?.value);
+  if (!itemId || !(quantityPerStaff > 0)) return toast('Choose a consumable and enter usage per staff member.', 'bad');
+  button.disabled = true;
+  try {
+    await inventoryApi('POST', { action: 'save_staff_consumable_rule', ruleId: state.inventory.editingStaffRuleId, itemId, quantityPerStaff });
+    resetStaffRuleEditor();
+    await loadInventory();
+    toast('Staff consumable rule saved.', 'ok');
+  } catch (error) { toast(error.message, 'bad'); }
+  finally { button.disabled = false; }
+}
+
+async function deactivateStaffRule(ruleId) {
+  if (!ruleId || !window.confirm('Deactivate this staff consumable rule?')) return;
+  try {
+    await inventoryApi('POST', { action: 'deactivate_staff_consumable_rule', ruleId });
+    await loadInventory();
+    toast('Staff consumable rule deactivated.', 'ok');
+  } catch (error) { toast(error.message, 'bad'); }
+}
+
+function renderStaffConsumption() {
+  const preview = $('#staffConsumptionPreview');
+  const history = $('#staffConsumptionHistory');
+  if (!preview || !history) return;
+  const outletId = $('#staffConsumptionOutlet')?.value || '';
+  const count = Number($('#staffWorkingCount')?.value || 0);
+  const activeRules = (state.inventory.staffRules || []).filter(rule => rule.active !== false);
+  const openSession = (state.inventory.openSessions || []).find(session => session.outlet_id === outletId);
+  const confirmed = openSession && (state.inventory.staffEvents || []).find(event => event.session_id === openSession.id);
+  const canConfirm = Boolean(openSession && !confirmed && activeRules.length && Number.isInteger(count) && count > 0);
+  if ($('#confirmStaffConsumption')) $('#confirmStaffConsumption').disabled = !canConfirm;
+  if ($('#staffConsumptionStatus')) $('#staffConsumptionStatus').textContent = !openSession ? 'No open session for this outlet' : confirmed ? `Confirmed for ${confirmed.staff_count} staff` : 'Awaiting confirmation for current session';
+  preview.innerHTML = count > 0 && activeRules.length ? activeRules.map(rule => {
+    const item = inventoryItem(rule.item_id) || {};
+    const total = Number(rule.quantity_per_staff || 0) * count;
+    return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Consumable')}</strong><span>${inventoryQty(rule.quantity_per_staff)} × ${count} staff</span></div><b>${inventoryQty(total)} ${escapeHtml(inventoryInternalUnit(item, total))}</b></div>`;
+  }).join('') : `<div class="inventory-empty">${activeRules.length ? 'Enter the number of staff to preview consumption.' : 'Admin must configure staff consumable rules first.'}</div>`;
+  const events = (state.inventory.staffEvents || []).filter(event => !outletId || event.outlet_id === outletId).slice(0, 8);
+  history.innerHTML = events.length ? `<div class="request-group"><h3>RECENT CONFIRMATIONS</h3>${events.map(event => `<div class="daily-expense-row"><div><strong>${event.staff_count} staff confirmed</strong><span>${inventoryDate(event.confirmed_at)} · ${(event.staff_consumption_event_items || []).length} consumables</span></div></div>`).join('')}</div>` : '';
+}
+
+async function confirmStaffConsumption() {
+  const button = $('#confirmStaffConsumption');
+  const outletId = $('#staffConsumptionOutlet')?.value;
+  const staffCount = Number($('#staffWorkingCount')?.value);
+  if (!outletId || !Number.isInteger(staffCount) || staffCount <= 0) return toast('Select an outlet and enter the number of staff working.', 'bad');
+  if (!window.confirm(`Confirm daily-use consumables for ${staffCount} working staff? This deducts stock once for the current session.`)) return;
+  button.disabled = true;
+  try {
+    await inventoryApi('POST', { action: 'confirm_staff_consumption', outletId, staffCount });
+    await loadInventory();
+    toast('Staff consumption confirmed and stock deducted.', 'ok');
+  } catch (error) { toast(error.message, 'bad'); }
+  finally { button.disabled = false; }
+}
+
 function editPackagingRule(rule) {
   state.inventory.editingPackagingRuleId = rule.id;
   if ($('#packagingRuleItem')) $('#packagingRuleItem').value = rule.item_id;
@@ -3644,7 +3749,7 @@ function inventoryMovementTotals(outletId, itemId) {
   const rows = currentInventorySessionRows(state.inventory.movements, 'occurred_at', outletId).filter(row => row.item_id === itemId);
   return {
     received: rows.filter(row => row.movement_type === 'STOCK_RECEIVED').reduce((sum, row) => sum + Number(row.quantity_delta || 0), 0),
-    used: Math.abs(rows.filter(row => ['USAGE', 'WASTE', 'SALE_DEDUCTION', 'PACKAGING_CONSUMPTION'].includes(row.movement_type)).reduce((sum, row) => sum + Number(row.quantity_delta || 0), 0))
+    used: Math.abs(rows.filter(row => ['USAGE', 'WASTE', 'SALE_DEDUCTION', 'PACKAGING_CONSUMPTION', 'STAFF_CONSUMPTION'].includes(row.movement_type)).reduce((sum, row) => sum + Number(row.quantity_delta || 0), 0))
   };
 }
 
@@ -3727,7 +3832,10 @@ function renderInventory() {
   renderRecipeIngredients();
   renderRecipeMonitor();
   renderPackagingRules();
+  renderStaffRules();
+  renderStaffConsumption();
   updateRecipeQuantityUnit();
+  updateStaffRuleUnit();
   renderOpeningStock();
 }
 
@@ -3745,6 +3853,9 @@ async function loadInventory() {
   state.inventory.menuCategories = payload.menuCategories || [];
   state.inventory.recipes = payload.recipes || [];
   state.inventory.packagingRules = payload.packagingRules || [];
+  state.inventory.staffRules = payload.staffRules || [];
+  state.inventory.staffEvents = payload.staffEvents || [];
+  state.inventory.openSessions = payload.openSessions || [];
   state.inventory.outlets = payload.outlets || [];
   state.inventory.balances = payload.inventory || [];
   state.inventory.bills = payload.bills || [];
@@ -4299,6 +4410,21 @@ function wireInventoryActions() {
     if (edit && rule) editPackagingRule(rule);
     if (deactivate && rule) deactivatePackagingRule(rule.id);
   });
+  $('#staffRuleCategory')?.addEventListener('change', () => { fillInventoryControls(); updateStaffRuleUnit(); });
+  $('#staffRuleItem')?.addEventListener('change', updateStaffRuleUnit);
+  $('#saveStaffRule')?.addEventListener('click', saveStaffRule);
+  $('#cancelStaffRuleEdit')?.addEventListener('click', resetStaffRuleEditor);
+  $('#staffRuleList')?.addEventListener('click', event => {
+    const edit = event.target.closest('[data-edit-staff-rule]');
+    const deactivate = event.target.closest('[data-deactivate-staff-rule]');
+    const ruleId = edit?.dataset.editStaffRule || deactivate?.dataset.deactivateStaffRule;
+    const rule = state.inventory.staffRules.find(row => row.id === ruleId);
+    if (edit && rule) editStaffRule(rule);
+    if (deactivate && rule) deactivateStaffRule(rule.id);
+  });
+  $('#staffConsumptionOutlet')?.addEventListener('change', renderStaffConsumption);
+  $('#staffWorkingCount')?.addEventListener('input', renderStaffConsumption);
+  $('#confirmStaffConsumption')?.addEventListener('click', confirmStaffConsumption);
   $$('[data-inventory-modal-close]').forEach(button => button.addEventListener('click', closeInventoryItemModal));
   $('#saveInventoryItemChanges')?.addEventListener('click', saveInventoryItemChanges);
   $('#openingStockOutlet')?.addEventListener('change', renderOpeningStock);

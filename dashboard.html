@@ -1402,6 +1402,19 @@ body{font-size:14px}
       </div>
       </details>
       <details class="inventory-tool-card">
+      <summary><span><small>Staff automation</small><strong>Daily-use consumable rules</strong></span><b>OPEN</b></summary>
+      <div class="inventory-tool-body">
+      <p class="inventory-edit-help">Configure usage for one working staff member. These items remain separate from Menu Recipes.</p>
+      <div class="inventory-form-grid">
+        <label><span>STOCK CATEGORY</span><select id="staffRuleCategory"></select></label>
+        <label><span>CONSUMABLE ITEM</span><select id="staffRuleItem"></select></label>
+        <label><span id="staffRuleQuantityLabel">USAGE PER STAFF</span><div class="supply-line-actual"><input id="staffRuleQuantity" type="number" min="0.001" step="0.001" placeholder="0"><span id="staffRuleUnit">pcs</span></div></label>
+      </div>
+      <div class="recipe-editor-actions"><button id="saveStaffRule" class="secondary inventory-wide-btn" type="button">SAVE STAFF RULE</button><button id="cancelStaffRuleEdit" class="secondary hidden" type="button">CANCEL EDIT</button></div>
+      <div id="staffRuleList" class="daily-expense-list"></div>
+      </div>
+      </details>
+      <details class="inventory-tool-card">
       <summary><span><small>Item organisation</small><strong>Stock categories</strong></span><b>OPEN</b></summary>
       <div class="inventory-tool-body">
       <div class="inventory-form-grid"><label><span>CATEGORY NAME</span><input id="stockCategoryName" type="text" maxlength="80" placeholder="Chicken"></label></div>
@@ -1412,6 +1425,16 @@ body{font-size:14px}
       </div>
     </details>
   </div>
+  <article id="staffConsumptionPanel" class="inventory-panel inventory-table-panel">
+    <div class="inventory-panel-head"><div><div class="eyebrow">Staff consumption</div><h2>Daily-use consumables</h2></div><span id="staffConsumptionStatus">Confirm once per open session</span></div>
+    <div class="inventory-form-grid">
+      <label><span>OUTLET</span><select id="staffConsumptionOutlet"></select></label>
+      <label><span>STAFF WORKING THIS SESSION</span><input id="staffWorkingCount" type="number" min="1" max="100" step="1" placeholder="2"></label>
+    </div>
+    <div id="staffConsumptionPreview" class="daily-expense-list"><div class="inventory-empty">Enter the number of staff to preview consumption.</div></div>
+    <button id="confirmStaffConsumption" class="primary inventory-wide-btn" type="button">CONFIRM STAFF CONSUMPTION</button>
+    <div id="staffConsumptionHistory" class="daily-expense-list"></div>
+  </article>
   <details id="openingStockPanel" class="inventory-panel inventory-table-panel inventory-setup-details opening-stock-details">
     <summary><span><small>ADMIN CONTROL</small><strong>Opening stock &amp; physical corrections</strong></span><b>OPEN</b></summary>
     <div class="opening-stock-body">
