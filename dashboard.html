@@ -793,7 +793,37 @@ body{font-size:14px}
   .nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;overflow:visible;padding:2px 0 4px}
   .nav button{min-width:0;width:100%;flex:none;text-align:center;padding:9px 6px;font-size:11px;white-space:nowrap}
 }
-</style><style>.staff-form-note strong{display:block;margin-bottom:8px}.staff-form-note span{display:block;line-height:1.5}</style></head>
+</style><style>.staff-form-note strong{display:block;margin-bottom:8px}.staff-form-note span{display:block;line-height:1.5}</style><style>
+/* Shared compact purchase form for Admin, Owner and Manager. */
+#localPurchasesPanel{padding:20px;border-radius:16px}
+#localPurchasesPanel .inventory-panel-head{margin-bottom:16px;gap:16px;align-items:flex-start}
+#localPurchasesPanel .eyebrow{font-size:10px;margin-bottom:8px;letter-spacing:1px}
+#localPurchasesPanel h2{font-size:20px;font-weight:600;line-height:1.3;margin:0 0 5px;letter-spacing:-.3px}
+#localPurchasesPanel p{font-size:12px;font-weight:400;line-height:1.55;color:#969b98;margin:0}
+#localPurchasesPanel .local-purchase-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0}
+#localPurchasesPanel .local-purchase-form label{display:grid;gap:5px;min-width:0;margin:0}
+#localPurchasesPanel .local-purchase-form label>span{font-size:11px;font-weight:500;text-transform:none;letter-spacing:.2px;color:#acb0ac}
+#localPurchasesPanel .local-purchase-form input,#localPurchasesPanel .local-purchase-form select{height:40px;min-height:40px;padding:0 11px;font-size:13px;font-weight:400;border-radius:8px;width:100%;min-width:0}
+#localPurchasesPanel .local-purchase-item-field{grid-column:span 2}
+#localPurchasesPanel .local-purchase-full{grid-column:1/-1}
+#localPurchasesPanel .local-purchase-form .hidden{display:none}
+#localPurchasesPanel .local-purchase-help{margin-top:10px;font-size:11px;color:#8f9590}
+#localPurchasesPanel .local-purchase-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px}
+#localPurchasesPanel .local-purchase-actions button{width:auto;min-height:40px;padding:10px 18px;font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;border-radius:8px;white-space:nowrap}
+#localPurchasesPanel button:disabled,#localPurchasesPanel select:disabled{opacity:.45;cursor:not-allowed}
+#localPurchasesPanel .section-toggle{padding:7px 12px;min-height:32px;font-size:10px;font-weight:600}
+#localPurchasesPanel .local-purchase-history-head{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #292d29;margin-top:20px;padding-top:16px;margin-bottom:12px}
+#localPurchasesPanel h3{font-size:15px;font-weight:600;margin:0 0 4px;line-height:1.3}
+#localPurchaseTotal{font-size:18px;font-weight:600;white-space:nowrap}
+#localPurchaseHistory .inventory-empty{padding:20px;font-size:12px;font-weight:400}
+#localPurchaseHistory table{width:100%;border-collapse:collapse;font-size:12px}
+#localPurchaseHistory th{font-size:10px;font-weight:600;color:#969b98;text-align:left;padding:9px 10px;border-bottom:1px solid #303430}
+#localPurchaseHistory td{padding:11px 10px;font-weight:400;border-bottom:1px solid #242824;vertical-align:top}
+#localPurchaseHistory td:last-child,#localPurchaseHistory th:last-child{text-align:right;white-space:nowrap}
+@media(max-width:900px){#localPurchasesPanel .local-purchase-form{grid-template-columns:repeat(2,minmax(0,1fr))}#localPurchasesPanel .local-purchase-item-field{grid-column:1/-1}}
+@media(max-width:540px){#localPurchasesPanel{padding:16px}#localPurchasesPanel h2{font-size:18px}#localPurchasesPanel .local-purchase-actions{align-items:stretch;flex-direction:column;gap:10px}#localPurchasesPanel .local-purchase-actions button{width:100%}}
+</style>
+</head>
 <body>
 <div class="app">
 <aside class="sidebar">
@@ -1316,23 +1346,21 @@ body{font-size:14px}
     <button class="secondary" type="button" data-inventory-scroll="staffConsumptionPanel">STAFF CONSUMPTION</button>
     <button class="secondary" type="button" data-inventory-scroll="inventoryCostPanel">COST &amp; USAGE</button></nav>
   <article id="localPurchasesPanel" class="inventory-panel">
-    <div class="inventory-panel-head"><div><div class="eyebrow">Bought by the outlet</div><h2>Local purchases</h2><p>Add items bought locally. Stock and purchase costs update together in the current session.</p></div></div>
-    <div class="inventory-form-grid">
-      <label><span>OUTLET</span><select id="localPurchaseOutlet"></select></label>
-      <label><span>STOCK ITEM</span><select id="localPurchaseItem"></select></label>
-      <label id="localPurchaseNameField" class="hidden"><span>NEW ITEM NAME</span><input id="localPurchaseName" maxlength="100" placeholder="e.g. Fresh mint"></label>
-      <label id="localPurchaseCategoryField" class="hidden"><span>NEW ITEM CATEGORY</span><select id="localPurchaseCategory"></select></label>
-      <label><span>QUANTITY RECEIVED</span><input id="localPurchaseQuantity" type="number" min="0.001" step="0.001" placeholder="0"></label>
-      <label><span>UNIT</span><select id="localPurchaseUnit"><option value="KG">Kilograms</option><option value="G">Grams</option><option value="L">Litres</option><option value="ML">Millilitres</option><option value="PIECE">Pieces</option></select></label>
-      <label><span>TOTAL PAID · ₹</span><input id="localPurchaseCost" type="number" min="0.01" step="0.01" placeholder="Total purchase cost"></label>
-      <label><span>PAYMENT</span><select id="localPurchasePayment"><option value="CASH">Cash</option><option value="UPI">UPI</option><option value="BANK">Bank</option><option value="OTHER">Other</option></select></label>
-      <label><span>SUPPLIER / NOTE · OPTIONAL</span><input id="localPurchaseNote" maxlength="300" placeholder="Shop name or receipt reference"></label>
+    <div class="inventory-panel-head"><div><div class="eyebrow">Bought by the outlet</div><h2>Local purchases</h2><p>Record locally bought items in your outlet stock and session costs.</p></div></div>
+    <div class="inventory-form-grid local-purchase-form">
+      <label><span>Outlet</span><select id="localPurchaseOutlet"></select></label>
+      <label><span>Category</span><select id="localPurchaseCategory"></select></label>
+      <label class="local-purchase-item-field"><span>Stock item</span><select id="localPurchaseItem" disabled></select></label>
+      <label id="localPurchaseNameField" class="local-purchase-full hidden"><span>New item name</span><input id="localPurchaseName" maxlength="100" placeholder="e.g. Fresh mint"></label>
+      <label><span>Quantity received</span><input id="localPurchaseQuantity" type="number" min="0.001" step="0.001" placeholder="0"></label>
+      <label><span>Unit</span><select id="localPurchaseUnit"><option value="KG">Kilograms</option><option value="G">Grams</option><option value="L">Litres</option><option value="ML">Millilitres</option><option value="PIECE">Pieces</option></select></label>
+      <label><span>Total paid · ₹</span><input id="localPurchaseCost" type="number" min="0.01" step="0.01" placeholder="Purchase cost"></label>
+      <label><span>Payment</span><select id="localPurchasePayment"><option value="CASH">Cash</option><option value="UPI">UPI</option><option value="BANK">Bank</option><option value="OTHER">Other</option></select></label>
+      <label class="local-purchase-full"><span>Supplier / note · optional</span><input id="localPurchaseNote" maxlength="300" placeholder="Shop name or receipt reference"></label>
     </div>
-    <p id="localPurchaseSessionHint"></p>
-    <p>This cost is included once under stock purchases in your reports. Do not add the same purchase again in Daily Expenses. For packs, enter the total pieces, grams or millilitres received.</p>
-    <button id="saveLocalPurchase" class="primary inventory-wide-btn" type="button">SAVE LOCAL PURCHASE &amp; ADD STOCK</button>
-    <div class="inventory-panel-head"><h3>Local purchase history</h3><strong id="localPurchaseTotal">₹0</strong></div>
-    <p>Uses the outlet and session filters selected in Stock &amp; Supply.</p>
+    <p class="local-purchase-help">For packs, enter the total pieces, grams or millilitres received. Purchase costs are included in reports—do not enter them again in Daily Expenses.</p>
+    <div class="local-purchase-actions"><p id="localPurchaseSessionHint" role="status"></p><button id="saveLocalPurchase" class="primary" type="button">Save purchase &amp; add stock</button></div>
+    <div class="local-purchase-history-head"><div><h3>Local purchase history</h3><p>Filtered by the outlet and sessions selected in Stock &amp; Supply.</p></div><strong id="localPurchaseTotal">₹0</strong></div>
     <div id="localPurchaseHistory" class="table-scroll"></div>
   </article>
   <article id="wastagePanel" class="inventory-panel inventory-table-panel">

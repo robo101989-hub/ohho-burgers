@@ -3245,7 +3245,6 @@ function fillInventoryControls() {
   inventorySelectOptions($('#inventoryOutletFilter'), state.profile?.role === 'ADMIN' ? [{ value: '', label: 'All outlets' }, ...outletOptions] : outletOptions, previousFilter);
   inventorySelectOptions($('#supplyOutlet'), outletOptions, $('#supplyOutlet')?.value);
   inventorySelectOptions($('#localPurchaseOutlet'), outletOptions, $('#localPurchaseOutlet')?.value);
-  inventorySelectOptions($('#localPurchaseCategory'), state.inventory.stockCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), $('#localPurchaseCategory')?.value);
   inventorySelectOptions($('#openingStockOutlet'), outletOptions, $('#openingStockOutlet')?.value);
   inventorySelectOptions($('#expenseOutlet'), outletOptions, $('#expenseOutlet')?.value);
   inventorySelectOptions($('#expenseOutletFilter'), state.profile?.role === 'ADMIN' ? [{ value: '', label: 'All outlets' }, ...outletOptions] : outletOptions, $('#expenseOutletFilter')?.value);
@@ -4272,11 +4271,19 @@ async function deleteManagedCategory(type, row) {
 
 function renderLocalPurchases() {
   const outletId = $('#localPurchaseOutlet')?.value;
-  const items = state.inventory.items.filter(item => item.active !== false && (!item.local_outlet_id || item.local_outlet_id === outletId));
-  inventorySelectOptions($('#localPurchaseItem'), [{ value: '', label: 'Select a stock item' }, ...items.map(item => ({ value: item.id, label: item.name })), { value: 'NEW', label: '+ Add a missing item' }], $('#localPurchaseItem')?.value);
+  const availableItems = state.inventory.items.filter(item => item.active !== false && (!item.local_outlet_id || item.local_outlet_id === outletId));
+  const categories = state.inventory.stockCategories.filter(row => row.active !== false || availableItems.some(item => item.category_id === row.id)).map(row => ({ value: row.id, label: row.name }));
+  if (availableItems.some(item => !categories.some(category => category.value === item.category_id))) categories.push({ value: 'UNCATEGORIZED', label: 'Uncategorized' });
+  categories.sort((a,b) => a.label.localeCompare(b.label));
+  inventorySelectOptions($('#localPurchaseCategory'), [{ value: '', label: 'Choose a category' }, ...categories], $('#localPurchaseCategory')?.value);
+  const categoryId = $('#localPurchaseCategory')?.value;
+  const items = availableItems.filter(item => categoryId === 'UNCATEGORIZED' ? !categories.some(category => category.value === item.category_id) : item.category_id === categoryId).sort((a,b) => a.name.localeCompare(b.name));
+  const canAddItem = state.inventory.stockCategories.some(row => row.id === categoryId && row.active !== false);
+  inventorySelectOptions($('#localPurchaseItem'), [{ value: '', label: categoryId ? 'Choose an item' : 'Choose a category first' }, ...(categoryId ? items.map(item => ({ value: item.id, label: item.name })) : []), ...(canAddItem ? [{ value: 'NEW', label: '+ Add item to this category' }] : [])], $('#localPurchaseItem')?.value);
+  if ($('#localPurchaseItem')) $('#localPurchaseItem').disabled = !categoryId;
   updateLocalPurchaseFields();
   const open = state.inventory.openSessions.some(row => row.outlet_id === outletId);
-  if ($('#localPurchaseSessionHint')) $('#localPurchaseSessionHint').textContent = open ? 'This purchase will be recorded in the current open session.' : 'Open a session for this outlet before recording a purchase.';
+  if ($('#localPurchaseSessionHint')) $('#localPurchaseSessionHint').textContent = open ? 'Recording in the current open session.' : 'Open an outlet session to record a purchase.';
   if ($('#saveLocalPurchase')) $('#saveLocalPurchase').disabled = !open || Boolean(state.inventory.localPurchaseSaving);
   const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at').filter(row => row.purchase_source === 'LOCAL');
   if ($('#localPurchaseTotal')) $('#localPurchaseTotal').textContent = formatReportMoney(bills.reduce((sum, bill) => sum + Number(bill.total_amount), 0));
@@ -4285,7 +4292,7 @@ function renderLocalPurchases() {
 
 function updateLocalPurchaseFields() {
   const selected = $('#localPurchaseItem')?.value;
-  ['#localPurchaseNameField', '#localPurchaseCategoryField'].forEach(selector => $(selector)?.classList.toggle('hidden', selected !== 'NEW'));
+  $('#localPurchaseNameField')?.classList.toggle('hidden', selected !== 'NEW');
   const item = inventoryItem(selected);
   const base = item?.inventory_unit || item?.base_unit;
   const units = base === 'G' ? ['KG','G'] : base === 'ML' ? ['L','ML'] : base === 'EACH' ? ['PIECE'] : ['KG','G','L','ML','PIECE'];
@@ -4536,6 +4543,7 @@ function wireInventoryActions() {
   $('#saveLocalPurchase')?.addEventListener('click', saveLocalPurchase);
   $('#localPurchaseOutlet')?.addEventListener('change', renderLocalPurchases);
   $('#localPurchaseItem')?.addEventListener('change', updateLocalPurchaseFields);
+  $('#localPurchaseCategory')?.addEventListener('change', renderLocalPurchases);
   $('#supplyPurchaseSource')?.addEventListener('change', renderInventory);
   $('#inventoryCreateItem')?.addEventListener('click', createInventoryItem);
   ['#inventoryRequestUnit','#inventorySupplyUnit','#inventoryInternalUnit'].forEach(selector => $(selector)?.addEventListener('change', syncCreateConversionDefaults));
