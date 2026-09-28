@@ -564,6 +564,14 @@
 .request-date-row{display:grid;grid-template-columns:1fr 1fr 2fr;gap:12px;margin:16px 0}.request-date-row label{display:grid;gap:7px;min-width:0}.request-date-row label>span{font-size:10px;letter-spacing:.5px;font-weight:750;color:#a9aaa2}.request-date-row input,.request-date-row select,.stock-request-selected-row input{width:100%;min-width:0;height:42px;background:#10110f;border:1px solid #3a3d32;border-radius:8px;color:#f2f2ea;padding:0 12px;color-scheme:dark}.stock-request-selected-row input{width:100px}.request-date-row select:disabled{opacity:.65}
 #stockRequestEditingNotice{padding:12px 14px;border-left:3px solid #ffd21c;background:#242217;color:#eee7ba;font-size:12px;line-height:1.6}#cancelStockRequestEdit{margin-bottom:10px}
 @media(max-width:700px){#ownerLatestRequirementPanel{padding:14px}.stock-request-top{flex-direction:column;gap:8px}.request-date-row{grid-template-columns:1fr 1fr}.request-date-row label:last-child{grid-column:1/-1}.stock-request-selected-row{grid-template-columns:minmax(0,1fr) auto;gap:8px}.stock-request-selected-row>button{grid-column:2}.stock-request-selected-row input{width:76px}#ownerLatestRequirementPanel .inventory-panel-head{align-items:flex-start;gap:12px;flex-direction:column}.stock-request-card{padding:14px}}
+
+#daily-expenses .expense-session-layout{display:flex;flex-direction:column;gap:20px}
+.expense-session-group{border:1px solid #333;border-radius:14px;padding:18px;margin-bottom:16px}
+.expense-session-group h3{margin:0 0 8px}.expense-session-group p{color:#999;font-size:13px}
+.expense-table-scroll{overflow-x:auto}.expense-session-table{width:100%;border-collapse:collapse;text-align:left;min-width:650px}
+.expense-session-table th,.expense-session-table td{padding:13px 12px;border-bottom:1px solid #333;vertical-align:top}
+.expense-session-table th{color:#ffd900}.expense-session-table td:nth-child(4){white-space:nowrap;font-weight:700}
+.expense-session-table button{padding:8px 12px;font-size:11px}.expense-session-table tfoot th{border-bottom:0}
 </style>
 <style>
 /* FINAL READABILITY PASS */
@@ -1481,15 +1489,15 @@ body{font-size:14px}
 </section>
 <section id="daily-expenses" class="section">
   <div class="page-head"><div><div class="eyebrow">Outlet session expense book</div><h1>Session Expense Management</h1><p>Owners record actual outlet expenses. Admin reviews them inside complete opening-to-closing sessions.</p></div><button id="expenseRefreshBtn" class="primary" type="button">REFRESH</button></div>
-  <div class="expense-flow"><div><b>1</b><span><strong>OWNER ADDS EXPENSE</strong><small>Expenses → category, amount and note</small></span></div><div><b>2</b><span><strong>ADMIN CHECKS HERE</strong><small>Expenses → all records or custom dates by outlet</small></span></div><div><b>3</b><span><strong>FINAL REPORT</strong><small>Reports → session sales, stock cost, expenses and net</small></span></div></div>
-  <div class="inventory-filterbar expense-filterbar"><label><span>OUTLET</span><select id="expenseOutletFilter"></select></label><label><span>EXPENSE DATE FROM</span><input id="expenseFrom" type="date"></label><label><span>EXPENSE DATE TO</span><input id="expenseTo" type="date"></label><button id="expenseApplyFilter" class="secondary" type="button">VIEW CUSTOM DATES</button><button id="expenseCurrentSession" class="secondary" type="button">CURRENT SESSION</button><button id="expenseAllRecords" class="secondary" type="button">ALL EXPENSES</button><span id="expenseFilterStatus" class="inventory-filter-status" aria-live="polite">Current open session</span></div>
+  <div class="expense-flow"><div><b>1</b><span><strong>OWNER ADDS EXPENSE</strong><small>Expenses → category, amount and note</small></span></div><div><b>2</b><span><strong>ADMIN CHECKS HERE</strong><small>Expenses → session tables and custom session dates</small></span></div><div><b>3</b><span><strong>FINAL REPORT</strong><small>Reports → session sales, stock cost, expenses and net</small></span></div></div>
+  <div class="inventory-filterbar expense-filterbar"><label><span>OUTLET</span><select id="expenseOutletFilter"></select></label><label><span>SESSION OPENED FROM</span><input id="expenseFrom" type="date"></label><label><span>SESSION OPENED TO</span><input id="expenseTo" type="date"></label><button id="expenseApplyFilter" class="secondary" type="button">VIEW CUSTOM SESSIONS</button><button id="expenseCurrentSession" class="secondary" type="button">CURRENT SESSION</button><button id="expenseAllRecords" class="secondary" type="button">ALL EXPENSES</button><span id="expenseFilterStatus" class="inventory-filter-status" aria-live="polite">Current open session</span></div>
   <div id="expenseCategoryAdminPanel" class="inventory-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Admin setup</div><h2>Expense categories</h2></div><span>Owners select from this list</span></div>
     <div class="inventory-form-grid"><label><span>CATEGORY NAME</span><input id="expenseCategoryName" type="text" maxlength="80" placeholder="Electricity"></label></div>
     <button id="createExpenseCategory" class="secondary inventory-wide-btn" type="button">CREATE CATEGORY</button>
     <div id="expenseCategoryList" class="daily-expense-list"></div>
   </div>
-  <div class="inventory-expense-grid">
+  <div class="inventory-expense-grid expense-session-layout">
     <article id="ownerExpenseEntryPanel" class="inventory-panel">
       <div class="inventory-panel-head"><div><div class="eyebrow">Owner entry</div><h2 id="expenseFormTitle">Add daily expense</h2></div></div>
       <div class="inventory-form-grid">

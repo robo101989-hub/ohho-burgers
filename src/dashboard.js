@@ -1,5 +1,6 @@
+import { groupExpenseSessions } from '../lib/expense-sessions.js';
 import { supabase } from './supabase.js';
-import { historyBounds, filterHistory } from '../lib/history.js';
+import { historyBounds } from '../lib/history.js';
 import { calculateSuggestedRequirements } from '../lib/stock-requirements.js';
 import { calculateCurrentStockValue } from '../lib/inventory-valuation.js';
 import { defaultNetQuantity, standardConversion, unitLabel, stockRequestUnit, requestSupplyQuantities } from '../lib/inventory-measurements.js';
@@ -3384,26 +3385,30 @@ function renderDailyExpenses() {
   const outletId = $('#expenseOutletFilter')?.value || '';
   const from = state.inventory.expenseHistoryFrom || '';
   const to = state.inventory.expenseHistoryTo || '';
-  const admin = state.profile?.role === 'ADMIN';
   const owner = state.profile?.role === 'OWNER';
-  const currentMode = state.inventory.expenseHistoryMode === 'CURRENT';
-  const customMode = state.inventory.expenseHistoryMode === 'CUSTOM';
-  const rows = (currentMode
-    ? currentInventorySessionRows(state.inventory.expenses, 'occurred_at', outletId)
-    : filterHistory(state.inventory.expenses, { field: 'occurred_at', outletId, from: customMode ? from : '', to: customMode ? to : '' })
-  ).sort((a,b) => new Date(b.occurred_at) - new Date(a.occurred_at));
-  const total = rows.reduce((sum,row) => sum + Number(row.amount || 0), 0);
+  const mode = state.inventory.expenseHistoryMode;
+  const currentMode = mode === 'CURRENT';
+  const customMode = mode === 'CUSTOM';
+  const sessions = [...(state.salesReports || []), ...(state.inventory.openSessions || []).map(row => ({ ...row, closed_at: null }))];
+  const uniqueSessions = [...new Map(sessions.map(row => [`${row.outlet_id}:${row.opened_at}`, row])).values()];
+  const groups = groupExpenseSessions(state.inventory.expenses, uniqueSessions, { mode, outletId, from, to });
+  const total = groups.reduce((sum, group) => sum + group.total, 0);
+  const count = groups.reduce((sum, group) => sum + group.expenses.length, 0);
   if ($('#expenseTodayTotal')) $('#expenseTodayTotal').textContent = formatReportMoney(total);
-  if ($('#dailyExpenseHeading')) $('#dailyExpenseHeading').textContent = currentMode ? 'Current session expenses' : customMode ? 'Expenses by date' : 'All daily expenses';
-  const rangeLabel = currentMode ? 'Current session' : customMode ? `${from} to ${to}` : 'All dates';
-  if ($('#expenseFilterStatus')) $('#expenseFilterStatus').textContent = `${rangeLabel} · ${rows.length} expenses · ${formatReportMoney(total)}`;
+  if ($('#dailyExpenseHeading')) $('#dailyExpenseHeading').textContent = currentMode ? 'Current session expenses' : 'Expense history by session';
+  if ($('#expenseFilterStatus')) $('#expenseFilterStatus').textContent = `${groups.filter(group => !group.unmatched).length} sessions · ${count} expenses · ${formatReportMoney(total)}`;
   for (const [id, active] of [['expenseCurrentSession', currentMode], ['expenseAllRecords', !currentMode && !customMode], ['expenseApplyFilter', customMode]]) {
     const button = $('#' + id);
     button?.classList.toggle('primary', active);
     button?.classList.toggle('secondary', !active);
     button?.setAttribute('aria-pressed', String(active));
   }
-  list.innerHTML = rows.length ? rows.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.description || row.category_name || row.category || 'Expense')}</strong><span>${escapeHtml(inventoryOutlet(row.outlet_id)?.name || 'Outlet')} · ${escapeHtml(row.category_name || row.category || 'Other')} · ${inventoryDate(row.occurred_at)}</span></div><b>${formatReportMoney(row.amount)}</b>${owner ? `<div class="inventory-bill-actions"><button class="secondary" type="button" data-edit-expense="${row.id}">EDIT</button><button class="secondary" type="button" data-delete-expense="${row.id}">DELETE</button></div>` : ''}</div>`).join('') : `<div class="inventory-empty">No expenses for the selected outlet and ${currentMode ? 'current session' : 'dates'}.</div>`;
+  list.innerHTML = groups.length ? groups.map(group => `<section class="expense-session-group">
+    <div class="inventory-panel-head"><div><h3>${escapeHtml(inventoryOutlet(group.outlet_id)?.name || 'Outlet')} · ${group.unmatched ? 'Unassigned historical expenses' : group.closed_at ? 'Closed session' : 'Open session'}</h3><p>${group.unmatched ? 'These expense timestamps fall outside recorded sessions.' : `Opened ${inventoryDate(group.opened_at)} · ${group.closed_at ? `Closed ${inventoryDate(group.closed_at)}` : 'Still open'}`}</p></div><strong>${formatReportMoney(group.total)}</strong></div>
+    <div class="expense-table-scroll"><table class="expense-session-table"><thead><tr><th>Date & time</th><th>Category</th><th>Note</th><th>Amount</th>${owner ? '<th>Actions</th>' : ''}</tr></thead><tbody>
+    ${group.expenses.length ? group.expenses.slice().sort((a,b) => new Date(b.occurred_at) - new Date(a.occurred_at)).map(row => `<tr><td>${inventoryDate(row.occurred_at)}</td><td>${escapeHtml(row.category_name || row.category || 'Other')}</td><td>${escapeHtml(row.description || '—')}</td><td>${formatReportMoney(row.amount)}</td>${owner ? `<td><button class="secondary" data-edit-expense="${row.id}">EDIT</button> <button class="secondary" data-delete-expense="${row.id}">DELETE</button></td>` : ''}</tr>`).join('') : `<tr><td colspan="${owner ? 5 : 4}">No expenses recorded in this session.</td></tr>`}
+    </tbody><tfoot><tr><th colspan="3">Session total</th><th>${formatReportMoney(group.total)}</th>${owner ? '<td></td>' : ''}</tr></tfoot></table></div></section>`).join('') : '<div class="inventory-empty">No sessions in this range. Custom dates select sessions by opening date.</div>';
+
 }
 
 function renderStockCategories() {
@@ -4316,7 +4321,7 @@ function wireInventoryActions() {
     try {
       const from = $('#inventoryFrom')?.value || '';
       const to = $('#inventoryTo')?.value || '';
-      if (!from || !to) throw new Error('Choose both expense dates.');
+      if (!from || !to) throw new Error('Choose both session opening dates.');
       const bounds = completedInventorySessions(inventorySelectedOutletId(), from, to);
       if (bounds.invalid) throw new Error('The From date must be on or before the To date.');
       state.inventory.historyMode = 'CUSTOM';
@@ -4364,7 +4369,7 @@ function wireInventoryActions() {
     const from = $('#supplyHistoryFrom')?.value || '';
     const to = $('#supplyHistoryTo')?.value || '';
     try {
-      if (!from || !to) throw new Error('Choose both expense dates.');
+      if (!from || !to) throw new Error('Choose both session opening dates.');
       const bounds = completedInventorySessions(inventorySelectedOutletId(), from, to);
       if (bounds.invalid) throw new Error('The From date must be on or before the To date.');
       state.inventory.historyMode = 'CUSTOM';
@@ -4495,14 +4500,14 @@ function wireInventoryActions() {
     try {
       const from = $('#expenseFrom')?.value || '';
       const to = $('#expenseTo')?.value || '';
-      if (!from || !to) throw new Error('Choose both expense dates.');
+      if (!from || !to) throw new Error('Choose both session opening dates.');
       historyBounds(from, to);
       state.inventory.expenseHistoryMode = 'CUSTOM';
       state.inventory.expenseHistoryFrom = from;
       state.inventory.expenseHistoryTo = to;
       renderDailyExpenses();
       $('#dailyExpenseList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      toast('Showing expenses for the selected dates, including open sessions.', 'ok');
+      toast('Showing complete sessions opened in the selected dates.', 'ok');
     } catch (error) { toast(error.message, 'bad'); }
   });
   $('#expenseOutletFilter')?.addEventListener('change', renderDailyExpenses);
@@ -4514,7 +4519,7 @@ function wireInventoryActions() {
     state.inventory.expenseHistoryTo = '';
     renderDailyExpenses();
     $('#dailyExpenseList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    toast('Showing all daily expenses, including open sessions.', 'ok');
+    toast('Showing all expenses grouped by session, including open sessions.', 'ok');
   });
   $('#expenseCurrentSession')?.addEventListener('click', () => {
     if ($('#expenseFrom')) $('#expenseFrom').value = '';
