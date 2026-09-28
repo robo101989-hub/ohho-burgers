@@ -3782,7 +3782,7 @@ function inventoryMovementTotals(outletId, itemId) {
 function renderInventory() {
   fillInventoryControls();
   const outletId = inventorySelectedOutletId();
-  const balances = state.inventory.balances.filter(row => !outletId || row.outlet_id === outletId);
+  const balances = state.inventory.balances.filter(row => (!outletId || row.outlet_id === outletId) && inventoryItem(row.item_id)?.active !== false);
   const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at');
   const allMovements = inventoryHistoryRows(state.inventory.movements, 'occurred_at');
   const movements = state.inventory.historyItemId ? allMovements.filter(row => row.item_id === state.inventory.historyItemId) : allMovements;
@@ -3814,13 +3814,30 @@ function renderInventory() {
     const groupName = item => state.inventory.stockCategories.find(row => row.id === item.category_id)?.name || 'Other items';
     const categoryId = $('#inventoryMasterCategory')?.value || '';
     const search = String($('#inventoryMasterSearch')?.value || '').trim().toLowerCase();
-    const filteredItems = state.inventory.items.filter(item => (!categoryId || item.category_id === categoryId) && (!search || item.name.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search)));
+    const filteredItems = state.inventory.items.filter(item => item.active !== false && (!categoryId || item.category_id === categoryId) && (!search || item.name.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search)));
     const names = [...new Set(filteredItems.map(groupName))];
     masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}${item.active === false ? ' · INACTIVE' : ''}</strong><small>${escapeHtml(item.sku)} · REQUEST ${escapeHtml(unitLabel(item.request_unit).toUpperCase())} × ${inventoryQty(item.request_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · BILL ${escapeHtml(unitLabel(item.billing_unit || item.supply_unit).toUpperCase())} × ${inventoryQty(item.billing_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · LOW ${inventoryQty(item.low_stock_threshold)} · TARGET ${inventoryQty(item.target_stock_level)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${inventoryBillingUnit(item)}` : 'SET RATE'}</b><div class="inventory-row-actions"><button type="button" data-inventory-edit-item="${item.id}">EDIT</button><button class="danger" type="button" data-inventory-delete-item="${item.id}">DEACTIVATE</button></div></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
   }
 
   const stockList = $('#inventoryStockList');
-  if (stockList) stockList.innerHTML = balances.length ? balances.map(row => {
+  const selectedCategory = $('#liveStockCategory')?.value || '';
+  inventorySelectOptions($('#liveStockCategory'), [{ value: '', label: 'All categories' }, ...state.inventory.stockCategories.map(c => ({ value:c.id, label:c.name })), { value:'unassigned', label:'Unassigned' }], selectedCategory);
+  const searchStock = ($('#liveStockSearch')?.value || '').trim().toLowerCase();
+  const selectedStatus = $('#liveStockStatus')?.value || '';
+  const stockGroups = new Map();
+  for (const row of balances) {
+    const item = inventoryItem(row.item_id) || {};
+    const category = state.inventory.stockCategories.find(c => c.id === item.category_id);
+    const key = category?.id || 'unassigned';
+    const quantity = inventoryDisplayQuantity(item, row.quantity_on_hand);
+    const status = quantity <= 0 ? 'out' : quantity <= Number(item.low_stock_threshold || 0) ? 'low' : 'in';
+    if (selectedCategory && selectedCategory !== key || selectedStatus && selectedStatus !== status || searchStock && !`${item.name || ''} ${item.sku || ''}`.toLowerCase().includes(searchStock)) continue;
+    if (!stockGroups.has(key)) stockGroups.set(key, { name:category?.name || 'Unassigned', rows:[] });
+    stockGroups.get(key).rows.push(row);
+  }
+  if (stockList) stockList.innerHTML = stockGroups.size ? [...stockGroups.values()].sort((a,b) => a.name.localeCompare(b.name)).map(group => {
+    const value = calculateCurrentStockValue({ items:state.inventory.items, balances:group.rows, bills:state.inventory.bills, movements:state.inventory.movements });
+    return `<details class="request-group" open><summary><strong>${escapeHtml(group.name)}</strong> · ${group.rows.length} items · ${formatReportMoney(value)}</summary>${group.rows.sort((a,b) => (inventoryItem(a.item_id)?.name || '').localeCompare(inventoryItem(b.item_id)?.name || '')).map(row => {
     const item = inventoryItem(row.item_id) || {};
     const outlet = inventoryOutlet(row.outlet_id) || {};
     const quantity = inventoryDisplayQuantity(item, row.quantity_on_hand);
@@ -3828,7 +3845,9 @@ function renderInventory() {
     const status = quantity <= 0 ? ['OUT OF STOCK', 'out'] : quantity <= threshold ? ['LOW STOCK', 'low'] : ['IN STOCK', 'in'];
     const totals = inventoryMovementTotals(row.outlet_id, row.item_id);
     return `<div class="inventory-stock-row"><strong>${escapeHtml(item.name || 'Item')}<button class="inventory-history-link" type="button" data-view-item-history="${row.item_id}">VIEW HISTORY</button></strong><span>${escapeHtml(outlet.name || 'Outlet')}</span><span>${inventoryQty(inventoryDisplayQuantity(item, totals.received))} ${escapeHtml(item.display_unit || '')}</span><span>${inventoryQty(inventoryDisplayQuantity(item, totals.used))} ${escapeHtml(item.display_unit || '')}</span><span class="inventory-qty">${inventoryQty(quantity)} ${escapeHtml(item.display_unit || '')}</span><span class="inventory-status ${status[1]}">${status[0]}</span></div>`;
-  }).join('') : '<div class="inventory-empty">No stock balances yet. Generate the first supply bill to add stock.</div>';
+    }).join('')}</details>`;
+  }).join('') : '<div class="inventory-empty">No stock matches these filters.</div>';
+  if ($('#inventoryStockCount')) $('#inventoryStockCount').textContent = `${[...stockGroups.values()].reduce((sum, group) => sum + group.rows.length, 0)} of ${balances.length} items`;
 
   const billsList = $('#inventoryBillsList');
   if (billsList) billsList.innerHTML = bills.length ? bills.map(bill => {
@@ -4621,6 +4640,9 @@ function wireInventoryActions() {
   $('#inventoryMovementClearItem')?.addEventListener('click', () => { state.inventory.historyItemId = null; renderInventory(); });
   $('#inventoryMasterCategory')?.addEventListener('change', renderInventory);
   $('#inventoryMasterSearch')?.addEventListener('input', renderInventory);
+  $('#liveStockSearch')?.addEventListener('input', renderInventory);
+  $('#liveStockCategory')?.addEventListener('change', renderInventory);
+  $('#liveStockStatus')?.addEventListener('change', renderInventory);
   $('#stockCategoryList')?.addEventListener('click', event => { const edit = event.target.closest('[data-edit-stock-category]'); const remove = event.target.closest('[data-delete-stock-category]'); const id = edit?.dataset.editStockCategory || remove?.dataset.deleteStockCategory; const row = id && state.inventory.stockCategories.find(item => item.id === id); if (!row) return; if (edit) editManagedCategory('stock', row); if (remove) deleteManagedCategory('stock', row); });
   $('#expenseCategoryList')?.addEventListener('click', event => { const edit = event.target.closest('[data-edit-expense-category]'); const remove = event.target.closest('[data-delete-expense-category]'); const id = edit?.dataset.editExpenseCategory || remove?.dataset.deleteExpenseCategory; const row = id && state.inventory.expenseCategories.find(item => item.id === id); if (!row) return; if (edit) editManagedCategory('expense', row); if (remove) deleteManagedCategory('expense', row); });
   $('#dailyExpenseList')?.addEventListener('click', event => { const edit = event.target.closest('[data-edit-expense]'); const remove = event.target.closest('[data-delete-expense]'); const id = edit?.dataset.editExpense || remove?.dataset.deleteExpense; const expense = id && state.inventory.expenses.find(row => row.id === id); if (!expense) return; if (edit) editDailyExpense(expense); if (remove) deleteDailyExpense(expense); });

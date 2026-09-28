@@ -1275,7 +1275,7 @@ body{font-size:14px}
     <span id="inventoryFilterStatus" class="inventory-filter-status" aria-live="polite">All completed sessions</span>
   </div>
   <div class="inventory-summary">
-    <article><span>CURRENT STOCK VALUE</span><strong id="inventoryStockValue">₹0</strong><small>At weighted received cost</small></article>
+    <article><span>CURRENT STOCK VALUE</span><strong id="inventoryStockValue">₹0</strong><small>Received costs / configured rates</small></article>
     <article><span>LOW / OUT OF STOCK</span><strong id="inventoryLowCount">0</strong><small>Needs attention</small></article>
     <article><span>SUPPLY AMOUNT DUE</span><strong id="inventoryDue">₹0</strong><small>Unpaid balance</small></article>
     <article><span>STOCK RECEIVED THIS SESSION</span><strong id="inventoryToday">0</strong><small>Current open-session entries</small></article>
@@ -1463,6 +1463,8 @@ body{font-size:14px}
   </details>
   <article id="outletStockPanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Live balances</div><h2>Outlet stock</h2></div><span id="inventoryStockCount">0 items</span></div>
+    <div class="inventory-master-toolbar"><label><span>CATEGORY</span><select id="liveStockCategory"><option value="">All categories</option></select></label><label><span>SEARCH STOCK</span><input id="liveStockSearch" type="search" placeholder="Item name or SKU"></label><label><span>AVAILABILITY</span><select id="liveStockStatus"><option value="">All stock</option><option value="in">In stock</option><option value="low">Low stock</option><option value="out">Out of stock</option></select></label></div>
+    <p>Stock value uses average received costs, or the configured item rate and conversion when no receipt cost exists.</p>
     <div class="inventory-table-wrap"><div class="inventory-table-head"><span>ITEM</span><span>OUTLET</span><span>RECEIVED THIS SESSION</span><span>USED / WASTE THIS SESSION</span><span>CURRENT STOCK</span><span>STATUS</span></div><div id="inventoryStockList"></div></div>
   </article>
   <article id="inventoryRecords" class="inventory-panel inventory-table-panel">

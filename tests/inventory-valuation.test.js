@@ -50,3 +50,14 @@ test('normalizes historical receipt quantities after a Master Item unit conversi
   });
   assert.equal(value, 1500);
 });
+
+test('opening stock without receipts uses configured pack conversion', () => {
+  assert.equal(calculateCurrentStockValue({items:[{id:'buns',default_supply_price:35,billing_to_inventory:4}],balances:[{item_id:'buns',outlet_id:'a',quantity_on_hand:8}]}),70);
+});
+test('received costs take precedence over current pack price', () => {
+  assert.equal(calculateCurrentStockValue({items:[{id:'buns',default_supply_price:35,billing_to_inventory:4}],balances:[{item_id:'buns',outlet_id:'a',quantity_on_hand:8}],bills:[{outlet_id:'a',receipt_status:'RECEIVED',supply_bill_items:[{item_id:'buns',base_quantity:4,line_total:20}]}]}),40);
+});
+
+test('archived duplicates are excluded from active stock valuation without deleting history', () => {
+  assert.equal(calculateCurrentStockValue({items:[{id:'old',active:false,default_supply_price:350,billing_to_inventory:1},{id:'active',active:true,default_supply_price:10,billing_to_inventory:1}],balances:[{item_id:'old',outlet_id:'a',quantity_on_hand:3},{item_id:'active',outlet_id:'a',quantity_on_hand:4}]}),40);
+});
