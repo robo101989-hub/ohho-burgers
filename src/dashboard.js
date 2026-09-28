@@ -3404,7 +3404,9 @@ function recipeIngredientRow(row) {
   const item = inventoryItem(row.inventory_item_id) || {};
   const stockCategory = state.inventory.stockCategories.find(category => category.id === item.category_id)?.name || 'Uncategorised stock';
   const quantity = Number(row.base_quantity || 0);
-  return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Stock item')}</strong><span>${escapeHtml(stockCategory)} · ${inventoryQty(quantity)} ${escapeHtml(inventoryInternalUnit(item, quantity))} per menu item${row.is_packaging ? ' · OPTIONAL PACKAGING' : ''}</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-recipe-menu="${row.menu_item_id}" data-edit-recipe-item="${row.inventory_item_id}">EDIT</button><button class="secondary danger" type="button" data-delete-recipe-menu="${row.menu_item_id}" data-delete-recipe-item="${row.inventory_item_id}">REMOVE</button></div></div>`;
+  const usageType = row.usage_type || (row.is_packaging ? 'TAKEAWAY_DELIVERY' : 'FOOD');
+  const usageLabel = usageType === 'DINE_IN' ? 'DINE-IN SERVICE ITEM' : usageType === 'TAKEAWAY_DELIVERY' ? 'TAKEAWAY / DELIVERY PACKAGING' : 'FOOD / STOCK INGREDIENT';
+  return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Stock item')}</strong><span>${escapeHtml(stockCategory)} · ${inventoryQty(quantity)} ${escapeHtml(inventoryInternalUnit(item, quantity))} per menu item · ${usageLabel}</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-recipe-menu="${row.menu_item_id}" data-edit-recipe-item="${row.inventory_item_id}">EDIT</button><button class="secondary danger" type="button" data-delete-recipe-menu="${row.menu_item_id}" data-delete-recipe-item="${row.inventory_item_id}">REMOVE</button></div></div>`;
 }
 
 function renderRecipeIngredients() {
@@ -3551,7 +3553,7 @@ async function saveRecipeIngredient() {
   button.disabled = true;
   try {
     const item = inventoryItem(itemId);
-    await inventoryApi('POST', { action: 'save_recipe', menuItemId, itemId, quantity, quantityUnit: item?.inventory_unit || item?.base_unit, isPackaging: $('#recipePackaging')?.value === 'YES' });
+    await inventoryApi('POST', { action: 'save_recipe', menuItemId, itemId, quantity, quantityUnit: item?.inventory_unit || item?.base_unit, usageType: $('#recipePackaging')?.value || 'FOOD' });
     resetRecipeEditor();
     await loadInventory();
     toast('Recipe ingredient saved.', 'ok');
@@ -3561,7 +3563,7 @@ async function saveRecipeIngredient() {
 
 function resetRecipeEditor() {
   if ($('#recipeQuantity')) $('#recipeQuantity').value = '';
-  if ($('#recipePackaging')) $('#recipePackaging').value = 'NO';
+  if ($('#recipePackaging')) $('#recipePackaging').value = 'FOOD';
   if ($('#saveRecipeIngredient')) $('#saveRecipeIngredient').textContent = 'ADD INGREDIENT';
   $('#cancelRecipeEdit')?.classList.add('hidden');
 }
@@ -3579,7 +3581,7 @@ function editRecipeIngredient(menuItemId, itemId) {
   if ($('#recipeMenuItem')) $('#recipeMenuItem').value = menuItemId;
   if ($('#recipeStockItem')) $('#recipeStockItem').value = itemId;
   if ($('#recipeQuantity')) $('#recipeQuantity').value = String(Number(row.base_quantity || 0));
-  if ($('#recipePackaging')) $('#recipePackaging').value = row.is_packaging ? 'YES' : 'NO';
+  if ($('#recipePackaging')) $('#recipePackaging').value = row.usage_type || (row.is_packaging ? 'TAKEAWAY_DELIVERY' : 'FOOD');
   if ($('#saveRecipeIngredient')) $('#saveRecipeIngredient').textContent = 'SAVE INGREDIENT CHANGES';
   $('#cancelRecipeEdit')?.classList.remove('hidden');
   renderRecipeIngredients();

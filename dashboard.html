@@ -1372,7 +1372,7 @@ body{font-size:14px}
         <label><span>STOCK CATEGORY</span><select id="recipeStockCategory"></select></label>
         <label><span>STOCK ITEM</span><select id="recipeStockItem"></select></label>
         <label><span id="recipeQuantityLabel">RECIPE CONSUMPTION</span><div class="supply-line-actual"><input id="recipeQuantity" type="number" min="0.001" step="0.001" placeholder="0"><span id="recipeQuantityUnit">g</span></div></label>
-        <label><span>INGREDIENT TYPE</span><select id="recipePackaging"><option value="NO">Food / stock ingredient</option><option value="YES">Optional packaging</option></select></label>
+        <label><span>USAGE TYPE</span><select id="recipePackaging"><option value="FOOD">Food / Stock Ingredient</option><option value="TAKEAWAY_DELIVERY">Packaging · Takeaway / Delivery</option><option value="DINE_IN">Dine-In Service Item</option></select></label>
       </div>
       <div class="recipe-editor-actions"><button id="saveRecipeIngredient" class="secondary inventory-wide-btn" type="button">ADD INGREDIENT</button><button id="cancelRecipeEdit" class="secondary hidden" type="button">CANCEL EDIT</button></div>
       <div id="recipeIngredientList" class="daily-expense-list"></div>
