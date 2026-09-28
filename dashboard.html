@@ -574,6 +574,27 @@
 .expense-session-table button{padding:8px 12px;font-size:11px}.expense-session-table tfoot th{border-bottom:0}
 
 .utilisation-panel{margin:20px 0;border:1px solid #333;border-radius:14px;padding:16px}.utilisation-panel summary{cursor:pointer;padding:10px;color:#ffd900;font-weight:700}.utilisation-panel p{color:#aaa;font-size:13px}.utilisation-panel table{width:100%;min-width:580px;border-collapse:collapse;text-align:left}.utilisation-panel td,.utilisation-panel th{padding:10px;border-bottom:1px solid #333}.utilisation-panel .table-scroll{overflow:auto}.utilisation-panel meter{width:90px}
+
+.section-disclosure-body[hidden]{display:none!important}.section-toggle{margin-left:auto;flex-shrink:0}
+#inventory .inventory-quick-nav{position:static!important;display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+#inventory .inventory-panel,#inventory details{scroll-margin-top:24px}
+details[data-disclosure-ready]>summary{display:flex;align-items:center;gap:12px;justify-content:space-between;list-style:none;cursor:pointer}
+details[data-disclosure-ready]>summary::-webkit-details-marker{display:none}
+.disclosure-action{margin-left:auto!important;flex-shrink:0;padding:8px 14px!important;font-size:11px!important;line-height:1.3}
+details[data-disclosure-ready]>summary::after{display:none!important}
+#inventory details[data-disclosure-ready]>summary>b:empty{display:none}
+.utilisation-panel{padding:0;overflow:hidden;background:#111210;margin:0;border:1px solid #34362f}
+.utilisation-panel>summary{padding:20px 22px;color:#f5f5f0;border-bottom:1px solid #30322b;font-size:18px}
+.utilisation-panel>p,.utilisation-panel>details{margin:16px 22px}
+.utilisation-panel details{border:1px solid #30322b;border-radius:10px;background:#151612;margin:12px 0;overflow:hidden}
+.utilisation-panel details>summary{padding:14px 16px;color:#ededdf;font-size:14px;font-weight:600}
+.utilisation-panel details[open]>summary{background:#202218;border-bottom:1px solid #383b2d}
+.utilisation-panel details>details,.utilisation-panel details>p,.utilisation-panel details>h4{margin:12px 16px}
+.utilisation-panel .table-scroll{padding:0 12px 12px}.utilisation-panel th{font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px}.utilisation-panel td{font-size:13px;color:#eee}
+.utilisation-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:20px 22px 4px}.utilisation-metrics>div{border:1px solid #36392d;border-radius:10px;padding:14px}.utilisation-metrics small{display:block;color:#a6a99c;font-size:11px;text-transform:uppercase;margin-bottom:8px}.utilisation-metrics strong{font-size:23px;color:#ffd900}
+#inventoryStockList .request-group{margin:12px 0;border:1px solid #34362f;border-radius:10px;overflow:hidden}#inventoryStockList .request-group>summary{padding:14px 16px;background:#191b15}
+#packagingRulesPanel .inventory-tool-body{padding:20px}#packagingRulesPanel>summary{padding:20px}
+@media(max-width:700px){.utilisation-metrics{grid-template-columns:1fr}.inventory-panel-head{flex-wrap:wrap}.utilisation-panel>details{margin:12px}.disclosure-action{padding:8px!important}}
 </style>
 <style>
 /* FINAL READABILITY PASS */
@@ -831,7 +852,7 @@ body{font-size:14px}
       <div><span>DAILY EXPENSES</span><strong id="overviewOperationsExpenses">₹0</strong></div>
       <div class="net"><span>OPERATIONAL AMOUNT</span><strong id="overviewOperationsNet">₹0</strong></div>
     </div>
-    <button type="button" class="secondary" data-collapse-panel="overviewOperationsLedger" aria-expanded="true">CLOSE</button><div id="overviewUtilisation"></div><div id="overviewOperationsLedger" class="operations-ledger"></div>
+    <div id="overviewUtilisation"></div><div id="overviewOperationsLedger" class="operations-ledger"></div>
   </article>
   <div class="command">
     <article class="panel live"><div class="panel-head"><div><div class="panel-title">Live orders</div><div class="panel-sub">Current queue from active outlet sessions</div></div><span id="overviewLiveCount" class="panel-meta">0 LIVE</span></div><button type="button" class="secondary" data-collapse-panel="overviewLiveOrders" aria-expanded="true">CLOSE</button><div id="overviewLiveOrders" class="overview-live-orders"><div class="empty"><div><div class="empty-icon">⌁</div><strong>Your order queue is clear.</strong><p>New POS orders will appear here automatically.</p></div></div></div></article>
@@ -1290,7 +1311,9 @@ body{font-size:14px}
     <button type="button" data-inventory-scroll="outletStockPanel">LIVE STOCK</button>
     <button type="button" data-inventory-scroll="inventoryRecords">SUPPLY BILLS</button>
     <button type="button" data-inventory-scroll="inventoryMovementPanel">STOCK HISTORY</button>
-  </nav>
+  <button class="secondary" type="button" data-inventory-scroll="packagingRulesPanel" data-admin-only>PACKAGING RULES</button>
+    <button class="secondary" type="button" data-inventory-scroll="staffConsumptionPanel">STAFF CONSUMPTION</button>
+    <button class="secondary" type="button" data-inventory-scroll="inventoryCostPanel">COST &amp; USAGE</button></nav>
   <article id="wastagePanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">One-tap kitchen record</div><h2>Record Wastage</h2></div><span>Stock updates when saved</span></div>
     <div class="inventory-form-grid">
@@ -1396,7 +1419,19 @@ body{font-size:14px}
       </section>
       </div>
       </details>
+
       <details class="inventory-tool-card">
+      <summary><span><small>Item organisation</small><strong>Stock categories</strong></span><b>OPEN</b></summary>
+      <div class="inventory-tool-body">
+      <div class="inventory-form-grid"><label><span>CATEGORY NAME</span><input id="stockCategoryName" type="text" maxlength="80" placeholder="Chicken"></label></div>
+      <button id="createStockCategory" class="secondary inventory-wide-btn" type="button">CREATE CATEGORY</button>
+      <div id="stockCategoryList" class="daily-expense-list"></div>
+      </div>
+      </details>
+      </div>
+    </details>
+  </div>
+<details id="packagingRulesPanel" class="inventory-panel inventory-setup-details" data-admin-only>
       <summary><span><small>Order-type automation</small><strong>Packaging rules</strong></span><b>OPEN</b></summary>
       <div class="inventory-tool-body">
       <div class="inventory-form-grid">
@@ -1411,17 +1446,6 @@ body{font-size:14px}
       <div id="packagingRuleList" class="daily-expense-list"></div>
       </div>
       </details>
-      <details class="inventory-tool-card">
-      <summary><span><small>Item organisation</small><strong>Stock categories</strong></span><b>OPEN</b></summary>
-      <div class="inventory-tool-body">
-      <div class="inventory-form-grid"><label><span>CATEGORY NAME</span><input id="stockCategoryName" type="text" maxlength="80" placeholder="Chicken"></label></div>
-      <button id="createStockCategory" class="secondary inventory-wide-btn" type="button">CREATE CATEGORY</button>
-      <div id="stockCategoryList" class="daily-expense-list"></div>
-      </div>
-      </details>
-      </div>
-    </details>
-  </div>
   <article id="staffConsumptionPanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Staff consumption</div><h2>Daily-use consumables</h2></div><span id="staffConsumptionStatus">Confirm once per open session</span></div>
     <details id="staffRuleSetupPanel" class="inventory-tool-card" open>
@@ -1463,12 +1487,12 @@ body{font-size:14px}
     <div class="inventory-master-toolbar"><label><span>CATEGORY</span><select id="inventoryMasterCategory"></select></label><label><span>SEARCH ITEM</span><input id="inventoryMasterSearch" type="search" placeholder="Search name or SKU"></label></div>
     <div id="inventoryMasterList" class="inventory-master-groups"></div>
   </details>
-  <article class="inventory-panel"><div id="inventoryUtilisation"></div></article>
+  <article id="inventoryCostPanel" class="inventory-panel"><div id="inventoryUtilisation"></div></article>
   <article id="outletStockPanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Live balances</div><h2>Outlet stock</h2></div><span id="inventoryStockCount">0 items</span></div>
     <div class="inventory-master-toolbar"><label><span>CATEGORY</span><select id="liveStockCategory"><option value="">All categories</option></select></label><label><span>SEARCH STOCK</span><input id="liveStockSearch" type="search" placeholder="Item name or SKU"></label><label><span>AVAILABILITY</span><select id="liveStockStatus"><option value="">All stock</option><option value="in">In stock</option><option value="low">Low stock</option><option value="out">Out of stock</option></select></label></div>
     <p>Stock value uses average received costs, or the configured item rate and conversion when no receipt cost exists.</p>
-    <div class="inventory-table-wrap"><div class="inventory-table-head"><span>ITEM</span><span>OUTLET</span><span>RECEIVED THIS SESSION</span><span>USED / WASTE THIS SESSION</span><span>CURRENT STOCK</span><span>STATUS</span></div><button type="button" class="secondary" data-collapse-panel="inventoryStockList" aria-expanded="true">CLOSE</button><div id="inventoryStockList"></div></div>
+    <div class="inventory-table-wrap"><div class="inventory-table-head"><span>ITEM</span><span>OUTLET</span><span>RECEIVED THIS SESSION</span><span>USED / WASTE THIS SESSION</span><span>CURRENT STOCK</span><span>STATUS</span></div><div id="inventoryStockList"></div></div>
   </article>
   <article id="inventoryRecords" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Billing history</div><h2>Supply bills</h2></div><span id="inventoryBillCount">0 bills</span></div>
@@ -1517,7 +1541,7 @@ body{font-size:14px}
     </article>
     <article class="inventory-panel">
       <div class="inventory-panel-head"><div><div class="eyebrow">Expense history</div><h2 id="dailyExpenseHeading">Today's expenses</h2></div><strong id="expenseTodayTotal">₹0</strong></div>
-      <button type="button" class="secondary" data-collapse-panel="dailyExpenseList" aria-expanded="true">CLOSE</button><div id="dailyExpenseList" class="daily-expense-list"></div>
+      <div id="dailyExpenseList" class="daily-expense-list"></div>
     </article>
   </div>
 </section>

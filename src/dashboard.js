@@ -1,3 +1,4 @@
+import { installSectionDisclosures } from './section-disclosures.js';
 import { stockHistoryRows, orderUtilisation, recipeCostLines } from '../lib/inventory-reporting.js';
 import { groupExpenseSessions } from '../lib/expense-sessions.js';
 import { supabase } from './supabase.js';
@@ -3285,6 +3286,7 @@ function fillInventoryControls() {
   updateSupplyDefaultPrice();
   const admin = state.profile?.role === 'ADMIN';
   const owner = state.profile?.role === 'OWNER';
+  $('#packagingRulesPanel')?.classList.toggle('hidden', !admin);
   if ($('#inventoryAdminWorkspace')) $('#inventoryAdminWorkspace').style.display = admin ? '' : 'none';
   if ($('#staffConsumptionPanel')) $('#staffConsumptionPanel').style.display = ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role) ? '' : 'none';
   if ($('#staffRuleSetupPanel')) $('#staffRuleSetupPanel').style.display = admin ? '' : 'none';
@@ -3721,7 +3723,7 @@ function editRecipeIngredient(menuItemId, itemId) {
   $('#cancelRecipeEdit')?.classList.remove('hidden');
   renderRecipeIngredients();
   updateRecipeQuantityUnit();
-  $('#recipeMenuCategory')?.closest('.inventory-tool-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  revealAndScroll($('#recipeMenuCategory')?.closest('.inventory-tool-card'));
 }
 
 function updateWastageFields() {
@@ -3843,7 +3845,7 @@ function renderInventory() {
   }
   if (stockList) stockList.innerHTML = stockGroups.size ? [...stockGroups.values()].sort((a,b) => a.name.localeCompare(b.name)).map(group => {
     const value = calculateCurrentStockValue({ items:state.inventory.items, balances:group.rows, bills:state.inventory.bills, movements:state.inventory.movements });
-    return `<details class="request-group" open><summary><strong>${escapeHtml(group.name)}</strong> · ${group.rows.length} items · ${formatReportMoney(value)}</summary>${group.rows.sort((a,b) => (inventoryItem(a.item_id)?.name || '').localeCompare(inventoryItem(b.item_id)?.name || '')).map(row => {
+    return `<details class="request-group" data-disclosure-key="${escapeHtml(group.name)}"><summary><strong>${escapeHtml(group.name)}</strong> · ${group.rows.length} items · ${formatReportMoney(value)}</summary>${group.rows.sort((a,b) => (inventoryItem(a.item_id)?.name || '').localeCompare(inventoryItem(b.item_id)?.name || '')).map(row => {
     const item = inventoryItem(row.item_id) || {};
     const outlet = inventoryOutlet(row.outlet_id) || {};
     const quantity = inventoryDisplayQuantity(item, row.quantity_on_hand);
@@ -4084,7 +4086,7 @@ function editStockDraft(request) {
   $('#saveStockRequestDraft').classList.toggle('hidden', request.status === 'SUBMITTED');
   $('#submitStockRequest').textContent = request.status === 'SUBMITTED' ? 'SAVE CHANGES' : 'CONFIRM & SEND';
   renderStockRequestCatalogue();
-  $('#stockRequestCreatePanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  revealAndScroll($('#stockRequestCreatePanel'));
   toast('Requirement loaded. Edit quantities and save your changes.', 'ok');
 }
 
@@ -4144,7 +4146,7 @@ async function useStockRequest(request) {
   if ($('#supplyOutlet')) $('#supplyOutlet').value = request.outlet_id;
   if ($('#supplyNotes')) $('#supplyNotes').value = `From franchise requirement for ${request.required_for}${request.notes ? ` · ${request.notes}` : ''}`;
   renderSupplyLines();
-  $('#inventoryAdminWorkspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  revealAndScroll($('#inventoryAdminWorkspace'));
   toast('Request loaded into the supply bill.', 'ok');
 }
 
@@ -4188,7 +4190,7 @@ function editDailyExpense(expense) {
   if ($('#expenseFormTitle')) $('#expenseFormTitle').textContent = 'Edit daily expense';
   if ($('#saveDailyExpense')) $('#saveDailyExpense').textContent = 'UPDATE DAILY EXPENSE';
   $('#cancelExpenseEdit')?.classList.remove('hidden');
-  $('#ownerExpenseEntryPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  revealAndScroll($('#ownerExpenseEntryPanel'));
 }
 
 async function deleteDailyExpense(expense) {
@@ -4334,6 +4336,7 @@ function wireInventoryActions() {
     const button = event.target.closest('[data-inventory-scroll]');
     const target = button && document.getElementById(button.dataset.inventoryScroll);
     if (!target) return;
+    sectionDisclosures.reveal(target);
     if (target instanceof HTMLDetailsElement) target.open = true;
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
@@ -4356,7 +4359,7 @@ function wireInventoryActions() {
       renderInventory();
       const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at').length;
       const movements = inventoryHistoryRows(state.inventory.movements, 'occurred_at').length;
-      $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      revealAndScroll($('#inventoryRecords'));
       toast(`Showing ${bounds.sessions.length} session${bounds.sessions.length === 1 ? '' : 's'}, ${bills} bill${bills === 1 ? '' : 's'} and ${movements} stock movement${movements === 1 ? '' : 's'}.`, 'ok');
     } catch (error) { toast(error.message, 'bad'); }
   });
@@ -4367,7 +4370,7 @@ function wireInventoryActions() {
     state.inventory.historyFrom = '';
     state.inventory.historyTo = '';
     renderInventory();
-    $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    revealAndScroll($('#inventoryRecords'));
     toast(`Showing all stock history: ${inventoryHistoryRows(state.inventory.bills, 'supplied_at').length} supply bills and ${inventoryHistoryRows(state.inventory.movements, 'occurred_at').length} stock movements.`, 'ok');
   });
   $('#inventoryCurrentSession')?.addEventListener('click', () => {
@@ -4377,7 +4380,7 @@ function wireInventoryActions() {
     state.inventory.historyFrom = '';
     state.inventory.historyTo = '';
     renderInventory();
-    $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    revealAndScroll($('#inventoryRecords'));
     toast('Showing current open-session stock records.', 'ok');
   });
   $('#supplyHistoryCustomToggle')?.addEventListener('click', () => {
@@ -4539,7 +4542,7 @@ function wireInventoryActions() {
       state.inventory.expenseHistoryFrom = from;
       state.inventory.expenseHistoryTo = to;
       renderDailyExpenses();
-      $('#dailyExpenseList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      revealAndScroll($('#dailyExpenseList'));
       toast('Showing complete sessions opened in the selected dates.', 'ok');
     } catch (error) { toast(error.message, 'bad'); }
   });
@@ -4551,7 +4554,7 @@ function wireInventoryActions() {
     state.inventory.expenseHistoryFrom = '';
     state.inventory.expenseHistoryTo = '';
     renderDailyExpenses();
-    $('#dailyExpenseList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    revealAndScroll($('#dailyExpenseList'));
     toast('Showing all expenses grouped by session, including open sessions.', 'ok');
   });
   $('#expenseCurrentSession')?.addEventListener('click', () => {
@@ -4561,7 +4564,7 @@ function wireInventoryActions() {
     state.inventory.expenseHistoryFrom = '';
     state.inventory.expenseHistoryTo = '';
     renderDailyExpenses();
-    $('#dailyExpenseList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    revealAndScroll($('#dailyExpenseList'));
     toast('Showing current open-session expenses.', 'ok');
   });
   $('#createStockCategory')?.addEventListener('click', () => createManagedCategory('stock'));
@@ -4569,7 +4572,7 @@ function wireInventoryActions() {
   $('#cancelStockRequestEdit')?.addEventListener('click', resetStockRequestEditor);
   $('#ownerViewRequirements')?.addEventListener('click', () => {
     $('.nav-btn[data-section="inventory"]')?.click();
-    $('#stockRequestAdminPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    revealAndScroll($('#stockRequestAdminPanel'));
   });
   const requestAction = async event => {
     const use = event.target.closest('[data-use-stock-request]');
@@ -4587,7 +4590,7 @@ function wireInventoryActions() {
     if (viewStock) {
       if ($('#inventoryOutletFilter')) $('#inventoryOutletFilter').value = viewStock.dataset.requestViewStock;
       renderInventory();
-      $('#outletStockPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      revealAndScroll($('#outletStockPanel'));
       return;
     }
     const id = use?.dataset.useStockRequest || edit?.dataset.editStockDraft || release?.dataset.releaseStockRequest || cancel?.dataset.cancelStockRequest;
@@ -4621,19 +4624,19 @@ function wireInventoryActions() {
     state.inventory.billLines = [];
     if ($('#supplyNotes')) $('#supplyNotes').value = 'Direct Admin inventory entry';
     renderSupplyLines();
-    $('#inventoryBillingPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    revealAndScroll($('#inventoryBillingPanel'));
     $('#supplyItemSearch')?.focus();
     toast('Direct entry ready. Add actual supplied and inventory quantities, then choose Add & Receive Directly.', 'ok');
   });
-  $('#requestViewLiveStock')?.addEventListener('click', () => $('#outletStockPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  $('#requestViewStockHistory')?.addEventListener('click', () => $('#inventoryMovementPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  $('#requestViewLiveStock')?.addEventListener('click', () => revealAndScroll($('#outletStockPanel')));
+  $('#requestViewStockHistory')?.addEventListener('click', () => revealAndScroll($('#inventoryMovementPanel')));
   $('#requestViewCurrentBills')?.addEventListener('click', () => {
     state.inventory.historyMode = 'CURRENT'; state.inventory.historyFrom = ''; state.inventory.historyTo = '';
-    renderInventory(); $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    renderInventory(); revealAndScroll($('#inventoryRecords'));
   });
   $('#requestViewAllBills')?.addEventListener('click', () => {
     state.inventory.historyMode = 'ALL'; state.inventory.historyFrom = ''; state.inventory.historyTo = '';
-    renderInventory(); $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    renderInventory(); revealAndScroll($('#inventoryRecords'));
   });
   $('#requestViewCustomBills')?.addEventListener('click', () => {
     $('#supplyHistoryCustomPanel')?.classList.remove('hidden');
@@ -4641,7 +4644,7 @@ function wireInventoryActions() {
     const today = localDateInputValue();
     if ($('#supplyHistoryFrom') && !$('#supplyHistoryFrom').value) $('#supplyHistoryFrom').value = state.inventory.historyFrom || today;
     if ($('#supplyHistoryTo') && !$('#supplyHistoryTo').value) $('#supplyHistoryTo').value = state.inventory.historyTo || today;
-    $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    revealAndScroll($('#inventoryRecords'));
   });
   $('#inventoryMasterList')?.addEventListener('click', event => { const edit = event.target.closest('[data-inventory-edit-item]'); const remove = event.target.closest('[data-inventory-delete-item]'); const id = edit?.dataset.inventoryEditItem || remove?.dataset.inventoryDeleteItem; const item = id && inventoryItem(id); if (!item) return; if (edit) editInventoryItemPrice(item); if (remove) deleteInventoryItem(item); });
   $('#inventoryStockList')?.addEventListener('click', event => {
@@ -4649,7 +4652,7 @@ function wireInventoryActions() {
     if (!button) return;
     state.inventory.historyItemId = button.dataset.viewItemHistory;
     renderInventory();
-    $('#inventoryMovementPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    revealAndScroll($('#inventoryMovementPanel'));
   });
   $('#inventoryMovementClearItem')?.addEventListener('click', () => { state.inventory.historyItemId = null; renderInventory(); });
   $('#inventoryMasterCategory')?.addEventListener('change', renderInventory);
@@ -5321,7 +5324,7 @@ function isReportableOrder(order) {
 }
 
 function formatReportMoney(value) {
-  return `₹${Number(value || 0).toLocaleString('en-IN')}`;
+  return `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 }
 
 function localDateInputValue(date = new Date()) {
@@ -5425,10 +5428,10 @@ function renderUtilisation(target, bounds) {
   const covered = usage.filter(row=>row.usage.length).length;
   const priced = usage.filter(row=>row.complete);
   const estimate = priced.reduce((sum,row)=>sum+row.cost,0);
-  const body = `<summary>ITEM COST &amp; UTILISATION · OPEN / CLOSE</summary><p>${covered} of ${usage.length} orders have recorded stock deductions. Estimated ingredient/packaging cost for ${priced.length} fully priced orders: <strong>${formatReportMoney(estimate)}</strong>.</p><p>Usage comes from saved order deductions. Costs are estimates from received rates available at deduction time, falling back to current configured rates. Missing records are shown, never assumed to be zero.</p><details><summary>PER STOCK ITEM · CATEGORY TOTALS</summary>${stockTables || '<p>No recorded deductions in these sessions.</p>'}</details><details><summary>PER ORDER · ITEMS USED</summary>${usage.map(entry => {
+  const body = `<summary>Item cost &amp; utilisation</summary><div class="utilisation-metrics"><div><small>Orders with usage</small><strong>${covered} / ${usage.length}</strong></div><div><small>Fully priced orders</small><strong>${priced.length}</strong></div><div><small>Estimated ingredient cost</small><strong>${formatReportMoney(estimate)}</strong></div></div><p>Usage comes from saved order deductions. Costs are estimates from received rates available at deduction time, falling back to current configured rates. Missing records are shown, never assumed to be zero.</p><details><summary>Stock usage by category</summary>${stockTables || '<p>No recorded deductions in these sessions.</p>'}</details><details><summary>Order ingredient breakdown</summary>${usage.map(entry => {
     const products = (state.reportItems || []).filter(line=>line.order_id===entry.order.id).map(line=>`${line.item_name} × ${line.quantity}`).join(', ');
     return `<details><summary>Order #${escapeHtml(entry.order.order_number || entry.order.id)} · ${escapeHtml(inventoryOutlet(entry.order.outlet_id)?.name || 'Outlet')} · ${entry.complete ? formatReportMoney(entry.cost) + ' estimated cost' : 'Usage / cost incomplete'}</summary><p>${inventoryDate(entry.order.created_at)} · ${escapeHtml(products)}</p>${entry.usage.length ? usageTable(entry.usage) : '<p>No saved inventory deductions for this order.</p>'}</details>`;
-  }).join('') || '<p>No orders in these sessions.</p>'}</details><details><summary>PER MENU ITEM · RECIPE COST METER</summary>${productGroups}</details>`;
+  }).join('') || '<p>No orders in these sessions.</p>'}</details><details><summary>Menu recipe cost meters</summary>${productGroups}</details>`;
   // Preserve disclosure state across live refreshes.
   const previous = new Set([...node.querySelectorAll('details[open]')].map(d=>d.querySelector('summary')?.textContent));
   node.innerHTML = `<details class="utilisation-panel">${body}</details>`;
@@ -6707,3 +6710,7 @@ document.addEventListener('click', event => {
   button.textContent = collapsed ? 'SHOW' : 'CLOSE';
   button.setAttribute('aria-expanded', String(!collapsed));
 });
+
+const sectionDisclosures = installSectionDisclosures();
+
+function revealAndScroll(target) { if (!target) return; sectionDisclosures.reveal(target); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
