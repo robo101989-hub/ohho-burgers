@@ -1,3 +1,4 @@
+import { stockHistoryRows, orderUtilisation, recipeCostLines } from '../lib/inventory-reporting.js';
 import { groupExpenseSessions } from '../lib/expense-sessions.js';
 import { supabase } from './supabase.js';
 import { historyBounds } from '../lib/history.js';
@@ -3219,10 +3220,13 @@ function inventorySessionRows(rows, field, outletId, from = '', to = '') {
   if (bounds.invalid) throw new Error('Choose both session closing dates, with From on or before To.');
   return (rows || []).filter(row => (!outletId || row.outlet_id === outletId) && recordIsInSessions(row, field, bounds.sessions));
 }
-function inventoryHistoryRows(rows, field) {
-  if (state.inventory.historyMode === 'CURRENT') return currentInventorySessionRows(rows, field, inventorySelectedOutletId());
-  return inventorySessionRows(rows, field, inventorySelectedOutletId(), state.inventory.historyFrom, state.inventory.historyTo);
+function inventoryHistorySessions() {
+  return [...new Map([...(state.salesReports || []), ...(state.inventory.openSessions || []).map(s => ({ ...s, closed_at:null }))].map(s => [`${s.outlet_id}:${s.opened_at}`,s])).values()];
 }
+function inventoryHistoryRows(rows, field) {
+  return stockHistoryRows(rows, field, { mode:state.inventory.historyMode, outletId:inventorySelectedOutletId(), sessions:inventoryHistorySessions(), from:state.inventory.historyFrom, to:state.inventory.historyTo });
+}
+
 function currentInventorySessionRows(rows, field, outletId = '') {
   return (rows || []).filter(row => (!outletId || row.outlet_id === outletId) && recordIsInOpenSessions(row, field, state.inventory.outlets));
 }
@@ -3800,13 +3804,14 @@ function renderInventory() {
   if ($('#inventoryStockCount')) $('#inventoryStockCount').textContent = `${balances.length} item${balances.length === 1 ? '' : 's'}`;
   if ($('#inventoryBillCount')) $('#inventoryBillCount').textContent = `${bills.length} bill${bills.length === 1 ? '' : 's'}`;
   const currentHistory = state.inventory.historyMode === 'CURRENT';
-  const sessionBounds = currentHistory ? null : completedInventorySessions(outletId, state.inventory.historyFrom, state.inventory.historyTo);
-  const sessionCount = currentHistory ? state.inventory.outlets.filter(outlet => (!outletId || outlet.id === outletId) && outlet.status === 'ACTIVE' && outlet.current_session_started_at).length : sessionBounds.sessions.length;
+  const scopeSessions = inventoryHistorySessions().filter(s => !outletId || s.outlet_id === outletId);
+  const range = state.inventory.historyMode === 'CUSTOM' ? historyBounds(state.inventory.historyFrom, state.inventory.historyTo) : {};
+  const sessionCount = scopeSessions.filter(s => currentHistory ? !s.closed_at : (!range.start || new Date(s.opened_at).getTime() >= range.start) && (!range.end || new Date(s.opened_at).getTime() < range.end)).length;
   if ($('#inventoryFilterStatus')) $('#inventoryFilterStatus').textContent = `${sessionCount} session${sessionCount === 1 ? '' : 's'} · ${bills.length} bill${bills.length === 1 ? '' : 's'} · ${movements.length} movement${movements.length === 1 ? '' : 's'}`;
   if ($('#supplyHistoryRangeLabel')) {
     const from = state.inventory.historyFrom || '';
     const to = state.inventory.historyTo || '';
-    $('#supplyHistoryRangeLabel').textContent = currentHistory ? 'Current open sessions' : (from || to ? `Sessions closed ${from} to ${to}` : 'All completed sessions');
+    $('#supplyHistoryRangeLabel').textContent = currentHistory ? 'Current open sessions' : (from || to ? `Sessions opened ${from} to ${to} · including open sessions` : 'All supply bills and stock history');
   }
 
   const masterList = $('#inventoryMasterList');
@@ -3819,6 +3824,7 @@ function renderInventory() {
     masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}${item.active === false ? ' · INACTIVE' : ''}</strong><small>${escapeHtml(item.sku)} · REQUEST ${escapeHtml(unitLabel(item.request_unit).toUpperCase())} × ${inventoryQty(item.request_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · BILL ${escapeHtml(unitLabel(item.billing_unit || item.supply_unit).toUpperCase())} × ${inventoryQty(item.billing_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · LOW ${inventoryQty(item.low_stock_threshold)} · TARGET ${inventoryQty(item.target_stock_level)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${inventoryBillingUnit(item)}` : 'SET RATE'}</b><div class="inventory-row-actions"><button type="button" data-inventory-edit-item="${item.id}">EDIT</button><button class="danger" type="button" data-inventory-delete-item="${item.id}">DEACTIVATE</button></div></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
   }
 
+  renderUtilisation('#inventoryUtilisation', { session:true });
   const stockList = $('#inventoryStockList');
   const selectedCategory = $('#liveStockCategory')?.value || '';
   inventorySelectOptions($('#liveStockCategory'), [{ value: '', label: 'All categories' }, ...state.inventory.stockCategories.map(c => ({ value:c.id, label:c.name })), { value:'unassigned', label:'Unassigned' }], selectedCategory);
@@ -4341,7 +4347,8 @@ function wireInventoryActions() {
       const from = $('#inventoryFrom')?.value || '';
       const to = $('#inventoryTo')?.value || '';
       if (!from || !to) throw new Error('Choose both session opening dates.');
-      const bounds = completedInventorySessions(inventorySelectedOutletId(), from, to);
+      const dateBounds = historyBounds(from, to);
+      const bounds = { sessions:inventoryHistorySessions().filter(s => new Date(s.opened_at).getTime() >= dateBounds.start && new Date(s.opened_at).getTime() < dateBounds.end) };
       if (bounds.invalid) throw new Error('The From date must be on or before the To date.');
       state.inventory.historyMode = 'CUSTOM';
       state.inventory.historyFrom = from;
@@ -4350,7 +4357,7 @@ function wireInventoryActions() {
       const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at').length;
       const movements = inventoryHistoryRows(state.inventory.movements, 'occurred_at').length;
       $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      toast(`Showing ${bounds.sessions.length} completed session${bounds.sessions.length === 1 ? '' : 's'}, ${bills} bill${bills === 1 ? '' : 's'} and ${movements} stock movement${movements === 1 ? '' : 's'}.`, 'ok');
+      toast(`Showing ${bounds.sessions.length} session${bounds.sessions.length === 1 ? '' : 's'}, ${bills} bill${bills === 1 ? '' : 's'} and ${movements} stock movement${movements === 1 ? '' : 's'}.`, 'ok');
     } catch (error) { toast(error.message, 'bad'); }
   });
   $('#inventoryAllRecords')?.addEventListener('click', () => {
@@ -4361,7 +4368,7 @@ function wireInventoryActions() {
     state.inventory.historyTo = '';
     renderInventory();
     $('#inventoryRecords')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    toast(`Showing all completed sessions: ${inventoryHistoryRows(state.inventory.bills, 'supplied_at').length} supply bills and ${inventoryHistoryRows(state.inventory.movements, 'occurred_at').length} stock movements.`, 'ok');
+    toast(`Showing all stock history: ${inventoryHistoryRows(state.inventory.bills, 'supplied_at').length} supply bills and ${inventoryHistoryRows(state.inventory.movements, 'occurred_at').length} stock movements.`, 'ok');
   });
   $('#inventoryCurrentSession')?.addEventListener('click', () => {
     if ($('#inventoryFrom')) $('#inventoryFrom').value = '';
@@ -4389,7 +4396,8 @@ function wireInventoryActions() {
     const to = $('#supplyHistoryTo')?.value || '';
     try {
       if (!from || !to) throw new Error('Choose both session opening dates.');
-      const bounds = completedInventorySessions(inventorySelectedOutletId(), from, to);
+      const dateBounds = historyBounds(from, to);
+      const bounds = { sessions:inventoryHistorySessions().filter(s => new Date(s.opened_at).getTime() >= dateBounds.start && new Date(s.opened_at).getTime() < dateBounds.end) };
       if (bounds.invalid) throw new Error('The From date must be on or before the To date.');
       state.inventory.historyMode = 'CUSTOM';
       state.inventory.historyFrom = from;
@@ -4397,7 +4405,7 @@ function wireInventoryActions() {
       if ($('#inventoryFrom')) $('#inventoryFrom').value = from;
       if ($('#inventoryTo')) $('#inventoryTo').value = to;
       renderInventory();
-      toast(`Showing records from ${bounds.sessions.length} completed session${bounds.sessions.length === 1 ? '' : 's'}.`, 'ok');
+      toast(`Showing records from ${bounds.sessions.length} session${bounds.sessions.length === 1 ? '' : 's'}.`, 'ok');
     } catch (error) { toast(error.message, 'bad'); }
   });
   $('#supplyHistoryShowAll')?.addEventListener('click', () => {
@@ -4421,6 +4429,12 @@ function wireInventoryActions() {
     renderInventory();
   });
   $('#supplyHistoryClear')?.addEventListener('click', () => {
+    state.inventory.historyMode = 'ALL';
+    state.inventory.historyFrom = '';
+    state.inventory.historyTo = '';
+    if ($('#inventoryFrom')) $('#inventoryFrom').value = '';
+    if ($('#inventoryTo')) $('#inventoryTo').value = '';
+    renderInventory();
     if ($('#supplyHistoryFrom')) $('#supplyHistoryFrom').value = '';
     if ($('#supplyHistoryTo')) $('#supplyHistoryTo').value = '';
     $('#supplyHistoryCustomPanel')?.classList.add('hidden');
@@ -5370,6 +5384,57 @@ function operationsLedgerRows(snapshot) {
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+function renderUtilisation(target, bounds) {
+  const node = $(target);
+  if (!node) return;
+  const scopeOutletId = target === '#inventoryUtilisation' ? inventorySelectedOutletId() : selectedOperationsOutletId();
+  const orderRows = (state.reportOrders || []).filter(order => (!scopeOutletId || order.outlet_id === scopeOutletId) && (target === '#inventoryUtilisation' ? recordIsInOpenSessions(order, 'created_at', state.inventory.outlets) : operationInRange(order, 'created_at', bounds)) && isReportableOrder(order));
+  const usage = orderUtilisation(orderRows, state.inventory.movements || [], state.inventory.items || [], state.inventory.bills || []);
+  const costText = row => row.priced === false || row.cost === null ? 'Cost unavailable' : formatReportMoney(row.cost);
+  const usageTable = rows => `<div class="table-scroll"><table><thead><tr><th>Stock item</th><th>Used quantity</th><th>Estimated cost</th></tr></thead><tbody>${rows.map(row => `<tr><td>${escapeHtml(row.name)}</td><td>${inventoryQty(row.quantity)} ${escapeHtml(unitLabel(row.unit,row.quantity))}</td><td>${costText(row)}</td></tr>`).join('')}</tbody></table></div>`;
+  const grouped = new Map();
+  for (const entry of usage) for (const row of entry.usage) {
+    const key = `${entry.order.outlet_id}:${row.itemId}:${row.unit}`;
+    const existing = grouped.get(key) || { ...row, outletId:entry.order.outlet_id, quantity:0, cost:0, priced:true, orders:0 };
+    existing.quantity += row.quantity; existing.cost += row.cost; existing.priced &&= row.priced; existing.orders++;
+    grouped.set(key,existing);
+  }
+  const categories = [...new Set([...grouped.values()].map(row => state.inventory.stockCategories.find(c => c.id === row.categoryId)?.name || 'Other'))];
+  const stockTables = categories.map(category => {
+    const rows = [...grouped.values()].filter(row => (state.inventory.stockCategories.find(c=>c.id===row.categoryId)?.name || 'Other') === category);
+    return `<details><summary>${escapeHtml(category)} · ${rows.length} stock items</summary><div class="table-scroll"><table><thead><tr><th>Item</th><th>Outlet</th><th>Total used</th><th>Orders</th><th>Estimated cost</th></tr></thead><tbody>${rows.map(row=>`<tr><td>${escapeHtml(row.name)}</td><td>${escapeHtml(inventoryOutlet(row.outletId)?.name || 'Outlet')}</td><td>${inventoryQty(row.quantity)} ${escapeHtml(unitLabel(row.unit,row.quantity))}</td><td>${row.orders}</td><td>${costText(row)}</td></tr>`).join('')}</tbody></table></div></details>`;
+  }).join('');
+  const activeOutlets = (state.inventory.outlets || []).filter(o => !scopeOutletId || o.id === scopeOutletId);
+  const productGroups = activeOutlets.map(outlet => {
+    const menus = (state.inventory.menuItems || []).filter(m => !m.is_archived);
+    return `<details><summary>${escapeHtml(outlet.name)} · current recipe costs</summary>${(state.inventory.menuCategories || []).map(category => {
+      const categoryMenus = menus.filter(m=>m.category_id===category.id);
+      if (!categoryMenus.length) return '';
+      return `<details><summary>${escapeHtml(category.name)}</summary>${categoryMenus.map(menu => {
+        const sold = (state.reportItems || []).filter(line => line.menu_item_id === menu.id && orderRows.some(order => order.id === line.order_id && order.outlet_id === outlet.id)).reduce((sum,line)=>sum+Number(line.quantity || 0),0);
+        return `<details><summary>${escapeHtml(menu.name)} · ${sold} sold in selected sessions</summary>${['DINE_IN','TAKEAWAY'].map(type => {
+          const lines = recipeCostLines(menu.id,state.inventory.recipes,state.inventory.items,outlet.id,state.inventory.bills,state.inventory.movements,type);
+          const known = lines.length && lines.every(l=>l.cost !== null);
+          const total = lines.reduce((sum,l)=>sum+(l.cost || 0),0);
+          const percent = Number(menu.price)>0 ? total / Number(menu.price)*100 : null;
+          return `<h4>${type === 'DINE_IN' ? 'Dine-in' : 'Takeaway / delivery'} · ${known ? formatReportMoney(total) : 'Recipe / cost incomplete'}</h4>${known && percent !== null ? `<p><meter min="0" max="100" value="${Math.min(100,Math.max(0,percent))}"></meter> ${percent.toFixed(1)}% of menu price (${formatReportMoney(menu.price)})</p>` : ''}${lines.length ? usageTable(lines) : '<p>No recipe configured.</p>'}`;
+        }).join('')}<p>Per serving at current recipe and rates. Separate packaging rules, labour and overhead are excluded here; recorded order usage includes deducted packaging.</p></details>`;
+      }).join('')}</details>`;
+    }).join('')}</details>`;
+  }).join('');
+  const covered = usage.filter(row=>row.usage.length).length;
+  const priced = usage.filter(row=>row.complete);
+  const estimate = priced.reduce((sum,row)=>sum+row.cost,0);
+  const body = `<summary>ITEM COST &amp; UTILISATION · OPEN / CLOSE</summary><p>${covered} of ${usage.length} orders have recorded stock deductions. Estimated ingredient/packaging cost for ${priced.length} fully priced orders: <strong>${formatReportMoney(estimate)}</strong>.</p><p>Usage comes from saved order deductions. Costs are estimates from received rates available at deduction time, falling back to current configured rates. Missing records are shown, never assumed to be zero.</p><details><summary>PER STOCK ITEM · CATEGORY TOTALS</summary>${stockTables || '<p>No recorded deductions in these sessions.</p>'}</details><details><summary>PER ORDER · ITEMS USED</summary>${usage.map(entry => {
+    const products = (state.reportItems || []).filter(line=>line.order_id===entry.order.id).map(line=>`${line.item_name} × ${line.quantity}`).join(', ');
+    return `<details><summary>Order #${escapeHtml(entry.order.order_number || entry.order.id)} · ${escapeHtml(inventoryOutlet(entry.order.outlet_id)?.name || 'Outlet')} · ${entry.complete ? formatReportMoney(entry.cost) + ' estimated cost' : 'Usage / cost incomplete'}</summary><p>${inventoryDate(entry.order.created_at)} · ${escapeHtml(products)}</p>${entry.usage.length ? usageTable(entry.usage) : '<p>No saved inventory deductions for this order.</p>'}</details>`;
+  }).join('') || '<p>No orders in these sessions.</p>'}</details><details><summary>PER MENU ITEM · RECIPE COST METER</summary>${productGroups}</details>`;
+  // Preserve disclosure state across live refreshes.
+  const previous = new Set([...node.querySelectorAll('details[open]')].map(d=>d.querySelector('summary')?.textContent));
+  node.innerHTML = `<details class="utilisation-panel">${body}</details>`;
+  node.querySelectorAll('details').forEach(d=>{d.open=previous.has(d.querySelector('summary')?.textContent);});
+}
+
 function renderOperationsLedger(target, snapshot) {
   const node = $(target);
   if (!node) return;
@@ -5416,6 +5481,7 @@ function renderOverviewOperations() {
   if ($('#overviewOperationsFrom') && bounds.from) $('#overviewOperationsFrom').value = bounds.from;
   if ($('#overviewOperationsTo') && bounds.to) $('#overviewOperationsTo').value = bounds.to;
   renderOperationsLedger('#overviewOperationsLedger', snapshot);
+  renderUtilisation('#overviewUtilisation', bounds);
 }
 
 function downloadOperationsHistory(snapshot, rangeLabel, filePrefix = 'operations') {
@@ -5610,6 +5676,7 @@ function renderReportDashboard() {
   if ($('#financialTotalExpenses')) $('#financialTotalExpenses').textContent = formatReportMoney(totalExpenses);
   if ($('#financialNet')) $('#financialNet').textContent = formatReportMoney(operations.net);
   renderOperationsLedger('#reportOperationsLedger', operations);
+  renderUtilisation('#reportUtilisation', reportDateBounds());
   renderItemWiseSales(orders);
   renderSalesReports(reports);
 }
@@ -5645,7 +5712,7 @@ async function loadLegacyReports() {
   for (let index = 0; index < orderIds.length; index += 200) {
     const { data: items, error: itemsError } = await supabase
       .from('order_items')
-      .select('order_id,quantity,item_name,line_total')
+      .select('order_id,menu_item_id,quantity,item_name,line_total')
       .in('order_id', orderIds.slice(index, index + 200));
 
     if (itemsError) {
@@ -6628,3 +6695,15 @@ async function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-collapse-panel]');
+  if (!button) return;
+  const panel = document.getElementById(button.dataset.collapsePanel);
+  if (!panel) return;
+  const collapsed = !panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', collapsed);
+  button.textContent = collapsed ? 'SHOW' : 'CLOSE';
+  button.setAttribute('aria-expanded', String(!collapsed));
+});

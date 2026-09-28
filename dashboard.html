@@ -572,6 +572,8 @@
 .expense-session-table th,.expense-session-table td{padding:13px 12px;border-bottom:1px solid #333;vertical-align:top}
 .expense-session-table th{color:#ffd900}.expense-session-table td:nth-child(4){white-space:nowrap;font-weight:700}
 .expense-session-table button{padding:8px 12px;font-size:11px}.expense-session-table tfoot th{border-bottom:0}
+
+.utilisation-panel{margin:20px 0;border:1px solid #333;border-radius:14px;padding:16px}.utilisation-panel summary{cursor:pointer;padding:10px;color:#ffd900;font-weight:700}.utilisation-panel p{color:#aaa;font-size:13px}.utilisation-panel table{width:100%;min-width:580px;border-collapse:collapse;text-align:left}.utilisation-panel td,.utilisation-panel th{padding:10px;border-bottom:1px solid #333}.utilisation-panel .table-scroll{overflow:auto}.utilisation-panel meter{width:90px}
 </style>
 <style>
 /* FINAL READABILITY PASS */
@@ -829,10 +831,10 @@ body{font-size:14px}
       <div><span>DAILY EXPENSES</span><strong id="overviewOperationsExpenses">₹0</strong></div>
       <div class="net"><span>OPERATIONAL AMOUNT</span><strong id="overviewOperationsNet">₹0</strong></div>
     </div>
-    <div id="overviewOperationsLedger" class="operations-ledger"></div>
+    <button type="button" class="secondary" data-collapse-panel="overviewOperationsLedger" aria-expanded="true">CLOSE</button><div id="overviewUtilisation"></div><div id="overviewOperationsLedger" class="operations-ledger"></div>
   </article>
   <div class="command">
-    <article class="panel live"><div class="panel-head"><div><div class="panel-title">Live orders</div><div class="panel-sub">Current queue from active outlet sessions</div></div><span id="overviewLiveCount" class="panel-meta">0 LIVE</span></div><div id="overviewLiveOrders" class="overview-live-orders"><div class="empty"><div><div class="empty-icon">⌁</div><strong>Your order queue is clear.</strong><p>New POS orders will appear here automatically.</p></div></div></div></article>
+    <article class="panel live"><div class="panel-head"><div><div class="panel-title">Live orders</div><div class="panel-sub">Current queue from active outlet sessions</div></div><span id="overviewLiveCount" class="panel-meta">0 LIVE</span></div><button type="button" class="secondary" data-collapse-panel="overviewLiveOrders" aria-expanded="true">CLOSE</button><div id="overviewLiveOrders" class="overview-live-orders"><div class="empty"><div><div class="empty-icon">⌁</div><strong>Your order queue is clear.</strong><p>New POS orders will appear here automatically.</p></div></div></div></article>
     <div class="side-panels">
       <article class="panel pulse-card"><div class="panel-head"><div><div class="panel-title">Business pulse</div><div class="panel-sub">Live operating status</div></div><span id="overviewPulseLabel" class="live-label">● LIVE</span></div><div class="pulse-main"><div><strong id="overviewPulseTitle">Loading operations…</strong><p id="overviewPulseCopy">Connecting to live outlet data.</p></div></div><div class="pulse-track"><span id="overviewPulseTrack" style="width:0%"></span></div><div class="pulse-stats"><div class="pulse-stat"><b id="overviewOpenOutlets">0</b><small>OPEN</small></div><div class="pulse-stat"><b id="overviewPulseItems">0</b><small>ITEMS</small></div><div class="pulse-stat"><b id="overviewPulseOrders">0</b><small>LIVE ORDERS</small></div></div></article>
       <article id="overviewOutletPerformance" class="panel performance"><div class="panel-head"><div><div class="panel-title">Outlet performance</div><div class="panel-sub">Current session · revenue share</div></div><span id="overviewActiveOutlets" class="panel-meta">0 active</span></div><div class="overview-outlet-list"></div></article>
@@ -1267,8 +1269,8 @@ body{font-size:14px}
   </div>
   <div class="inventory-filterbar">
     <label><span>OUTLET</span><select id="inventoryOutletFilter"></select></label>
-    <label><span>SESSION CLOSED FROM</span><input id="inventoryFrom" type="date"></label>
-    <label><span>SESSION CLOSED TO</span><input id="inventoryTo" type="date"></label>
+    <label><span>SESSION OPENED FROM</span><input id="inventoryFrom" type="date"></label>
+    <label><span>SESSION OPENED TO</span><input id="inventoryTo" type="date"></label>
     <button id="inventoryApplyFilter" class="secondary" type="button">VIEW SESSION RECORDS</button>
     <button id="inventoryCurrentSession" class="secondary" type="button">CURRENT SESSION</button>
     <button id="inventoryAllRecords" class="secondary" type="button">ALL SESSIONS</button>
@@ -1461,24 +1463,25 @@ body{font-size:14px}
     <div class="inventory-master-toolbar"><label><span>CATEGORY</span><select id="inventoryMasterCategory"></select></label><label><span>SEARCH ITEM</span><input id="inventoryMasterSearch" type="search" placeholder="Search name or SKU"></label></div>
     <div id="inventoryMasterList" class="inventory-master-groups"></div>
   </details>
+  <article class="inventory-panel"><div id="inventoryUtilisation"></div></article>
   <article id="outletStockPanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Live balances</div><h2>Outlet stock</h2></div><span id="inventoryStockCount">0 items</span></div>
     <div class="inventory-master-toolbar"><label><span>CATEGORY</span><select id="liveStockCategory"><option value="">All categories</option></select></label><label><span>SEARCH STOCK</span><input id="liveStockSearch" type="search" placeholder="Item name or SKU"></label><label><span>AVAILABILITY</span><select id="liveStockStatus"><option value="">All stock</option><option value="in">In stock</option><option value="low">Low stock</option><option value="out">Out of stock</option></select></label></div>
     <p>Stock value uses average received costs, or the configured item rate and conversion when no receipt cost exists.</p>
-    <div class="inventory-table-wrap"><div class="inventory-table-head"><span>ITEM</span><span>OUTLET</span><span>RECEIVED THIS SESSION</span><span>USED / WASTE THIS SESSION</span><span>CURRENT STOCK</span><span>STATUS</span></div><div id="inventoryStockList"></div></div>
+    <div class="inventory-table-wrap"><div class="inventory-table-head"><span>ITEM</span><span>OUTLET</span><span>RECEIVED THIS SESSION</span><span>USED / WASTE THIS SESSION</span><span>CURRENT STOCK</span><span>STATUS</span></div><button type="button" class="secondary" data-collapse-panel="inventoryStockList" aria-expanded="true">CLOSE</button><div id="inventoryStockList"></div></div>
   </article>
   <article id="inventoryRecords" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Billing history</div><h2>Supply bills</h2></div><span id="inventoryBillCount">0 bills</span></div>
     <div class="orders-history-toolbar supply-history-toolbar">
       <button id="supplyHistoryCustomToggle" class="secondary" type="button" aria-expanded="false">CUSTOM SESSIONS</button>
       <button id="supplyHistoryCurrentSession" class="secondary" type="button">CURRENT SESSION</button>
-      <button id="supplyHistoryShowAll" class="secondary" type="button">ALL SESSIONS</button>
+      <button id="supplyHistoryShowAll" class="secondary" type="button">ALL BILLS</button>
       <button id="supplyHistoryDownload" class="primary" type="button">DOWNLOAD HISTORY</button>
       <span id="supplyHistoryRangeLabel">All completed sessions</span>
     </div>
     <div id="supplyHistoryCustomPanel" class="orders-custom-date-panel hidden">
-      <label><span>SESSION CLOSED FROM</span><input id="supplyHistoryFrom" type="date"></label>
-      <label><span>SESSION CLOSED TO</span><input id="supplyHistoryTo" type="date"></label>
+      <label><span>SESSION OPENED FROM</span><input id="supplyHistoryFrom" type="date"></label>
+      <label><span>SESSION OPENED TO</span><input id="supplyHistoryTo" type="date"></label>
       <button id="supplyHistoryApply" class="primary" type="button">VIEW SESSION RECORDS</button>
       <button id="supplyHistoryClear" class="secondary" type="button">CLEAR</button>
     </div>
@@ -1514,7 +1517,7 @@ body{font-size:14px}
     </article>
     <article class="inventory-panel">
       <div class="inventory-panel-head"><div><div class="eyebrow">Expense history</div><h2 id="dailyExpenseHeading">Today's expenses</h2></div><strong id="expenseTodayTotal">₹0</strong></div>
-      <div id="dailyExpenseList" class="daily-expense-list"></div>
+      <button type="button" class="secondary" data-collapse-panel="dailyExpenseList" aria-expanded="true">CLOSE</button><div id="dailyExpenseList" class="daily-expense-list"></div>
     </article>
   </div>
 </section>
@@ -1629,7 +1632,7 @@ body{font-size:14px}
     </div>
     <div class="report-panel">
       <div class="report-section-head"><div><div class="eyebrow">Unified history</div><h2>Daily expenses and stock supply</h2></div><span>Every total follows the selected opening-to-closing sessions</span></div>
-      <div id="reportOperationsLedger" class="operations-ledger"></div>
+      <div id="reportUtilisation"></div><div id="reportOperationsLedger" class="operations-ledger"></div>
     </div>
     <div class="report-split-grid">
       <div class="report-panel">
