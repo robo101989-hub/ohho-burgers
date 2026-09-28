@@ -1,5 +1,5 @@
 import { supabase } from './supabase.js';
-import { historyBounds } from '../lib/history.js';
+import { historyBounds, filterHistory } from '../lib/history.js';
 import { calculateSuggestedRequirements } from '../lib/stock-requirements.js';
 import { calculateCurrentStockValue } from '../lib/inventory-valuation.js';
 import { defaultNetQuantity, standardConversion, unitLabel, stockRequestUnit, requestSupplyQuantities } from '../lib/inventory-measurements.js';
@@ -38,7 +38,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
-  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], staffRules: [], staffEvents: [], openSessions: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, editingStaffRuleId: null, historyItemId: null, historyMode: 'ALL', historyFrom: '', historyTo: '', expenseHistoryMode: 'CURRENT', expenseHistoryFrom: '', expenseHistoryTo: '', loaded: false },
+  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], staffRules: [], staffEvents: [], openSessions: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, editingStaffRuleId: null, historyItemId: null, historyMode: 'ALL', historyFrom: '', historyTo: '', expenseHistoryMode: 'ALL', expenseHistoryFrom: '', expenseHistoryTo: '', loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -3387,17 +3387,23 @@ function renderDailyExpenses() {
   const admin = state.profile?.role === 'ADMIN';
   const owner = state.profile?.role === 'OWNER';
   const currentMode = state.inventory.expenseHistoryMode === 'CURRENT';
-  const sessionBounds = currentMode ? null : completedInventorySessions(outletId, from, to);
+  const customMode = state.inventory.expenseHistoryMode === 'CUSTOM';
   const rows = (currentMode
     ? currentInventorySessionRows(state.inventory.expenses, 'occurred_at', outletId)
-    : inventorySessionRows(state.inventory.expenses, 'occurred_at', outletId, from, to)
+    : filterHistory(state.inventory.expenses, { field: 'occurred_at', outletId, from: customMode ? from : '', to: customMode ? to : '' })
   ).sort((a,b) => new Date(b.occurred_at) - new Date(a.occurred_at));
   const total = rows.reduce((sum,row) => sum + Number(row.amount || 0), 0);
   if ($('#expenseTodayTotal')) $('#expenseTodayTotal').textContent = formatReportMoney(total);
-  if ($('#dailyExpenseHeading')) $('#dailyExpenseHeading').textContent = currentMode ? 'Current session expenses' : (admin ? 'Completed session expenses' : 'My completed session expenses');
-  const sessionCount = currentMode ? state.inventory.outlets.filter(outlet => (!outletId || outlet.id === outletId) && outlet.status === 'ACTIVE' && outlet.current_session_started_at).length : sessionBounds.sessions.length;
-  if ($('#expenseFilterStatus')) $('#expenseFilterStatus').textContent = `${sessionCount} session${sessionCount === 1 ? '' : 's'} · ${rows.length} expense${rows.length === 1 ? '' : 's'}`;
-  list.innerHTML = rows.length ? rows.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.description || row.category_name || row.category || 'Expense')}</strong><span>${escapeHtml(inventoryOutlet(row.outlet_id)?.name || 'Outlet')} · ${escapeHtml(row.category_name || row.category || 'Other')} · ${inventoryDate(row.occurred_at)}</span></div><b>${formatReportMoney(row.amount)}</b>${owner ? `<div class="inventory-bill-actions"><button class="secondary" type="button" data-edit-expense="${row.id}">EDIT</button><button class="secondary" type="button" data-delete-expense="${row.id}">DELETE</button></div>` : ''}</div>`).join('') : `<div class="inventory-empty">No expenses in the selected ${currentMode ? 'current' : 'completed'} sessions.</div>`;
+  if ($('#dailyExpenseHeading')) $('#dailyExpenseHeading').textContent = currentMode ? 'Current session expenses' : customMode ? 'Expenses by date' : 'All daily expenses';
+  const rangeLabel = currentMode ? 'Current session' : customMode ? `${from} to ${to}` : 'All dates';
+  if ($('#expenseFilterStatus')) $('#expenseFilterStatus').textContent = `${rangeLabel} · ${rows.length} expenses · ${formatReportMoney(total)}`;
+  for (const [id, active] of [['expenseCurrentSession', currentMode], ['expenseAllRecords', !currentMode && !customMode], ['expenseApplyFilter', customMode]]) {
+    const button = $('#' + id);
+    button?.classList.toggle('primary', active);
+    button?.classList.toggle('secondary', !active);
+    button?.setAttribute('aria-pressed', String(active));
+  }
+  list.innerHTML = rows.length ? rows.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.description || row.category_name || row.category || 'Expense')}</strong><span>${escapeHtml(inventoryOutlet(row.outlet_id)?.name || 'Outlet')} · ${escapeHtml(row.category_name || row.category || 'Other')} · ${inventoryDate(row.occurred_at)}</span></div><b>${formatReportMoney(row.amount)}</b>${owner ? `<div class="inventory-bill-actions"><button class="secondary" type="button" data-edit-expense="${row.id}">EDIT</button><button class="secondary" type="button" data-delete-expense="${row.id}">DELETE</button></div>` : ''}</div>`).join('') : `<div class="inventory-empty">No expenses for the selected outlet and ${currentMode ? 'current session' : 'dates'}.</div>`;
 }
 
 function renderStockCategories() {
@@ -4117,7 +4123,13 @@ async function saveDailyExpense() {
   button.disabled = true;
   try {
     const editing = state.inventory.editingExpenseId;
-    await inventoryApi('POST', { action: editing ? 'update_expense' : 'add_expense', expenseId: editing, outletId: $('#expenseOutlet')?.value, categoryId: $('#expenseCategory')?.value, description: $('#expenseDescription')?.value, amount: $('#expenseAmount')?.value, occurredAt: $('#expenseDate')?.value ? `${$('#expenseDate').value}T12:00:00` : null });
+    const selectedDate = $('#expenseDate')?.value;
+    const existingExpense = state.inventory.expenses.find(row => row.id === editing);
+    const today = new Date().toLocaleDateString('en-CA');
+    const occurredAt = existingExpense && new Date(existingExpense.occurred_at).toLocaleDateString('en-CA') === selectedDate
+      ? existingExpense.occurred_at
+      : !selectedDate || selectedDate === today ? new Date().toISOString() : new Date(`${selectedDate}T12:00:00+05:30`).toISOString();
+    await inventoryApi('POST', { action: editing ? 'update_expense' : 'add_expense', expenseId: editing, outletId: $('#expenseOutlet')?.value, categoryId: $('#expenseCategory')?.value, description: $('#expenseDescription')?.value, amount: $('#expenseAmount')?.value, occurredAt });
     if ($('#expenseDescription')) $('#expenseDescription').value = '';
     if ($('#expenseAmount')) $('#expenseAmount').value = '';
     resetExpenseForm();
@@ -4304,7 +4316,7 @@ function wireInventoryActions() {
     try {
       const from = $('#inventoryFrom')?.value || '';
       const to = $('#inventoryTo')?.value || '';
-      if (!from || !to) throw new Error('Choose both session closing dates.');
+      if (!from || !to) throw new Error('Choose both expense dates.');
       const bounds = completedInventorySessions(inventorySelectedOutletId(), from, to);
       if (bounds.invalid) throw new Error('The From date must be on or before the To date.');
       state.inventory.historyMode = 'CUSTOM';
@@ -4352,7 +4364,7 @@ function wireInventoryActions() {
     const from = $('#supplyHistoryFrom')?.value || '';
     const to = $('#supplyHistoryTo')?.value || '';
     try {
-      if (!from || !to) throw new Error('Choose both session closing dates.');
+      if (!from || !to) throw new Error('Choose both expense dates.');
       const bounds = completedInventorySessions(inventorySelectedOutletId(), from, to);
       if (bounds.invalid) throw new Error('The From date must be on or before the To date.');
       state.inventory.historyMode = 'CUSTOM';
@@ -4483,15 +4495,14 @@ function wireInventoryActions() {
     try {
       const from = $('#expenseFrom')?.value || '';
       const to = $('#expenseTo')?.value || '';
-      if (!from || !to) throw new Error('Choose both session closing dates.');
-      const bounds = completedInventorySessions($('#expenseOutletFilter')?.value || '', from, to);
-      if (bounds.invalid) throw new Error('The From date must be on or before the To date.');
+      if (!from || !to) throw new Error('Choose both expense dates.');
+      historyBounds(from, to);
       state.inventory.expenseHistoryMode = 'CUSTOM';
       state.inventory.expenseHistoryFrom = from;
       state.inventory.expenseHistoryTo = to;
       renderDailyExpenses();
       $('#dailyExpenseList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      toast(`Showing expenses from ${bounds.sessions.length} completed session${bounds.sessions.length === 1 ? '' : 's'}.`, 'ok');
+      toast('Showing expenses for the selected dates, including open sessions.', 'ok');
     } catch (error) { toast(error.message, 'bad'); }
   });
   $('#expenseOutletFilter')?.addEventListener('change', renderDailyExpenses);
@@ -4503,7 +4514,7 @@ function wireInventoryActions() {
     state.inventory.expenseHistoryTo = '';
     renderDailyExpenses();
     $('#dailyExpenseList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    toast('Showing expenses from all completed sessions.', 'ok');
+    toast('Showing all daily expenses, including open sessions.', 'ok');
   });
   $('#expenseCurrentSession')?.addEventListener('click', () => {
     if ($('#expenseFrom')) $('#expenseFrom').value = '';
