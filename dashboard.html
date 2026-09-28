@@ -823,6 +823,38 @@ body{font-size:14px}
 @media(max-width:900px){#localPurchasesPanel .local-purchase-form{grid-template-columns:repeat(2,minmax(0,1fr))}#localPurchasesPanel .local-purchase-item-field{grid-column:1/-1}}
 @media(max-width:540px){#localPurchasesPanel{padding:16px}#localPurchasesPanel h2{font-size:18px}#localPurchasesPanel .local-purchase-actions{align-items:stretch;flex-direction:column;gap:10px}#localPurchasesPanel .local-purchase-actions button{width:100%}}
 </style>
+
+<style>
+/* Compact bill history, shared by all outlet roles. */
+#inventoryRecords{padding:20px;border-radius:16px}
+#inventoryRecords .inventory-panel-head{align-items:center;gap:12px;margin-bottom:16px}
+#inventoryRecords .inventory-panel-head>div{flex:1}
+#inventoryRecords .eyebrow{font-size:10px;margin-bottom:6px}
+#inventoryRecords h2{font-size:20px;font-weight:600;margin:0}
+#inventoryRecords #inventoryBillCount{font-size:12px;font-weight:400;white-space:nowrap}
+#inventoryRecords button{min-height:34px;padding:8px 12px;font-size:11px;font-weight:500;letter-spacing:0;border-radius:7px}
+#inventoryRecords .supply-history-toolbar{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px;margin:0 0 14px;padding:0 0 14px;border-bottom:1px solid #292d29}
+#inventoryRecords .supply-source-filter{display:grid;gap:5px;margin-right:8px;min-width:180px}
+#inventoryRecords .supply-source-filter span{font-size:11px;font-weight:400;color:#9a9e9b}
+#inventoryRecords .supply-source-filter select{height:34px;width:100%;padding:0 10px;border:1px solid #363936;border-radius:7px;background:#101210;color:#eee;color-scheme:dark;font-size:12px;font-weight:400}
+#inventoryRecords #supplyHistoryRangeLabel{flex-basis:100%;margin:2px 0 0;font:400 11px/1.4 var(--sans, sans-serif);color:#929792;text-align:left}
+#inventoryRecords .inventory-bills-list{gap:10px}
+#inventoryRecords .inventory-bill{padding:14px;border-radius:10px}
+#inventoryRecords .inventory-bill h3{font-size:13px;font-weight:500;line-height:1.5;overflow-wrap:anywhere}
+#inventoryRecords .bill-source{display:inline-block;margin-left:8px;padding:2px 6px;border:1px solid #353935;border-radius:4px;color:#a6aaa6;font-size:10px;font-weight:400;vertical-align:middle}
+#inventoryRecords .inventory-bill-meta{font-size:11px;font-weight:400;line-height:1.8;margin-top:4px}
+#inventoryRecords .inventory-status{font-size:9px;font-weight:500;padding:3px 6px}
+#inventoryRecords .inventory-bill-total{flex-shrink:0}
+#inventoryRecords .inventory-bill-total strong{font-size:19px;font-weight:600;line-height:1.4}
+#inventoryRecords .inventory-bill-total span{font-size:10px;font-weight:400;margin-top:4px}
+#inventoryRecords .inventory-bill-detail{margin-top:10px;border-radius:7px}
+#inventoryRecords .inventory-bill-detail>summary{padding:6px 10px;min-height:34px;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:space-between;gap:12px}
+#inventoryRecords .inventory-bill-detail .disclosure-action{min-height:26px;padding:4px 9px;font-size:10px}
+#inventoryRecords .inventory-bill-actions{gap:6px;margin-top:10px}
+#inventoryRecords .inventory-bill-items{margin:8px 10px 10px}
+#inventoryRecords .inventory-bill-items span{font-size:11px;font-weight:400}
+@media(max-width:600px){#inventoryRecords{padding:14px}#inventoryRecords .inventory-bill-top{flex-direction:column;gap:8px}#inventoryRecords .inventory-bill-total{text-align:left}#inventoryRecords .supply-source-filter{flex-basis:100%;margin-right:0}#inventoryRecords .bill-source{margin-left:0;display:table;margin-top:4px}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -1546,6 +1578,7 @@ body{font-size:14px}
   <article id="inventoryRecords" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Billing history</div><h2>Supply bills</h2></div><span id="inventoryBillCount">0 bills</span></div>
     <div class="orders-history-toolbar supply-history-toolbar">
+      <label class="supply-source-filter"><span>Purchase source</span><select id="supplyPurchaseSource"><option value="ALL">All purchases</option><option value="CENTRAL">Central supply</option><option value="LOCAL">Local purchases</option></select></label>
       <button id="supplyHistoryCustomToggle" class="secondary" type="button" aria-expanded="false">CUSTOM SESSIONS</button>
       <button id="supplyHistoryCurrentSession" class="secondary" type="button">CURRENT SESSION</button>
       <button id="supplyHistoryShowAll" class="secondary" type="button">ALL BILLS</button>
@@ -1558,7 +1591,7 @@ body{font-size:14px}
       <button id="supplyHistoryApply" class="primary" type="button">VIEW SESSION RECORDS</button>
       <button id="supplyHistoryClear" class="secondary" type="button">CLEAR</button>
     </div>
-    <label><span>PURCHASE SOURCE</span><select id="supplyPurchaseSource"><option value="ALL">All purchases</option><option value="CENTRAL">Central supply</option><option value="LOCAL">Local purchases</option></select></label>
+
     <div id="inventoryBillsList" class="inventory-bills-list"></div>
   </article>
   <article id="inventoryMovementPanel" class="inventory-panel inventory-table-panel">
