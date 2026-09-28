@@ -3326,6 +3326,12 @@ function stockRequestCard(request, latest = false) {
   const label = request.processing_started_at && request.status === 'SUBMITTED' ? 'PROCESSING' : request.status;
   const editable = canEditStockRequest(request);
   const items = request.franchise_stock_request_items || [];
+  const relatedBill = request.bill_id ? (state.inventory.bills || []).find(bill => bill.id === request.bill_id) : null;
+  const suppliedItemIds = new Set((relatedBill?.supply_bill_items || []).map(item => item.item_id));
+  const pendingItems = request.bill_id ? items.filter(item => !suppliedItemIds.has(item.item_id)) : items;
+  const fulfilmentSummary = request.bill_id
+    ? `<p class="stock-request-note">${items.length - pendingItems.length} of ${items.length} requested items supplied${pendingItems.length ? ` · Pending: ${pendingItems.map(item => escapeHtml(item.item_name)).join(', ')}` : ''}</p>`
+    : '';
   const statusClass = request.status === 'FULFILLED' ? 'in' : request.status === 'CANCELLED' ? 'out' : 'low';
   const lines = items.map(item => `
     <div class="stock-request-line">
@@ -3340,7 +3346,7 @@ function stockRequestCard(request, latest = false) {
   const adminActions = state.profile?.role === 'ADMIN' && ['SUBMITTED','PARTIAL'].includes(request.status)
     ? `<button class="primary" type="button" data-use-stock-request="${request.id}">${request.processing_started_at ? 'CONTINUE' : 'PREPARE'} SUPPLY BILL</button>${request.processing_started_at && !request.bill_id ? `<button class="secondary" type="button" data-release-stock-request="${request.id}">ALLOW OWNER TO EDIT</button>` : ''}${!request.bill_id ? `<button class="secondary danger" type="button" data-cancel-stock-request="${request.id}">CANCEL REQUEST</button>` : ''}` : '';
   const recordActions = `${request.bill_id ? `<button class="secondary" type="button" data-request-view-bill="${request.bill_id}">VIEW RELATED BILL</button>` : ''}${state.profile?.role === 'ADMIN' ? `<button class="secondary" type="button" data-request-view-stock="${request.outlet_id}">VIEW OUTLET INVENTORY</button>` : ''}`;
-  return `<article class="stock-request-card${latest ? ' is-latest' : ''}"><div class="stock-request-top"><div><strong>${latest ? 'LATEST · ' : ''}${escapeHtml(inventoryOutlet(request.outlet_id)?.name || 'Outlet')} · Needed ${escapeHtml(request.required_for)}</strong><span>Updated ${inventoryDate(request.updated_at || request.created_at)} · ${items.length} item${items.length === 1 ? '' : 's'}</span></div><span class="inventory-status ${statusClass}">${escapeHtml(label)}</span></div>${request.notes ? `<p class="stock-request-note">${escapeHtml(request.notes)}</p>` : ''}<details class="stock-request-detail"><summary>${items.length} REQUESTED ITEM${items.length === 1 ? '' : 'S'}</summary><div class="stock-request-lines">${lines}</div></details>${ownerActions || adminActions || recordActions ? `<div class="stock-request-actions">${adminActions}${ownerActions}${recordActions}</div>` : ''}</article>`;
+  return `<article class="stock-request-card${latest ? ' is-latest' : ''}"><div class="stock-request-top"><div><strong>${latest ? 'LATEST · ' : ''}${escapeHtml(inventoryOutlet(request.outlet_id)?.name || 'Outlet')} · Needed ${escapeHtml(request.required_for)}</strong><span>Updated ${inventoryDate(request.updated_at || request.created_at)} · ${items.length} item${items.length === 1 ? '' : 's'}</span></div><span class="inventory-status ${statusClass}">${escapeHtml(label)}</span></div>${request.notes ? `<p class="stock-request-note">${escapeHtml(request.notes)}</p>` : ''}${fulfilmentSummary}<details class="stock-request-detail"><summary>${items.length} REQUESTED ITEM${items.length === 1 ? '' : 'S'}</summary><div class="stock-request-lines">${lines}</div></details>${ownerActions || adminActions || recordActions ? `<div class="stock-request-actions">${adminActions}${ownerActions}${recordActions}</div>` : ''}</article>`;
 }
 
 function renderStockRequests() {
@@ -5298,7 +5304,10 @@ function operationsSnapshot(bounds) {
   const orders = (state.reportOrders || []).filter(order =>
     operationInRange(order, 'created_at', bounds) && isReportableOrder(order) && !isFamilyFriendsOrder(order)
   );
-  const bills = (state.inventory.bills || []).filter(row => operationInRange(row, 'supplied_at', bounds));
+  const bills = (state.inventory.bills || [])
+    .filter(row => (row.receipt_status || 'RECEIVED') === 'RECEIVED')
+    .map(row => ({ ...row, operation_at: row.received_at || row.supplied_at }))
+    .filter(row => operationInRange(row, 'operation_at', bounds));
   const expenses = (state.inventory.expenses || []).filter(row => operationInRange(row, 'occurred_at', bounds));
   const sales = orders.reduce((sum, row) => sum + Number(row.total || 0), 0);
   const stock = bills.reduce((sum, row) => sum + Number(row.total_amount || 0), 0);
@@ -5313,7 +5322,7 @@ function operationsLedgerRows(snapshot) {
       detail: `Order #${row.order_number || row.id || ''}`, amount: Number(row.total || 0)
     })),
     ...snapshot.bills.map(row => ({
-      type: 'STOCK SUPPLY', date: row.supplied_at, outletId: row.outlet_id,
+      type: 'STOCK SUPPLY', date: row.operation_at || row.received_at || row.supplied_at, outletId: row.outlet_id,
       detail: row.bill_number || 'Supply bill', amount: Number(row.total_amount || 0), billId: row.id
     })),
     ...snapshot.expenses.map(row => ({

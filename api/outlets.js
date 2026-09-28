@@ -259,7 +259,6 @@ export default async function handler(req, res) {
 
       if (currentOutlet.status !== nextStatus) {
         if (nextStatus === "ACTIVE") {
-          updates.current_session_started_at = now;
           const { data: existingOpenSession, error: openSessionCheckError } = await supabase
             .from("outlet_sales_sessions")
             .select("id")
@@ -270,15 +269,51 @@ export default async function handler(req, res) {
             console.error("Unable to check the outlet sales session", openSessionCheckError);
             return res.status(500).json({ error: "Unable to open the outlet sales session" });
           }
+          let sessionOpenedAt = now;
           if (!existingOpenSession) {
+            const indiaDay = new Intl.DateTimeFormat("en-CA", {
+              timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit"
+            }).format(new Date(now));
+            const indiaDayStart = new Date(`${indiaDay}T00:00:00+05:30`).toISOString();
+            const { data: latestClosedSession, error: closedSessionError } = await supabase
+              .from("outlet_sales_sessions")
+              .select("closed_at")
+              .eq("outlet_id", id)
+              .not("closed_at", "is", null)
+              .order("closed_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (closedSessionError) {
+              console.error("Unable to find the previous outlet session", closedSessionError);
+              return res.status(500).json({ error: "Unable to open the outlet sales session" });
+            }
+            const receiptLowerBound = latestClosedSession?.closed_at && latestClosedSession.closed_at > indiaDayStart
+              ? latestClosedSession.closed_at
+              : indiaDayStart;
+            const { data: preOpenBill, error: preOpenBillError } = await supabase
+              .from("supply_bills")
+              .select("received_at")
+              .eq("outlet_id", id)
+              .eq("receipt_status", "RECEIVED")
+              .gte("received_at", receiptLowerBound)
+              .lt("received_at", now)
+              .order("received_at", { ascending: true })
+              .limit(1)
+              .maybeSingle();
+            if (preOpenBillError) {
+              console.error("Unable to find stock received before opening", preOpenBillError);
+              return res.status(500).json({ error: "Unable to open the outlet sales session" });
+            }
+            sessionOpenedAt = preOpenBill?.received_at || now;
             const { error: openSessionError } = await supabase
               .from("outlet_sales_sessions")
-              .insert({ outlet_id: id, opened_at: now, opened_by: user.id });
+              .insert({ outlet_id: id, opened_at: sessionOpenedAt, opened_by: user.id });
             if (openSessionError) {
               console.error("Unable to open the outlet sales session", openSessionError);
               return res.status(500).json({ error: "Unable to open the outlet sales session" });
             }
           }
+          updates.current_session_started_at = sessionOpenedAt;
         } else {
           const openedAt =
             currentOutlet.current_session_started_at ||
@@ -339,7 +374,7 @@ export default async function handler(req, res) {
           );
 
           const [stockBillsResult, expensesResult] = await Promise.all([
-            supabase.from("supply_bills").select("total_amount").eq("outlet_id", id).eq("status", "ISSUED").gte("supplied_at", openedAt).lt("supplied_at", now),
+            supabase.from("supply_bills").select("total_amount").eq("outlet_id", id).eq("status", "ISSUED").eq("receipt_status", "RECEIVED").gte("received_at", openedAt).lt("received_at", now),
             supabase.from("daily_expenses").select("amount").eq("outlet_id", id).gte("occurred_at", openedAt).lt("occurred_at", now)
           ]);
           if (stockBillsResult.error || expensesResult.error) {
