@@ -95,3 +95,26 @@ body .content .section:not(#costing) button.primary,
 body .content #costing button.primary{min-height:32px;height:auto;padding:7px 12px;font-size:11px;font-weight:500;line-height:1.4;border-radius:7px;letter-spacing:0;width:fit-content;max-width:100%;justify-self:start;align-self:center;white-space:normal}
 body .content #inventory button.primary.inventory-wide-btn{width:fit-content;min-width:0}
 @media(max-width:760px){body .content .section:not(#costing) button.primary,body .content #costing button.primary{min-height:40px;padding:9px 12px}}
+/* Sidebar uses the same restrained surfaces and typography as the workspace. */
+body .app>.sidebar{background:linear-gradient(165deg,#1a1e13 0,#0f130d 35%,#0c100a 100%);border-right:1px solid #333b29;padding:20px 14px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#3a442d transparent}
+body .sidebar .brand{padding:8px 12px 20px;margin-bottom:16px;border-bottom:1px solid #303827}
+body .sidebar .brand-tag{font-family:Inter,system-ui,sans-serif;color:#99a48c;font-size:9px;font-weight:400;letter-spacing:1.5px;margin-top:12px}
+body .sidebar .group-label{font-family:Inter,system-ui,sans-serif;font-size:9px;font-weight:500;color:#87947a;letter-spacing:1.5px;padding:0 12px 10px}
+body .sidebar .nav{gap:5px}
+body .sidebar .nav button{display:flex;align-items:center;gap:10px;min-height:43px;padding:8px 10px;border:1px solid transparent;border-radius:10px;background:transparent;color:#aeb8a3;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:500;line-height:1.35;letter-spacing:0;white-space:normal;text-align:left;transition:background .15s,border-color .15s,color .15s}
+body .sidebar .nav button:hover{background:#202719;border-color:#39462e;color:#f1f4ea}
+body .sidebar .nav button.active{background:linear-gradient(110deg,#353318,#252a18);border-color:#716224;color:#fff3a8;box-shadow:0 3px 12px #0002}
+body .sidebar .nav button.active:before{display:none}
+body .sidebar .nav-ico{display:inline-grid;place-items:center;flex:0 0 27px;width:27px;height:27px;margin:0;border-radius:7px;background:#1d2517;border:1px solid #35422a;color:#a1b18e;font-size:14px}
+body .sidebar .nav button.active .nav-ico{background:#ffdb24;border-color:#ffdb24;color:#1b200f}
+body .sidebar .nav button:focus-visible{outline:2px solid #ffdb24;outline-offset:2px}
+body .sidebar .side-spacer{min-height:20px}
+body .sidebar .system{background:#161d11;border:1px solid #303d26;border-radius:10px;margin:0 0 12px;padding:12px}
+body .sidebar .system-row{font-size:10px;font-weight:500;color:#c3ceba}
+body .sidebar .system small{font-size:9px;color:#819374;line-height:1.5}
+body .sidebar .user{padding:12px 10px;border:1px solid #35412b;border-radius:10px;background:#192013;gap:10px;flex-shrink:0}
+body .sidebar .user:hover{background:#232d1b}
+body .sidebar .avatar{width:32px;height:32px;flex:0 0 32px;border-radius:9px;background:#343d21;color:#ffdb24;font:600 11px Inter,system-ui,sans-serif;border:1px solid #535c32}
+body .sidebar .user strong{font:500 12px Inter,system-ui,sans-serif;color:#e6ecde}
+body .sidebar .user span{font:400 10px Inter,system-ui,sans-serif;color:#99a98b;margin-top:4px}
+@media(max-width:760px){body .app>.sidebar{height:auto;overflow:visible;padding:12px;position:relative}body .sidebar .brand{padding:4px 8px 12px;margin-bottom:10px}body .sidebar .nav{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;overflow:visible}body .sidebar .nav button{flex-direction:column;justify-content:center;text-align:center;gap:6px;min-height:70px;font-size:10px;padding:8px 5px}body .sidebar .nav-ico{flex-basis:26px;width:26px;height:26px}body .sidebar .side-spacer,body .sidebar .system{display:none}body .sidebar .user{margin-top:10px;padding:9px 10px}}
