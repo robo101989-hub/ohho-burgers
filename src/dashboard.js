@@ -3245,12 +3245,23 @@ function fillInventoryControls() {
   inventorySelectOptions($('#inventoryMasterCategory'), [{ value: '', label: 'All categories' }, ...state.inventory.stockCategories.map(row => ({ value: row.id, label: row.name }))], $('#inventoryMasterCategory')?.value);
   inventorySelectOptions($('#stockRequestCategory'), state.inventory.stockCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), $('#stockRequestCategory')?.value);
   inventorySelectOptions($('#expenseCategory'), state.inventory.expenseCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), $('#expenseCategory')?.value);
-  inventorySelectOptions($('#recipeMenuItem'), state.inventory.menuItems.map(row => ({ value: row.id, label: row.name })), $('#recipeMenuItem')?.value);
+  const activeMenuCategories = state.inventory.menuCategories.filter(row => row.active !== false);
+  const previousRecipeMenuCategory = $('#recipeMenuCategory')?.value || '';
+  inventorySelectOptions($('#recipeMenuCategory'), activeMenuCategories.map(row => ({ value: row.id, label: row.name })), previousRecipeMenuCategory);
+  const recipeMenuCategoryId = $('#recipeMenuCategory')?.value || '';
+  const recipeMenuItems = state.inventory.menuItems.filter(row => !recipeMenuCategoryId || row.category_id === recipeMenuCategoryId);
+  inventorySelectOptions($('#recipeMenuItem'), recipeMenuItems.map(row => ({ value: row.id, label: row.name })), $('#recipeMenuItem')?.value);
   const previousRecipeCategory = $('#recipeStockCategory')?.value || '';
   inventorySelectOptions($('#recipeStockCategory'), state.inventory.stockCategories.filter(row => row.active !== false).map(row => ({ value: row.id, label: row.name })), previousRecipeCategory);
   const recipeCategoryId = $('#recipeStockCategory')?.value || '';
   const recipeStockItems = state.inventory.items.filter(row => row.active !== false && (!recipeCategoryId || row.category_id === recipeCategoryId));
   inventorySelectOptions($('#recipeStockItem'), recipeStockItems.map(row => ({ value: row.id, label: `${row.name} · ${inventoryInternalUnit(row)}` })), $('#recipeStockItem')?.value);
+  const previousMonitorCategory = $('#recipeMonitorCategory')?.value || '';
+  inventorySelectOptions($('#recipeMonitorCategory'), [{ value: '', label: 'All menu categories' }, ...activeMenuCategories.map(row => ({ value: row.id, label: row.name }))], previousMonitorCategory);
+  const monitorCategoryId = $('#recipeMonitorCategory')?.value || '';
+  const recipeMenuIds = new Set(state.inventory.recipes.map(row => row.menu_item_id));
+  const monitorMenuItems = state.inventory.menuItems.filter(row => recipeMenuIds.has(row.id) && (!monitorCategoryId || row.category_id === monitorCategoryId));
+  inventorySelectOptions($('#recipeMonitorItem'), [{ value: '', label: 'All saved recipes' }, ...monitorMenuItems.map(row => ({ value: row.id, label: row.name }))], $('#recipeMonitorItem')?.value);
   inventorySelectOptions($('#wastageMenuItem'), state.inventory.menuItems.map(row => ({ value: row.id, label: row.name })), $('#wastageMenuItem')?.value);
   inventorySelectOptions($('#wastageStockItem'), state.inventory.items.filter(row => row.active !== false).map(row => ({ value: row.id, label: `${row.name} · ${inventoryInternalUnit(row)}` })), $('#wastageStockItem')?.value);
   inventorySelectOptions($('#packagingRuleItem'), state.inventory.items.filter(row => row.active !== false).map(row => ({ value: row.id, label: `${row.name} · ${inventoryInternalUnit(row)}` })), $('#packagingRuleItem')?.value);
@@ -3389,16 +3400,43 @@ function renderExpenseCategories() {
   list.innerHTML = categories.length ? categories.map(row => `<div class="daily-expense-row"><div><strong>${escapeHtml(row.name)}</strong><span>Active</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-expense-category="${row.id}">EDIT</button><button class="secondary danger" type="button" data-delete-expense-category="${row.id}">DELETE</button></div></div>`).join('') : '<div class="inventory-empty">Create the first expense category.</div>';
 }
 
+function recipeIngredientRow(row) {
+  const item = inventoryItem(row.inventory_item_id) || {};
+  const stockCategory = state.inventory.stockCategories.find(category => category.id === item.category_id)?.name || 'Uncategorised stock';
+  const quantity = Number(row.base_quantity || 0);
+  return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Stock item')}</strong><span>${escapeHtml(stockCategory)} · ${inventoryQty(quantity)} ${escapeHtml(inventoryInternalUnit(item, quantity))} per menu item${row.is_packaging ? ' · OPTIONAL PACKAGING' : ''}</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-recipe-menu="${row.menu_item_id}" data-edit-recipe-item="${row.inventory_item_id}">EDIT</button><button class="secondary danger" type="button" data-delete-recipe-menu="${row.menu_item_id}" data-delete-recipe-item="${row.inventory_item_id}">REMOVE</button></div></div>`;
+}
+
 function renderRecipeIngredients() {
   const list = $('#recipeIngredientList');
   if (!list) return;
   const menuItemId = $('#recipeMenuItem')?.value || '';
   const rows = state.inventory.recipes.filter(row => row.menu_item_id === menuItemId);
-  list.innerHTML = rows.length ? rows.map(row => {
-    const item = inventoryItem(row.inventory_item_id) || {};
-    const quantity = Number(row.base_quantity || 0);
-    return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Stock item')}</strong><span>${inventoryQty(quantity)} ${escapeHtml(inventoryInternalUnit(item, quantity))} per menu item${row.is_packaging ? ' · OPTIONAL PACKAGING' : ''}</span></div><div class="inventory-row-actions"><button class="secondary danger" type="button" data-delete-recipe-item="${row.inventory_item_id}">REMOVE</button></div></div>`;
-  }).join('') : '<div class="inventory-empty">No recipe ingredients configured for this menu item.</div>';
+  list.innerHTML = rows.length ? rows.map(recipeIngredientRow).join('') : '<div class="inventory-empty">No recipe ingredients configured for this menu item. Choose another menu item or use Saved Recipe Monitor below.</div>';
+}
+
+function renderRecipeMonitor() {
+  const list = $('#recipeMonitorList');
+  if (!list) return;
+  const categoryId = $('#recipeMonitorCategory')?.value || '';
+  const menuItemId = $('#recipeMonitorItem')?.value || '';
+  const menuItems = state.inventory.menuItems
+    .filter(menu => (!categoryId || menu.category_id === categoryId) && (!menuItemId || menu.id === menuItemId))
+    .map(menu => ({ menu, rows: state.inventory.recipes.filter(row => row.menu_item_id === menu.id) }))
+    .filter(group => group.rows.length)
+    .sort((a, b) => a.menu.name.localeCompare(b.menu.name));
+  const ingredientCount = menuItems.reduce((sum, group) => sum + group.rows.length, 0);
+  if ($('#recipeMonitorCount')) $('#recipeMonitorCount').textContent = `${menuItems.length} menu item${menuItems.length === 1 ? '' : 's'} · ${ingredientCount} ingredient${ingredientCount === 1 ? '' : 's'}`;
+  if (!menuItems.length) {
+    list.innerHTML = '<div class="inventory-empty">No saved recipes match these filters.</div>';
+    return;
+  }
+  const categoryName = menu => state.inventory.menuCategories.find(category => category.id === menu.category_id)?.name || 'Other menu items';
+  const categories = [...new Set(menuItems.map(group => categoryName(group.menu)))].sort((a, b) => a.localeCompare(b));
+  list.innerHTML = categories.map(name => {
+    const groups = menuItems.filter(group => categoryName(group.menu) === name);
+    return `<div class="request-group"><h3>${escapeHtml(name)}</h3>${groups.map(group => `<details class="recipe-monitor-group"${menuItemId ? ' open' : ''}><summary><div><strong>${escapeHtml(group.menu.name)}</strong><span>${group.rows.length} saved ingredient${group.rows.length === 1 ? '' : 's'}</span></div><b>${group.rows.length} ITEMS</b></summary><div class="recipe-monitor-lines">${group.rows.map(recipeIngredientRow).join('')}</div></details>`).join('')}</div>`;
+  }).join('');
 }
 
 function updatePackagingRuleFields() {
@@ -3514,11 +3552,39 @@ async function saveRecipeIngredient() {
   try {
     const item = inventoryItem(itemId);
     await inventoryApi('POST', { action: 'save_recipe', menuItemId, itemId, quantity, quantityUnit: item?.inventory_unit || item?.base_unit, isPackaging: $('#recipePackaging')?.value === 'YES' });
-    if ($('#recipeQuantity')) $('#recipeQuantity').value = '';
+    resetRecipeEditor();
     await loadInventory();
     toast('Recipe ingredient saved.', 'ok');
   } catch (error) { toast(error.message, 'bad'); }
   finally { button.disabled = false; }
+}
+
+function resetRecipeEditor() {
+  if ($('#recipeQuantity')) $('#recipeQuantity').value = '';
+  if ($('#recipePackaging')) $('#recipePackaging').value = 'NO';
+  if ($('#saveRecipeIngredient')) $('#saveRecipeIngredient').textContent = 'ADD INGREDIENT';
+  $('#cancelRecipeEdit')?.classList.add('hidden');
+}
+
+function editRecipeIngredient(menuItemId, itemId) {
+  const row = state.inventory.recipes.find(recipe => recipe.menu_item_id === menuItemId && recipe.inventory_item_id === itemId);
+  const menu = state.inventory.menuItems.find(entry => entry.id === menuItemId);
+  const item = inventoryItem(itemId);
+  if (!row || !menu || !item) return toast('This saved recipe ingredient could not be opened.', 'bad');
+  if ($('#recipeMenuCategory')) $('#recipeMenuCategory').value = menu.category_id || '';
+  fillInventoryControls();
+  if ($('#recipeMenuItem')) $('#recipeMenuItem').value = menuItemId;
+  if ($('#recipeStockCategory')) $('#recipeStockCategory').value = item.category_id || '';
+  fillInventoryControls();
+  if ($('#recipeMenuItem')) $('#recipeMenuItem').value = menuItemId;
+  if ($('#recipeStockItem')) $('#recipeStockItem').value = itemId;
+  if ($('#recipeQuantity')) $('#recipeQuantity').value = String(Number(row.base_quantity || 0));
+  if ($('#recipePackaging')) $('#recipePackaging').value = row.is_packaging ? 'YES' : 'NO';
+  if ($('#saveRecipeIngredient')) $('#saveRecipeIngredient').textContent = 'SAVE INGREDIENT CHANGES';
+  $('#cancelRecipeEdit')?.classList.remove('hidden');
+  renderRecipeIngredients();
+  updateRecipeQuantityUnit();
+  $('#recipeMenuCategory')?.closest('.inventory-tool-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function updateWastageFields() {
@@ -3552,11 +3618,11 @@ async function saveWastage() {
   finally { button.disabled = false; }
 }
 
-async function deleteRecipeIngredient(itemId) {
-  const menuItemId = $('#recipeMenuItem')?.value;
+async function deleteRecipeIngredient(menuItemId, itemId) {
   if (!menuItemId || !itemId || !window.confirm('Remove this ingredient from the menu recipe?')) return;
   try {
     await inventoryApi('POST', { action: 'delete_recipe', menuItemId, itemId });
+    resetRecipeEditor();
     await loadInventory();
     toast('Recipe ingredient removed.', 'ok');
   } catch (error) { toast(error.message, 'bad'); }
@@ -3657,6 +3723,7 @@ function renderInventory() {
   renderStockCategories();
   renderExpenseCategories();
   renderRecipeIngredients();
+  renderRecipeMonitor();
   renderPackagingRules();
   updateRecipeQuantityUnit();
   renderOpeningStock();
@@ -4213,10 +4280,14 @@ function wireInventoryActions() {
   $('#supplyReceiveDirect')?.addEventListener('click', () => generateSupplyBill(true));
   $('#inventoryCreateItem')?.addEventListener('click', createInventoryItem);
   ['#inventoryRequestUnit','#inventorySupplyUnit','#inventoryInternalUnit'].forEach(selector => $(selector)?.addEventListener('change', syncCreateConversionDefaults));
-  $('#recipeMenuItem')?.addEventListener('change', renderRecipeIngredients);
+  $('#recipeMenuCategory')?.addEventListener('change', () => { fillInventoryControls(); resetRecipeEditor(); renderRecipeIngredients(); });
+  $('#recipeMenuItem')?.addEventListener('change', () => { resetRecipeEditor(); renderRecipeIngredients(); });
   $('#recipeStockCategory')?.addEventListener('change', () => { fillInventoryControls(); updateRecipeQuantityUnit(); });
   $('#recipeStockItem')?.addEventListener('change', updateRecipeQuantityUnit);
   $('#saveRecipeIngredient')?.addEventListener('click', saveRecipeIngredient);
+  $('#cancelRecipeEdit')?.addEventListener('click', resetRecipeEditor);
+  $('#recipeMonitorCategory')?.addEventListener('change', () => { fillInventoryControls(); renderRecipeMonitor(); });
+  $('#recipeMonitorItem')?.addEventListener('change', renderRecipeMonitor);
   $('#packagingConsumptionType')?.addEventListener('change', updatePackagingRuleFields);
   $('#savePackagingRule')?.addEventListener('click', savePackagingRule);
   $('#packagingRuleList')?.addEventListener('click', event => {
@@ -4230,10 +4301,12 @@ function wireInventoryActions() {
   $('#saveInventoryItemChanges')?.addEventListener('click', saveInventoryItemChanges);
   $('#openingStockOutlet')?.addEventListener('change', renderOpeningStock);
   $('#confirmOpeningStock')?.addEventListener('click', confirmOpeningStock);
-  $('#recipeIngredientList')?.addEventListener('click', event => {
-    const button = event.target.closest('[data-delete-recipe-item]');
-    if (button) deleteRecipeIngredient(button.dataset.deleteRecipeItem);
-  });
+  ['#recipeIngredientList', '#recipeMonitorList'].forEach(selector => $(selector)?.addEventListener('click', event => {
+    const edit = event.target.closest('[data-edit-recipe-item]');
+    const remove = event.target.closest('[data-delete-recipe-item]');
+    if (edit) editRecipeIngredient(edit.dataset.editRecipeMenu, edit.dataset.editRecipeItem);
+    if (remove) deleteRecipeIngredient(remove.dataset.deleteRecipeMenu, remove.dataset.deleteRecipeItem);
+  }));
   $('#wastageType')?.addEventListener('change', updateWastageFields);
   $('#saveWastage')?.addEventListener('click', saveWastage);
   updateWastageFields();

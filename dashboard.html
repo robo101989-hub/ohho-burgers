@@ -1189,7 +1189,9 @@ body{font-size:14px}
 #inventory .inventory-quick-nav button{flex:0 0 auto;min-height:38px;padding:0 13px;border:1px solid #353733;border-radius:8px;background:#151614;color:#c7c9c3;font-size:10px;font-weight:760;letter-spacing:.35px}
 #inventory .inventory-quick-nav button:hover{border-color:#6a5a17;color:#ffd21c;background:#1a180f}
 .request-operations-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:-3px 0 16px;padding:12px;border:1px solid #30322f;border-radius:11px;background:#0c0d0c}.request-operations-toolbar button{min-height:38px!important;padding:8px 12px!important}.supply-submit-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.supply-submit-actions .inventory-wide-btn{margin:0}
+.recipe-editor-actions{display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:12px}.recipe-editor-actions .inventory-wide-btn{margin:0}.recipe-monitor{margin-top:18px;padding-top:18px;border-top:1px solid #2d2f2c}.recipe-monitor-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px}.recipe-monitor-head small{display:block;margin-bottom:5px;color:#d4b51e;font-size:9px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase}.recipe-monitor-head h3{margin:0;font-size:17px}.recipe-monitor-head span{color:#979993;font-size:10px}.recipe-monitor-filters{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}.recipe-monitor-group{margin-top:10px;border:1px solid #30322f;border-radius:11px;background:#111210;overflow:hidden}.recipe-monitor-group>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;cursor:pointer;list-style:none}.recipe-monitor-group>summary::-webkit-details-marker{display:none}.recipe-monitor-group>summary strong{display:block;color:#f0f0eb;font-size:13px}.recipe-monitor-group>summary span{display:block;margin-top:4px;color:#969892;font-size:10px}.recipe-monitor-group>summary b{color:#d9ba23;font-size:10px}.recipe-monitor-group>summary b::after{content:" · OPEN +"}.recipe-monitor-group[open]>summary{border-bottom:1px solid #292b28;background:#151614}.recipe-monitor-group[open]>summary b::after{content:" · CLOSE −"}.recipe-monitor-lines{padding:0 14px 10px}.recipe-monitor-lines .daily-expense-row{padding-left:2px;padding-right:2px}
 @media(max-width:760px){.request-operations-toolbar button{flex:1 1 calc(50% - 8px)}.supply-submit-actions{grid-template-columns:1fr}}
+@media(max-width:760px){.recipe-editor-actions,.recipe-monitor-filters{grid-template-columns:1fr}.recipe-monitor-head{align-items:flex-start;flex-direction:column}}
 #inventory .inventory-quick-nav button:focus-visible{outline:2px solid #ffd21c;outline-offset:2px}
 #inventory #stockRequestAdminPanel{scroll-margin-top:96px}
 #inventory .stock-request-list{gap:12px}
@@ -1365,14 +1367,23 @@ body{font-size:14px}
       <summary><span><small>POS automation</small><strong>Menu recipes</strong></span><b>OPEN</b></summary>
       <div class="inventory-tool-body">
       <div class="inventory-form-grid">
+        <label><span>MENU CATEGORY</span><select id="recipeMenuCategory"></select></label>
         <label><span>MENU ITEM</span><select id="recipeMenuItem"></select></label>
         <label><span>STOCK CATEGORY</span><select id="recipeStockCategory"></select></label>
         <label><span>STOCK ITEM</span><select id="recipeStockItem"></select></label>
         <label><span id="recipeQuantityLabel">RECIPE CONSUMPTION</span><div class="supply-line-actual"><input id="recipeQuantity" type="number" min="0.001" step="0.001" placeholder="0"><span id="recipeQuantityUnit">g</span></div></label>
         <label><span>INGREDIENT TYPE</span><select id="recipePackaging"><option value="NO">Food / stock ingredient</option><option value="YES">Optional packaging</option></select></label>
       </div>
-      <button id="saveRecipeIngredient" class="secondary inventory-wide-btn" type="button">ADD / UPDATE INGREDIENT</button>
+      <div class="recipe-editor-actions"><button id="saveRecipeIngredient" class="secondary inventory-wide-btn" type="button">ADD INGREDIENT</button><button id="cancelRecipeEdit" class="secondary hidden" type="button">CANCEL EDIT</button></div>
       <div id="recipeIngredientList" class="daily-expense-list"></div>
+      <section class="recipe-monitor">
+        <div class="recipe-monitor-head"><div><small>Saved recipe monitor</small><h3>All configured recipes</h3></div><span id="recipeMonitorCount">0 menu items · 0 ingredients</span></div>
+        <div class="recipe-monitor-filters">
+          <label><span>MENU CATEGORY</span><select id="recipeMonitorCategory"></select></label>
+          <label><span>MENU ITEM</span><select id="recipeMonitorItem"></select></label>
+        </div>
+        <div id="recipeMonitorList"></div>
+      </section>
       </div>
       </details>
       <details class="inventory-tool-card">
