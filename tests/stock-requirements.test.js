@@ -60,3 +60,41 @@ test('patty requirements stay in pieces despite kilogram billing', () => {
 test('gram targets convert to requested kilograms once', () => {
   assert.equal(calculateSuggestedRequirements({ outletId: 'outlet-1', items: [{ ...kg, target_stock_level: 5000, display_unit: 'G', supply_unit: 'KG', inventory_unit: 'G' }] })[0].quantity, 5);
 });
+
+const { closedSessionRequirementReview } = await import('../lib/stock-requirements.js');
+const closed = { id: 'session-1', outlet_id: 'outlet-1', opened_at: '2026-09-28T11:00:00Z', closed_at: '2026-09-28T20:00:00Z' };
+test('overnight close requests stock for the next trading day, not an extra day later', () => {
+  assert.deepEqual(closedSessionRequirementReview({ sessions: [closed], outletId: 'outlet-1' }), { key: 'outlet-1:session-1', requiredFor: '2026-09-29', existing: false });
+});
+test('latest open session suppresses stale closed-session suggestions', () => {
+  assert.equal(closedSessionRequirementReview({ sessions: [closed, { ...closed, id: 'session-2', opened_at: '2026-09-29T11:00:00Z', closed_at: null }], outletId: 'outlet-1' }), null);
+  assert.equal(closedSessionRequirementReview({ sessions: [closed], outletId: 'other' }), null);
+});
+test('existing next-session requests prevent a duplicate review, cancelled requests do not', () => {
+  const request = { outlet_id: 'outlet-1', required_for: '2026-09-29', status: 'SENT' };
+  const review = requests => closedSessionRequirementReview({ sessions: [closed], outletId: 'outlet-1', requests });
+  assert.equal(review([request]).existing, true);
+  assert.equal(review([{ ...request, status: 'CANCELLED' }]).existing, false);
+  assert.equal(review([{ ...request, outlet_id: 'other' }]).existing, false);
+});
+
+test('automatic review seeds once and preserves owner changes across refreshes', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const source = readFileSync(new URL('../src/dashboard.js', import.meta.url), 'utf8');
+  const fn = source.slice(source.indexOf('function prepareClosedSessionRequirements('), source.indexOf('function generateStockSuggestions('));
+  const date = { value: '' };
+  const inventory = { latestSessions: [closed], requests: [], requestLines: [], items: [piece], balances: [], bills: [] };
+  const context = { state: { profile: { role: 'OWNER' }, inventory }, $: selector => selector === '#stockRequestOutlet' ? { value: 'outlet-1' } : date, closedSessionRequirementReview, calculateSuggestedRequirements };
+  vm.createContext(context);
+  vm.runInContext(fn + '\nprepareClosedSessionRequirements();', context);
+  assert.equal(inventory.requestLines[0].quantity, 100);
+  assert.equal(date.value, '2026-09-29');
+  inventory.requestLines = [];
+  vm.runInContext('prepareClosedSessionRequirements();', context);
+  assert.equal(inventory.requestLines.length, 0, 'removed suggestions must not reappear on refresh');
+  inventory.requirementReviewKey = null;
+  inventory.requestLines = [{ itemId: 'bun', quantity: 7 }];
+  vm.runInContext('prepareClosedSessionRequirements();', context);
+  assert.equal(inventory.requestLines[0].quantity, 7);
+});

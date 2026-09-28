@@ -1308,12 +1308,33 @@ body{font-size:14px}
     <button type="button" data-inventory-scroll="inventoryBillingPanel" data-admin-only>BILLING</button>
     <button type="button" data-inventory-scroll="inventoryAdminSetup" data-admin-only>SETUP</button>
     <button type="button" data-inventory-scroll="openingStockPanel" data-admin-only>OPENING STOCK</button>
+    <button type="button" data-inventory-scroll="localPurchasesPanel">LOCAL PURCHASES</button>
     <button type="button" data-inventory-scroll="outletStockPanel">LIVE STOCK</button>
     <button type="button" data-inventory-scroll="inventoryRecords">SUPPLY BILLS</button>
     <button type="button" data-inventory-scroll="inventoryMovementPanel">STOCK HISTORY</button>
   <button class="secondary" type="button" data-inventory-scroll="packagingRulesPanel" data-admin-only>PACKAGING RULES</button>
     <button class="secondary" type="button" data-inventory-scroll="staffConsumptionPanel">STAFF CONSUMPTION</button>
     <button class="secondary" type="button" data-inventory-scroll="inventoryCostPanel">COST &amp; USAGE</button></nav>
+  <article id="localPurchasesPanel" class="inventory-panel">
+    <div class="inventory-panel-head"><div><div class="eyebrow">Bought by the outlet</div><h2>Local purchases</h2><p>Add items bought locally. Stock and purchase costs update together in the current session.</p></div></div>
+    <div class="inventory-form-grid">
+      <label><span>OUTLET</span><select id="localPurchaseOutlet"></select></label>
+      <label><span>STOCK ITEM</span><select id="localPurchaseItem"></select></label>
+      <label id="localPurchaseNameField" class="hidden"><span>NEW ITEM NAME</span><input id="localPurchaseName" maxlength="100" placeholder="e.g. Fresh mint"></label>
+      <label id="localPurchaseCategoryField" class="hidden"><span>NEW ITEM CATEGORY</span><select id="localPurchaseCategory"></select></label>
+      <label><span>QUANTITY RECEIVED</span><input id="localPurchaseQuantity" type="number" min="0.001" step="0.001" placeholder="0"></label>
+      <label><span>UNIT</span><select id="localPurchaseUnit"><option value="KG">Kilograms</option><option value="G">Grams</option><option value="L">Litres</option><option value="ML">Millilitres</option><option value="PIECE">Pieces</option></select></label>
+      <label><span>TOTAL PAID · ₹</span><input id="localPurchaseCost" type="number" min="0.01" step="0.01" placeholder="Total purchase cost"></label>
+      <label><span>PAYMENT</span><select id="localPurchasePayment"><option value="CASH">Cash</option><option value="UPI">UPI</option><option value="BANK">Bank</option><option value="OTHER">Other</option></select></label>
+      <label><span>SUPPLIER / NOTE · OPTIONAL</span><input id="localPurchaseNote" maxlength="300" placeholder="Shop name or receipt reference"></label>
+    </div>
+    <p id="localPurchaseSessionHint"></p>
+    <p>This cost is included once under stock purchases in your reports. Do not add the same purchase again in Daily Expenses. For packs, enter the total pieces, grams or millilitres received.</p>
+    <button id="saveLocalPurchase" class="primary inventory-wide-btn" type="button">SAVE LOCAL PURCHASE &amp; ADD STOCK</button>
+    <div class="inventory-panel-head"><h3>Local purchase history</h3><strong id="localPurchaseTotal">₹0</strong></div>
+    <p>Uses the outlet and session filters selected in Stock &amp; Supply.</p>
+    <div id="localPurchaseHistory" class="table-scroll"></div>
+  </article>
   <article id="wastagePanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">One-tap kitchen record</div><h2>Record Wastage</h2></div><span>Stock updates when saved</span></div>
     <div class="inventory-form-grid">
@@ -1509,6 +1530,7 @@ body{font-size:14px}
       <button id="supplyHistoryApply" class="primary" type="button">VIEW SESSION RECORDS</button>
       <button id="supplyHistoryClear" class="secondary" type="button">CLEAR</button>
     </div>
+    <label><span>PURCHASE SOURCE</span><select id="supplyPurchaseSource"><option value="ALL">All purchases</option><option value="CENTRAL">Central supply</option><option value="LOCAL">Local purchases</option></select></label>
     <div id="inventoryBillsList" class="inventory-bills-list"></div>
   </article>
   <article id="inventoryMovementPanel" class="inventory-panel inventory-table-panel">
