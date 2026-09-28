@@ -855,7 +855,9 @@ body{font-size:14px}
 #inventoryRecords .inventory-bill-items span{font-size:11px;font-weight:400}
 @media(max-width:600px){#inventoryRecords{padding:14px}#inventoryRecords .inventory-bill-top{flex-direction:column;gap:8px}#inventoryRecords .inventory-bill-total{text-align:left}#inventoryRecords .supply-source-filter{flex-basis:100%;margin-right:0}#inventoryRecords .bill-source{margin-left:0;display:table;margin-top:4px}}
 </style>
-</head>
+<style>
+#costing{color:#e8eae5}#costing .cost-heading{margin-bottom:24px}#costing h1{font:600 30px/1.3 var(--sans,sans-serif);letter-spacing:-.7px;margin:8px 0}#costing p{font-size:13px;line-height:1.6;color:#a2a79f;font-weight:400}#costing .cost-filters{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:20px}#costing [hidden]{display:none!important}#costing label{display:grid;gap:7px;min-width:200px;font-size:12px;color:#a2a79f}#costing select{height:40px;background:#131511;color:#eee;border:1px solid #373b32;border-radius:8px;padding:0 12px;font-size:13px}#costing .cost-layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:20px;align-items:start}#costing .cost-card{border:1px solid #33382e;background:#11140f;border-radius:12px;padding:22px;margin-bottom:18px}#costing h2{font-size:17px;font-weight:500;margin:0 0 16px}#costing .cost-card-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline}#costing .cost-card-head span,#costing .cost-summary>span{color:#969e8c;font-size:11px}#costing .cost-summary h2{margin-top:16px}#costing .cost-figure{font-size:30px;font-weight:600;color:#ffd900}#costing dl{display:grid;grid-template-columns:1fr auto;gap:16px 12px;font-size:13px;margin:24px 0}#costing dd{margin:0;text-align:right}#costing dt{color:#a2a79f}#costing .cost-note{font-size:12px;border-top:1px solid #30362b;padding-top:16px;margin-top:20px}#costing .cost-table{overflow:auto}#costing table{width:100%;border-collapse:collapse;min-width:480px;text-align:left}#costing td,#costing th{padding:13px 8px;border-bottom:1px solid #2c3227;font-size:13px;font-weight:400}#costing th{color:#969e8c;font-size:11px}#costing td:last-child,#costing th:last-child{text-align:right}#costing .cost-empty{padding:30px;border:1px dashed #33382e;border-radius:12px}@media(max-width:1000px){#costing .cost-layout{grid-template-columns:1fr}#costing .cost-filters label{flex:1;min-width:160px}}
+</style></head>
 <body>
 <div class="app">
 <aside class="sidebar">
@@ -866,6 +868,7 @@ body{font-size:14px}
     <button class="nav-btn" data-section="pos"><span class="nav-ico">＋</span>POS</button>
     <button class="nav-btn" data-section="orders"><span class="nav-ico">≡</span>Orders</button>
     <button class="nav-btn" data-section="menu"><span class="nav-ico">▦</span>Menu</button>
+    <button class="nav-btn" data-section="costing"><span class="nav-ico">◷</span>Menu &amp; Order Costing</button>
     <button class="nav-btn" data-section="inventory"><span class="nav-ico">▤</span>Stock &amp; Supply</button>
     <button class="nav-btn" data-section="daily-expenses"><span class="nav-ico">₹</span>Daily Expenses</button>
     <button class="nav-btn" data-section="outlets"><span class="nav-ico">⌖</span>Outlets</button>
@@ -914,7 +917,7 @@ body{font-size:14px}
       <div><span>DAILY EXPENSES</span><strong id="overviewOperationsExpenses">₹0</strong></div>
       <div class="net"><span>OPERATIONAL AMOUNT</span><strong id="overviewOperationsNet">₹0</strong></div>
     </div>
-    <div id="overviewUtilisation"></div>
+
   </article>
   <div class="command">
     <article class="panel live"><div class="panel-head"><div><div class="panel-title">Live orders</div><div class="panel-sub">Current queue from active outlet sessions</div></div><span id="overviewLiveCount" class="panel-meta">0 LIVE</span></div><button type="button" class="secondary" data-collapse-panel="overviewLiveOrders" aria-expanded="true">CLOSE</button><div id="overviewLiveOrders" class="overview-live-orders"><div class="empty"><div><div class="empty-icon">⌁</div><strong>Your order queue is clear.</strong><p>New POS orders will appear here automatically.</p></div></div></div></article>
@@ -1376,7 +1379,7 @@ body{font-size:14px}
     <button type="button" data-inventory-scroll="inventoryMovementPanel">STOCK HISTORY</button>
   <button class="secondary" type="button" data-inventory-scroll="packagingRulesPanel" data-admin-only>PACKAGING RULES</button>
     <button class="secondary" type="button" data-inventory-scroll="staffConsumptionPanel">STAFF CONSUMPTION</button>
-    <button class="secondary" type="button" data-inventory-scroll="inventoryCostPanel">COST &amp; USAGE</button></nav>
+</nav>
   <article id="localPurchasesPanel" class="inventory-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Bought by the outlet</div><h2>Local purchases</h2><p>Record locally bought items in your outlet stock and session costs.</p></div></div>
     <div class="inventory-form-grid local-purchase-form">
@@ -1568,7 +1571,7 @@ body{font-size:14px}
     <div class="inventory-master-toolbar"><label><span>CATEGORY</span><select id="inventoryMasterCategory"></select></label><label><span>SEARCH ITEM</span><input id="inventoryMasterSearch" type="search" placeholder="Search name or SKU"></label></div>
     <div id="inventoryMasterList" class="inventory-master-groups"></div>
   </details>
-  <article id="inventoryCostPanel" class="inventory-panel"><div id="inventoryUtilisation"></div></article>
+
   <article id="outletStockPanel" class="inventory-panel inventory-table-panel">
     <div class="inventory-panel-head"><div><div class="eyebrow">Live balances</div><h2>Outlet stock</h2></div><span id="inventoryStockCount">0 items</span></div>
     <div class="inventory-master-toolbar"><label><span>CATEGORY</span><select id="liveStockCategory"><option value="">All categories</option></select></label><label><span>SEARCH STOCK</span><input id="liveStockSearch" type="search" placeholder="Item name or SKU"></label><label><span>AVAILABILITY</span><select id="liveStockStatus"><option value="">All stock</option><option value="in">In stock</option><option value="low">Low stock</option><option value="out">Out of stock</option></select></label></div>
@@ -1599,6 +1602,12 @@ body{font-size:14px}
     <div id="inventoryMovementList" class="inventory-movement-list"></div>
   </article>
 </section>
+<section id="costing" class="section">
+<div class="cost-heading"><div class="eyebrow">Kitchen control / Costing</div><h1>Menu &amp; order costing</h1><p>Recipes linked to stock. A clear view of ingredients, packaging and cost.</p></div>
+<div class="cost-filters"><label>View<select id="costingMode"><option value="menu">Per menu item</option><option value="order">Per order</option><option value="category">Stock categories</option></select></label><label>Outlet<select id="costingOutlet"></select></label></div>
+<div id="costingMenuFilters" class="cost-filters"><label>Category<select id="costingCategory"></select></label><label>Menu item<select id="costingMenu"></select></label><label>Service<select id="costingService"><option value="DINE_IN">Dine-in</option><option value="TAKEAWAY">Takeaway / delivery</option></select></label></div>
+<div id="costingOrderFilter" class="cost-filters" hidden><label>Order · loaded order history<select id="costingOrder"></select></label></div>
+<div id="costingContent" aria-live="polite"></div></section>
 <section id="daily-expenses" class="section">
   <div class="page-head"><div><div class="eyebrow">Outlet session expense book</div><h1>Session Expense Management</h1><p>Owners record actual outlet expenses. Admin reviews them inside complete opening-to-closing sessions.</p></div><button id="expenseRefreshBtn" class="primary" type="button">REFRESH</button></div>
   <div class="expense-flow"><div><b>1</b><span><strong>OWNER ADDS EXPENSE</strong><small>Expenses → category, amount and note</small></span></div><div><b>2</b><span><strong>ADMIN CHECKS HERE</strong><small>Expenses → session tables and custom session dates</small></span></div><div><b>3</b><span><strong>FINAL REPORT</strong><small>Reports → session sales, stock cost, expenses and net</small></span></div></div>
@@ -1737,9 +1746,7 @@ body{font-size:14px}
         <div class="report-stat-card free"><span>NET AFTER EXPENSES</span><strong id="financialNet">₹0</strong></div>
       </div>
     </div>
-    <div class="report-panel">
-      <div id="reportUtilisation"></div>
-    </div>
+
     <div class="report-split-grid">
       <div class="report-panel">
         <div class="report-section-head"><div><div class="eyebrow">Payment collection</div><h2>Paid sales</h2></div></div>

@@ -10,9 +10,9 @@ import { defaultNetQuantity, standardConversion, unitLabel, stockRequestUnit, re
 import { recordIsInOpenSessions, recordIsInSessions, selectCompletedSessions } from '../lib/session-reporting.js';
 
 const ROLE_PERMISSIONS = {
-  ADMIN: ['overview', 'pos', 'orders', 'menu', 'inventory', 'daily-expenses', 'outlets', 'staff', 'reports', 'settings'],
-  OWNER: ['overview', 'pos', 'orders', 'menu', 'inventory', 'daily-expenses', 'outlets', 'reports'],
-  MANAGER: ['overview', 'pos', 'orders', 'menu', 'inventory', 'reports'],
+  ADMIN: ['overview', 'pos', 'orders', 'menu', 'costing', 'inventory', 'daily-expenses', 'outlets', 'staff', 'reports', 'settings'],
+  OWNER: ['overview', 'pos', 'orders', 'menu', 'costing', 'inventory', 'daily-expenses', 'outlets', 'reports'],
+  MANAGER: ['overview', 'pos', 'orders', 'menu', 'costing', 'inventory', 'reports'],
   STAFF: ['overview', 'pos', 'orders', 'menu']
 };
 
@@ -3828,7 +3828,7 @@ function renderInventory() {
     masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}${item.active === false ? ' · INACTIVE' : ''}</strong><small>${escapeHtml(item.sku)} · REQUEST ${escapeHtml(unitLabel(item.request_unit).toUpperCase())} × ${inventoryQty(item.request_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · BILL ${escapeHtml(unitLabel(item.billing_unit || item.supply_unit).toUpperCase())} × ${inventoryQty(item.billing_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · LOW ${inventoryQty(item.low_stock_threshold)} · TARGET ${inventoryQty(item.target_stock_level)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${inventoryBillingUnit(item)}` : 'SET RATE'}</b><div class="inventory-row-actions"><button type="button" data-inventory-edit-item="${item.id}">EDIT</button><button class="danger" type="button" data-inventory-delete-item="${item.id}">DEACTIVATE</button></div></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
   }
 
-  renderUtilisation('#inventoryUtilisation', { session:true });
+  renderCostingScreen();
   const stockList = $('#inventoryStockList');
   const selectedCategory = $('#liveStockCategory')?.value || '';
   inventorySelectOptions($('#liveStockCategory'), [{ value: '', label: 'All categories' }, ...state.inventory.stockCategories.map(c => ({ value:c.id, label:c.name })), { value:'unassigned', label:'Unassigned' }], selectedCategory);
@@ -4826,6 +4826,7 @@ function wireDashboardActions() {
     if (button && !button.disabled) void deleteCustomerReview(button.dataset.reviewDelete, button);
     if (event.target.closest('[data-review-retry]')) void loadCustomerReviews();
   });
+  ['#costingOutlet','#costingCategory','#costingMenu','#costingService','#costingMode','#costingOrder'].forEach(id => $(id)?.addEventListener('change',renderCostingScreen));
   $$('.nav-btn[data-section]').forEach(button => button.addEventListener('click', () => {
     let id = button.dataset.section;
     const role = state.profile?.role || '';
@@ -4842,7 +4843,8 @@ function wireDashboardActions() {
         toast(error.message || 'Unable to refresh reports.', 'bad');
       });
     }
-    if (id === 'inventory' || id === 'daily-expenses') loadInventory().catch(error => { console.error('Unable to load stock and expense records:', error); toast(error.message || 'Unable to load records.', 'bad'); });
+    if (id === 'costing') loadReports().then(renderCostingScreen).catch(error => toast(error.message, 'bad'));
+    if (id === 'costing' || id === 'inventory' || id === 'daily-expenses') loadInventory().catch(error => { console.error('Unable to load stock and expense records:', error); toast(error.message || 'Unable to load records.', 'bad'); });
   }));
 
   $$('#overview [data-section]').forEach(button => button.addEventListener('click', () => {
@@ -5466,6 +5468,42 @@ function operationsLedgerRows(snapshot) {
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+function renderCostingScreen() {
+  const host = $('#costingContent');
+  if (!host) return;
+  const inv = state.inventory;
+  const pick = (id, rows) => inventorySelectOptions($(id), rows, $(id)?.value);
+  pick('#costingOutlet', (inv.outlets || []).map(o=>({value:o.id,label:o.name})));
+  pick('#costingCategory', (inv.menuCategories || []).map(c=>({value:c.id,label:c.name})));
+  const menus = (inv.menuItems || []).filter(m=>!m.is_archived && m.category_id === $('#costingCategory').value);
+  pick('#costingMenu', menus.map(m=>({value:m.id,label:m.name})));
+  const outlet = $('#costingOutlet').value;
+  const mode = $('#costingMode').value;
+  const money = n => n === null ? 'Unavailable' : formatReportMoney(n);
+  const table = rows => `<div class="cost-table"><table><thead><tr><th>Ingredient / stock item</th><th>Portion</th><th>Rate / unit</th><th>Cost</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${inventoryQty(r.quantity)} ${escapeHtml(unitLabel(r.unit))}</td><td>${money(r.cost === null || r.priced === false || !r.quantity ? null : r.cost/r.quantity)}</td><td>${money(r.cost === null || r.priced === false ? null : r.cost)}</td></tr>`).join('')}</tbody></table></div>`;
+  const orders = (state.reportOrders || []).filter(o=>o.outlet_id===outlet && isReportableOrder(o));
+  const usage = orderUtilisation(orders,inv.movements||[],inv.items||[],inv.bills||[]);
+  $('#costingMenuFilters').hidden = mode !== 'menu';
+  $('#costingOrderFilter').hidden = mode !== 'order';
+  if (mode === 'menu') {
+    const menu = menus.find(m=>m.id===$('#costingMenu').value);
+    if (!menu) { host.innerHTML='<p class="cost-empty">No menu items available in this category.</p>'; return; }
+    const rows = recipeCostLines(menu.id,inv.recipes||[],inv.items||[],outlet,inv.bills||[],inv.movements||[],$('#costingService').value);
+    const complete = rows.length>0 && rows.every(r=>r.cost!==null);
+    const total = complete ? rows.reduce((s,r)=>s+r.cost,0) : null;
+    const price = Number(menu.price || 0);
+    host.innerHTML=`<div class="cost-layout"><div><article class="cost-card"><div class="cost-card-head"><h2>${escapeHtml(menu.name)}</h2><span>1 serving</span></div><p>Selling price <strong>${money(price)}</strong> · ${escapeHtml($('#costingService').selectedOptions[0].textContent)}</p></article><article class="cost-card"><div class="cost-card-head"><h2>Ingredient recipe</h2><span>Average inventory purchase rates</span></div>${rows.length ? table(rows) : '<p>No recipe configured for this item.</p>'}<p class="cost-note">Includes packaging saved in this recipe. Separate order packaging rules are reflected in recorded order usage.</p></article></div><aside class="cost-card cost-summary"><span>PER SERVING</span><h2>Recipe cost</h2><strong class="cost-figure">${money(total)}</strong><dl><dt>Selling price</dt><dd>${money(price)}</dd><dt>Recipe cost %</dt><dd>${total!==null&&price>0?(total/price*100).toFixed(1)+'%':'Unavailable'}</dd><dt>Balance after recipe cost</dt><dd>${money(total===null?null:price-total)}</dd></dl><p class="cost-note">Estimated from current recipes and inventory rates. Labour, overhead, discounts and platform fees are excluded. This balance is not net profit.</p></aside></div>`;
+  } else if (mode === 'order') {
+    pick('#costingOrder',usage.map(e=>({value:e.order.id,label:`#${e.order.order_number || e.order.id} · ${inventoryDate(e.order.created_at)}`})));
+    const entry=usage.find(e=>e.order.id===$('#costingOrder').value);
+    host.innerHTML=entry?`<div class="cost-layout"><article class="cost-card"><h2>Recorded ingredients & packaging</h2>${entry.usage.length?table(entry.usage):'<p>No saved stock deductions for this order.</p>'}</article><aside class="cost-card cost-summary"><span>ORDER #${escapeHtml(entry.order.order_number||entry.order.id)}</span><h2>Estimated stock cost</h2><strong class="cost-figure">${money(entry.complete?entry.cost:null)}</strong><p class="cost-note">Saved quantities include deducted packaging. Costs use available received rates; incomplete usage or prices are shown as unavailable.</p></aside></div>`:'<p class="cost-empty">No orders available for this outlet.</p>';
+  } else {
+    const grouped=new Map();
+    for(const e of usage) for(const r of e.usage){const key=r.itemId+':'+r.unit;const g=grouped.get(key)||{...r,quantity:0,cost:0,priced:true};g.quantity+=r.quantity;g.cost+=r.cost||0;g.priced=g.priced&&r.priced;grouped.set(key,g);}
+    host.innerHTML=(inv.stockCategories||[]).concat([{id:null,name:'Uncategorized'}]).map(c=>{const rows=[...grouped.values()].filter(r=>c.id?r.categoryId===c.id:!(inv.stockCategories||[]).some(x=>x.id===r.categoryId));return rows.length?`<article class="cost-card"><h2>${escapeHtml(c.name)}</h2>${table(rows)}</article>`:'';}).join('')||'<p class="cost-empty">No recorded stock usage for this outlet.</p>';
+  }
+}
+
 function renderUtilisation(target, bounds) {
   const node = $(target);
   if (!node) return;
@@ -5537,7 +5575,7 @@ function overviewOperationsBounds() {
 }
 
 function renderOverviewOperations() {
-  if (!$('#overviewUtilisation')) return;
+  if (!$('#overviewOperationsSales')) return;
   const bounds = overviewOperationsBounds();
   const snapshot = operationsSnapshot(bounds);
   if ($('#overviewOperationsSales')) $('#overviewOperationsSales').textContent = formatReportMoney(snapshot.sales);
@@ -5548,7 +5586,7 @@ function renderOverviewOperations() {
   if ($('#overviewOperationsRangeLabel')) $('#overviewOperationsRangeLabel').textContent = bounds.session ? 'Current open session' : `${bounds.sessions?.length || 0} complete session${bounds.sessions?.length === 1 ? '' : 's'} · closed ${bounds.from === bounds.to ? bounds.from : `${bounds.from} to ${bounds.to}`}`;
   if ($('#overviewOperationsFrom') && bounds.from) $('#overviewOperationsFrom').value = bounds.from;
   if ($('#overviewOperationsTo') && bounds.to) $('#overviewOperationsTo').value = bounds.to;
-  renderUtilisation('#overviewUtilisation', bounds);
+
 }
 
 function downloadOperationsHistory(snapshot, rangeLabel, filePrefix = 'operations') {
@@ -5742,7 +5780,7 @@ function renderReportDashboard() {
   if ($('#financialDailyExpenses')) $('#financialDailyExpenses').textContent = formatReportMoney(operations.dailyExpenses);
   if ($('#financialTotalExpenses')) $('#financialTotalExpenses').textContent = formatReportMoney(totalExpenses);
   if ($('#financialNet')) $('#financialNet').textContent = formatReportMoney(operations.net);
-  renderUtilisation('#reportUtilisation', reportDateBounds());
+  renderCostingScreen();
   renderItemWiseSales(orders);
   renderSalesReports(reports);
 }
@@ -6295,7 +6333,7 @@ function startLiveDashboardRefresh() {
       await loadOutlets();
       await loadOrders({ silent: true });
       if (state.selectedSection === 'reports') await loadReports();
-      if (['overview', 'inventory', 'daily-expenses', 'pos', 'reports'].includes(state.selectedSection) && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) await loadInventory();
+      if (['overview', 'inventory', 'costing', 'daily-expenses', 'pos', 'reports'].includes(state.selectedSection) && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) await loadInventory();
     } catch (error) {
       console.error('Unable to refresh live dashboard feed:', error);
     } finally {
