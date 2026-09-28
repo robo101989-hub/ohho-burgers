@@ -32,3 +32,16 @@ test('recipe cost respects dine-in and takeaway ingredients',()=>{
  assert.equal(recipeCostLines('m',recipes,items,'a',[],[],'DINE_IN').reduce((s,l)=>s+l.cost,0),1.5);
  assert.equal(recipeCostLines('m',recipes,items,'a',[],[],'TAKEAWAY').reduce((s,l)=>s+l.cost,0),3);
 });
+
+test('current patty setup costs 350 / 11.11 while received costing stays unchanged',()=>{
+ const item={id:'patty',name:'Patty',inventory_unit:'EACH',billing_to_inventory:11.11,default_supply_price:350};
+ const recipes=[{menu_item_id:'burger',inventory_item_id:'patty',usage_type:'FOOD',base_quantity:1}];
+ const bills=[{outlet_id:'a',receipt_status:'RECEIVED',supply_bill_items:[{item_id:'patty',base_quantity:10,line_total:405.6,inventory_unit:'EACH'}]}];
+ const configured=recipeCostLines('burger',recipes,[item],'a',bills,[],'DINE_IN','CONFIGURED')[0];
+ assert.ok(Math.abs(configured.cost-350/11.11)<0.000001);
+ assert.equal(configured.costBasis,'Configured item price');
+ assert.equal(recipeCostLines('burger',recipes,[item],'a',bills,[],'DINE_IN')[0].cost,40.56);
+ const fallback=recipeCostLines('burger',recipes,[{...item,default_supply_price:0}],'a',bills,[],'DINE_IN','CONFIGURED')[0];
+ assert.equal(fallback.cost,40.56);
+ assert.equal(fallback.costBasis,'Received purchase average');
+});
