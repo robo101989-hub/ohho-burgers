@@ -3483,9 +3483,13 @@ function renderRecipeMonitor() {
 
 function updatePackagingRuleFields() {
   const type = $('#packagingConsumptionType')?.value || 'PER_ORDER';
-  $('#packagingMenuItemField')?.classList.toggle('hidden', type !== 'PER_MENU_ITEM');
-  $('#packagingMenuCategoryField')?.classList.toggle('hidden', type !== 'PER_MENU_CATEGORY');
-  $('#packagingOrderSizeField')?.classList.toggle('hidden', type !== 'PER_ORDER_SIZE');
+  const sizeRule = ['PER_ORDER_SIZE','MINIMUM_ITEM_SIZE','MINIMUM_CATEGORY_SIZE'].includes(type);
+  $('#packagingMenuItemField')?.classList.toggle('hidden', !['PER_MENU_ITEM','MINIMUM_ITEM_SIZE'].includes(type));
+  $('#packagingMenuCategoryField')?.classList.toggle('hidden', !['PER_MENU_CATEGORY','MINIMUM_CATEGORY_SIZE'].includes(type));
+  $('#packagingGroupField')?.classList.toggle('hidden', !sizeRule);
+  $('#packagingOrderSizeField')?.classList.toggle('hidden', !sizeRule);
+  if ($('#packagingOrderSizeLabel')) $('#packagingOrderSizeLabel').textContent = type === 'PER_ORDER_SIZE' ? 'ORDER ITEM COUNT' : 'MINIMUM PACKAGE SIZE';
+  if ($('#packagingQuantityLabel')) $('#packagingQuantityLabel').textContent = type === 'MINIMUM_ITEM_SIZE' || type === 'MINIMUM_CATEGORY_SIZE' ? 'BAGS PER MATCHING MENU ITEM' : type === 'PER_ORDER_SIZE' ? 'BAGS PER ORDER' : 'QUANTITY';
 }
 
 function renderPackagingRules() {
@@ -3496,11 +3500,14 @@ function renderPackagingRules() {
     const item = inventoryItem(rule.item_id) || {};
     const target = rule.consumption_type === 'PER_ORDER_SIZE'
       ? `${({ SMALL: 'Small · 1 item', MEDIUM: 'Medium · 2 items', LARGE: 'Large · 3+ items' })[rule.order_size_tier] || 'Order size'}`
+      : ['MINIMUM_ITEM_SIZE','MINIMUM_CATEGORY_SIZE'].includes(rule.consumption_type)
+      ? `minimum ${rule.order_size_tier?.toLowerCase() || 'size'} for ${rule.consumption_type === 'MINIMUM_ITEM_SIZE' ? state.inventory.menuItems.find(row => row.id === rule.menu_item_id)?.name || 'menu item' : state.inventory.menuCategories.find(row => row.id === rule.menu_category_id)?.name || 'category'}`
       : rule.consumption_type === 'PER_MENU_ITEM'
       ? state.inventory.menuItems.find(row => row.id === rule.menu_item_id)?.name
       : rule.consumption_type === 'PER_MENU_CATEGORY'
         ? state.inventory.menuCategories.find(row => row.id === rule.menu_category_id)?.name : 'whole order';
-    return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Stock item')}</strong><span>${escapeHtml((rule.order_types || []).join(' · '))} · ${escapeHtml(rule.consumption_type.replaceAll('_',' '))} · ${inventoryQty(rule.consumption_quantity)} ${escapeHtml(inventoryInternalUnit(item, rule.consumption_quantity))} · ${escapeHtml(target || 'Unknown mapping')}${rule.active === false ? ' · INACTIVE' : ''}</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-packaging-rule="${rule.id}">EDIT</button><button class="secondary danger" type="button" data-deactivate-packaging-rule="${rule.id}">DEACTIVATE</button></div></div>`;
+    const group = ({ BROWN_BAG: 'Brown bag', CARRY_BAG: 'Carry bag', PIZZA_PACKAGING: 'Pizza packaging' })[rule.packaging_group];
+    return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Stock item')}</strong><span>${group ? `${escapeHtml(group)} · ` : ''}${escapeHtml((rule.order_types || []).join(' · '))} · ${escapeHtml(rule.consumption_type.replaceAll('_',' '))} · ${inventoryQty(rule.consumption_quantity)} ${escapeHtml(inventoryInternalUnit(item, rule.consumption_quantity))} · ${escapeHtml(target || 'Unknown mapping')}${rule.active === false ? ' · INACTIVE' : ''}</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-packaging-rule="${rule.id}">EDIT</button><button class="secondary danger" type="button" data-deactivate-packaging-rule="${rule.id}">DEACTIVATE</button></div></div>`;
   }).join('') : '<div class="inventory-empty">No order-use stock rules configured.</div>';
 }
 
@@ -3614,6 +3621,7 @@ function editPackagingRule(rule) {
   state.inventory.editingPackagingRuleId = rule.id;
   if ($('#packagingRuleItem')) $('#packagingRuleItem').value = rule.item_id;
   if ($('#packagingConsumptionType')) $('#packagingConsumptionType').value = rule.consumption_type;
+  if ($('#packagingGroup')) $('#packagingGroup').value = rule.packaging_group || 'BROWN_BAG';
   if ($('#packagingQuantity')) $('#packagingQuantity').value = Number(rule.consumption_quantity);
   if ($('#packagingMenuItem')) $('#packagingMenuItem').value = rule.menu_item_id || '';
   if ($('#packagingMenuCategory')) $('#packagingMenuCategory').value = rule.menu_category_id || '';
@@ -3629,7 +3637,7 @@ async function savePackagingRule() {
   const orderTypes = [['DINE_IN','#packagingDineIn'],['TAKEAWAY','#packagingTakeaway'],['DELIVERY','#packagingDelivery']].filter(([,selector]) => $(selector)?.checked).map(([value]) => value);
   const button = $('#savePackagingRule'); button.disabled = true;
   try {
-    await inventoryApi('POST', { action: 'save_packaging_rule', ruleId: state.inventory.editingPackagingRuleId, itemId: $('#packagingRuleItem')?.value, orderTypes, consumptionType: $('#packagingConsumptionType')?.value, orderSizeTier: $('#packagingOrderSizeTier')?.value, quantity: $('#packagingQuantity')?.value, menuItemId: $('#packagingMenuItem')?.value, menuCategoryId: $('#packagingMenuCategory')?.value });
+    await inventoryApi('POST', { action: 'save_packaging_rule', ruleId: state.inventory.editingPackagingRuleId, itemId: $('#packagingRuleItem')?.value, orderTypes, consumptionType: $('#packagingConsumptionType')?.value, packagingGroup: $('#packagingGroup')?.value, orderSizeTier: $('#packagingOrderSizeTier')?.value, quantity: $('#packagingQuantity')?.value, menuItemId: $('#packagingMenuItem')?.value, menuCategoryId: $('#packagingMenuCategory')?.value });
     state.inventory.editingPackagingRuleId = null;
     button.textContent = 'SAVE USAGE RULE';
     await loadInventory();
