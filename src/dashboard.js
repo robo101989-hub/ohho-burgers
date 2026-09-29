@@ -3298,7 +3298,7 @@ function fillInventoryControls() {
   $('#packagingRulesPanel')?.classList.toggle('hidden', !admin);
   if ($('#inventoryAdminWorkspace')) $('#inventoryAdminWorkspace').style.display = admin ? '' : 'none';
   if ($('#staffConsumptionPanel')) $('#staffConsumptionPanel').style.display = ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role) ? '' : 'none';
-  if ($('#staffRuleSetupPanel')) $('#staffRuleSetupPanel').style.display = admin ? '' : 'none';
+  if ($('#staffRuleSetupPanel')) $('#staffRuleSetupPanel').style.display = (admin || owner) ? '' : 'none';
   if ($('#requestOperationsToolbar')) $('#requestOperationsToolbar').style.display = admin ? '' : 'none';
   $$('#inventoryQuickNav [data-admin-only]').forEach(button => button.classList.toggle('hidden', !admin));
   if ($('#inventoryPageTitle')) $('#inventoryPageTitle').textContent = admin ? 'Stock & Supply Management' : 'Stock Requirements & Supply Bills';
@@ -3587,7 +3587,7 @@ function renderStaffConsumption() {
     const total = Number(rule.quantity_per_staff || 0) * (perSession ? 1 : count);
     const calculation = perSession ? `${inventoryQty(rule.quantity_per_staff)} per session` : `${inventoryQty(rule.quantity_per_staff)} × ${count} staff`;
     return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Consumable')}</strong><span>${calculation}</span></div><b>${inventoryQty(total)} ${escapeHtml(inventoryInternalUnit(item, total))}</b></div>`;
-  }).join('') : `<div class="inventory-empty">${activeRules.length ? 'Enter the number of staff to preview consumption.' : state.profile?.role === 'ADMIN' ? 'Set the quantity used by one staff member above, then save it.' : 'Admin must configure staff consumable rules first.'}</div>`;
+  }).join('') : `<div class="inventory-empty">${activeRules.length ? 'Enter the number of staff to preview consumption.' : ['ADMIN','OWNER'].includes(state.profile?.role) ? 'Set the quantity used by one staff member above, then save it.' : 'Admin or Owner must configure staff consumable rules first.'}</div>`;
   const events = (state.inventory.staffEvents || []).filter(event => !outletId || event.outlet_id === outletId).slice(0, 8);
   history.innerHTML = events.length ? `<div class="request-group"><h3>RECENT CONFIRMATIONS</h3>${events.map(event => `<div class="daily-expense-row"><div><strong>${event.staff_count} staff confirmed</strong><span>${inventoryDate(event.confirmed_at)} · ${(event.staff_consumption_event_items || []).length} consumables</span></div></div>`).join('')}</div>` : '';
 }
