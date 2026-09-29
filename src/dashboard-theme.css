@@ -137,3 +137,53 @@ body #spinSettingsPanel .spin-campaign-tip p{margin:5px 0;font-size:13px}
 body #spinSettingsPanel #saveSpinSettingsBtn{justify-self:start}
 @media(max-width:1200px){body #spinSettingsPanel .spin-prize-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){body #spinSettingsPanel .spin-prize-cards{grid-template-columns:1fr}}
+
+/* Keep dense history and costing data readable on phone screens. */
+@media(max-width:600px){
+  body .main,body .content,body .content>.section,body .content>.section.active,
+  body .content #costing,body .content #costing .cost-layout,
+  body .content #costing .cost-layout>* ,body .content .sales-reports-list,
+  body .content .sales-report-card,body .content .expense-session-group,
+  body .content #inventoryMovementList{min-width:0;max-width:100%}
+
+  /* Expense history: each record becomes a compact card instead of a wide table. */
+  body .content .expense-table-scroll{width:100%;max-width:100%;overflow:visible}
+  body .content .expense-session-table{width:100%;min-width:0;table-layout:fixed}
+  body .content .expense-session-table thead{display:none}
+  body .content .expense-session-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 12px;padding:10px 0;border-bottom:1px solid #2c3227}
+  body .content .expense-session-table tbody td{min-width:0;padding:5px 8px;border:0;overflow-wrap:anywhere}
+  body .content .expense-session-table tbody td:nth-child(1){grid-column:1;grid-row:1;color:#aeb69f;font-size:11px}
+  body .content .expense-session-table tbody td:nth-child(2){grid-column:1;grid-row:2;color:#dce1d4}
+  body .content .expense-session-table tbody td:nth-child(3){grid-column:1/-1;grid-row:3;color:#a2aa98;font-size:12px}
+  body .content .expense-session-table tbody td:nth-child(4){grid-column:2;grid-row:1;color:#f1d755;text-align:right;white-space:nowrap}
+  body .content .expense-session-table tbody td:nth-child(5){grid-column:1/-1;grid-row:4;display:flex;gap:8px;flex-wrap:wrap}
+  body .content .expense-session-table tfoot tr{display:flex;justify-content:space-between;gap:12px;padding-top:10px}
+  body .content .expense-session-table tfoot th{padding:8px 4px;border:0}
+
+  /* Stock movement history: show the item and activity without horizontal panning. */
+  body .content #inventoryMovementList{overflow-x:hidden;overflow-y:auto}
+  body .content #inventoryMovementList .inventory-movement-heading{display:none}
+  body .content #inventoryMovementList .inventory-movement{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 10px;min-width:0;padding:12px}
+  body .content #inventoryMovementList .inventory-movement>span,
+  body .content #inventoryMovementList .inventory-movement>strong{min-width:0;overflow-wrap:anywhere}
+  body .content #inventoryMovementList .inventory-movement>span:first-child{grid-column:1;grid-row:1;color:#a2aa98;font-size:11px}
+  body .content #inventoryMovementList .inventory-movement>strong{grid-column:1/-1;grid-row:2;font-size:14px}
+  body .content #inventoryMovementList .inventory-movement>span:nth-of-type(2){grid-column:1;grid-row:3;color:#a2aa98}
+  body .content #inventoryMovementList .inventory-movement>span:nth-of-type(3){grid-column:2;grid-row:1;color:#e3e8da;text-align:right}
+  body .content #inventoryMovementList .inventory-movement>span:nth-of-type(4){grid-column:1/-1;grid-row:4;color:#c2c9b8}
+
+  /* Recipe costing: turn ingredient rows into labeled blocks. */
+  body .content #costing .cost-table{width:100%;max-width:100%;overflow:visible}
+  body .content #costing .cost-table table{width:100%;min-width:0;table-layout:fixed}
+  body .content #costing .cost-table thead{display:none}
+  body .content #costing .cost-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid #2c3227}
+  body .content #costing .cost-table tbody td{min-width:0;padding:4px 6px;border:0;overflow-wrap:anywhere}
+  body .content #costing .cost-table tbody td:nth-child(1){grid-column:1/-1;grid-row:1;font-size:13px}
+  body .content #costing .cost-table tbody td:nth-child(1) small{overflow-wrap:anywhere}
+  body .content #costing .cost-table tbody td:nth-child(2){grid-column:1;grid-row:2;color:#aeb69f}
+  body .content #costing .cost-table tbody td:nth-child(2)::before{content:'Portion · ';color:#818b76}
+  body .content #costing .cost-table tbody td:nth-child(3){grid-column:1;grid-row:3;color:#aeb69f}
+  body .content #costing .cost-table tbody td:nth-child(3)::before{content:'Rate / unit · ';color:#818b76}
+  body .content #costing .cost-table tbody td:nth-child(4){grid-column:2;grid-row:2/4;align-self:center;color:#f1d755;text-align:right}
+  body .content #costing .cost-table tbody td:nth-child(4)::before{content:'Cost · ';color:#818b76}
+}
