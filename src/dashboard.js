@@ -3497,8 +3497,8 @@ function renderPackagingRules() {
       ? state.inventory.menuItems.find(row => row.id === rule.menu_item_id)?.name
       : rule.consumption_type === 'PER_MENU_CATEGORY'
         ? state.inventory.menuCategories.find(row => row.id === rule.menu_category_id)?.name : 'whole order';
-    return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Packaging item')}</strong><span>${escapeHtml((rule.order_types || []).join(' · '))} · ${escapeHtml(rule.consumption_type.replaceAll('_',' '))} · ${inventoryQty(rule.consumption_quantity)} ${escapeHtml(inventoryInternalUnit(item, rule.consumption_quantity))} · ${escapeHtml(target || 'Unknown mapping')}${rule.active === false ? ' · INACTIVE' : ''}</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-packaging-rule="${rule.id}">EDIT</button><button class="secondary danger" type="button" data-deactivate-packaging-rule="${rule.id}">DEACTIVATE</button></div></div>`;
-  }).join('') : '<div class="inventory-empty">No order-type packaging rules configured.</div>';
+    return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name || 'Stock item')}</strong><span>${escapeHtml((rule.order_types || []).join(' · '))} · ${escapeHtml(rule.consumption_type.replaceAll('_',' '))} · ${inventoryQty(rule.consumption_quantity)} ${escapeHtml(inventoryInternalUnit(item, rule.consumption_quantity))} · ${escapeHtml(target || 'Unknown mapping')}${rule.active === false ? ' · INACTIVE' : ''}</span></div><div class="inventory-row-actions"><button class="secondary" type="button" data-edit-packaging-rule="${rule.id}">EDIT</button><button class="secondary danger" type="button" data-deactivate-packaging-rule="${rule.id}">DEACTIVATE</button></div></div>`;
+  }).join('') : '<div class="inventory-empty">No order-use stock rules configured.</div>';
 }
 
 function updateStaffRuleUnit() {
@@ -3617,7 +3617,7 @@ function editPackagingRule(rule) {
   if ($('#packagingDineIn')) $('#packagingDineIn').checked = rule.order_types?.includes('DINE_IN');
   if ($('#packagingTakeaway')) $('#packagingTakeaway').checked = rule.order_types?.includes('TAKEAWAY');
   if ($('#packagingDelivery')) $('#packagingDelivery').checked = rule.order_types?.includes('DELIVERY');
-  if ($('#savePackagingRule')) $('#savePackagingRule').textContent = 'SAVE PACKAGING CHANGES';
+  if ($('#savePackagingRule')) $('#savePackagingRule').textContent = 'SAVE USAGE CHANGES';
   updatePackagingRuleFields();
 }
 
@@ -3627,9 +3627,9 @@ async function savePackagingRule() {
   try {
     await inventoryApi('POST', { action: 'save_packaging_rule', ruleId: state.inventory.editingPackagingRuleId, itemId: $('#packagingRuleItem')?.value, orderTypes, consumptionType: $('#packagingConsumptionType')?.value, quantity: $('#packagingQuantity')?.value, menuItemId: $('#packagingMenuItem')?.value, menuCategoryId: $('#packagingMenuCategory')?.value });
     state.inventory.editingPackagingRuleId = null;
-    button.textContent = 'SAVE PACKAGING RULE';
+    button.textContent = 'SAVE USAGE RULE';
     await loadInventory();
-    toast('Packaging rule saved. Completed orders will use it automatically.', 'ok');
+    toast('Usage rule saved. It applies to the selected order types on future orders.', 'ok');
   } catch (error) { toast(error.message, 'bad'); }
   finally { button.disabled = false; }
 }
@@ -3638,7 +3638,7 @@ async function deactivatePackagingRule(ruleId) {
   try {
     await inventoryApi('POST', { action: 'deactivate_packaging_rule', ruleId });
     await loadInventory();
-    toast('Packaging rule deactivated. Its previous order history is unchanged.', 'ok');
+    toast('Usage rule deactivated. Previous order history is unchanged.', 'ok');
   } catch (error) { toast(error.message, 'bad'); }
 }
 
@@ -5522,7 +5522,7 @@ function renderCostingScreen() {
     const complete = rows.length>0 && rows.every(r=>r.cost!==null);
     const total = complete ? rows.reduce((s,r)=>s+r.cost,0) : null;
     const price = Number(menu.price || 0);
-    host.innerHTML=`<div class="cost-layout"><div><article class="cost-card cost-product"><div><span class="cost-kicker">Recipe overview</span><h2>${escapeHtml(menu.name)}</h2><p>Selling price <strong>${money(price)}</strong> · ${escapeHtml($('#costingService').selectedOptions[0].textContent)}</p></div><span class="cost-serving">1 serving</span></article><article class="cost-card"><div class="cost-card-head"><h2>Ingredient recipe</h2><span>Configured item prices · converted to stock units</span></div>${rows.length ? table(rows) : '<p>No recipe configured for this item.</p>'}<p class="cost-note">Includes packaging saved in this recipe. Separate order packaging rules are reflected in recorded order usage.</p></article></div><aside class="cost-card cost-summary"><span>PER SERVING</span><h2>Recipe cost</h2><strong class="cost-figure">${money(total)}</strong>${total !== null && price > 0 ? `<meter class="cost-meter" aria-label="Recipe cost as percentage of selling price" min="0" max="100" value="${Math.min(100, Math.max(0, total / price * 100))}"></meter><span class="cost-meter-label">${(total / price * 100).toFixed(1)}% of selling price</span>` : ''}<dl><dt>Selling price</dt><dd>${money(price)}</dd><dt>Recipe cost %</dt><dd>${total!==null&&price>0?(total/price*100).toFixed(1)+'%':'Unavailable'}</dd><dt>Balance after recipe cost</dt><dd>${money(total===null?null:price-total)}</dd></dl><p class="cost-note">Uses current item setup prices and conversions; received purchase averages are used when no configured rate exists. Labour, overhead, discounts and platform fees are excluded. This balance is not net profit.</p></aside></div>`;
+    host.innerHTML=`<div class="cost-layout"><div><article class="cost-card cost-product"><div><span class="cost-kicker">Recipe overview</span><h2>${escapeHtml(menu.name)}</h2><p>Selling price <strong>${money(price)}</strong> · ${escapeHtml($('#costingService').selectedOptions[0].textContent)}</p></div><span class="cost-serving">1 serving</span></article><article class="cost-card"><div class="cost-card-head"><h2>Ingredient recipe</h2><span>Configured item prices · converted to stock units</span></div>${rows.length ? table(rows) : '<p>No recipe configured for this item.</p>'}<p class="cost-note">Includes service items saved in this recipe. Separate order-use stock rules are reflected in recorded order usage.</p></article></div><aside class="cost-card cost-summary"><span>PER SERVING</span><h2>Recipe cost</h2><strong class="cost-figure">${money(total)}</strong>${total !== null && price > 0 ? `<meter class="cost-meter" aria-label="Recipe cost as percentage of selling price" min="0" max="100" value="${Math.min(100, Math.max(0, total / price * 100))}"></meter><span class="cost-meter-label">${(total / price * 100).toFixed(1)}% of selling price</span>` : ''}<dl><dt>Selling price</dt><dd>${money(price)}</dd><dt>Recipe cost %</dt><dd>${total!==null&&price>0?(total/price*100).toFixed(1)+'%':'Unavailable'}</dd><dt>Balance after recipe cost</dt><dd>${money(total===null?null:price-total)}</dd></dl><p class="cost-note">Uses current item setup prices and conversions; received purchase averages are used when no configured rate exists. Labour, overhead, discounts and platform fees are excluded. This balance is not net profit.</p></aside></div>`;
   } else if (mode === 'order') {
     const query = ($('#costingOrderSearch')?.value || '').trim().toLowerCase().replace(/^#/, '');
     const status = $('#costingOrderStatus')?.value || 'all';
@@ -5574,7 +5574,7 @@ function renderUtilisation(target, bounds) {
           const total = lines.reduce((sum,l)=>sum+(l.cost || 0),0);
           const percent = Number(menu.price)>0 ? total / Number(menu.price)*100 : null;
           return `<h4>${type === 'DINE_IN' ? 'Dine-in' : 'Takeaway / delivery'} · ${known ? formatReportMoney(total) : 'Recipe / cost incomplete'}</h4>${known && percent !== null ? `<p><meter min="0" max="100" value="${Math.min(100,Math.max(0,percent))}"></meter> ${percent.toFixed(1)}% of menu price (${formatReportMoney(menu.price)})</p>` : ''}${lines.length ? usageTable(lines) : '<p>No recipe configured.</p>'}`;
-        }).join('')}<p>Per serving at current recipe and rates. Separate packaging rules, labour and overhead are excluded here; recorded order usage includes deducted packaging.</p></details>`;
+        }).join('')}<p>Per serving at current recipe and rates. Separate order-use stock rules, labour and overhead are excluded here; recorded order usage includes deducted service items.</p></details>`;
       }).join('')}</details>`;
     }).join('')}</details>`;
   }).join('');
