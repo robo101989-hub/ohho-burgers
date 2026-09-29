@@ -1747,7 +1747,7 @@ function wirePosActions() {
           orderType: state.pos.orderType,
           tableNumber:
             state.pos.orderType === 'DINE_IN'
-              ? Number(state.pos.tableNumber)
+              ? (state.pos.tableNumber ? Number(state.pos.tableNumber) : null)
               : null,
           paymentMethod: state.pos.paymentMethod,
           orderSource: state.pos.orderSource,

@@ -381,10 +381,11 @@ export default async function handler(req, res) {
 
     if (
       orderType === "DINE_IN" &&
+      tableNumber !== null &&
       (!Number.isInteger(tableNumber) || tableNumber < 1 || tableNumber > 999)
     ) {
       return res.status(400).json({
-        error: "A valid table number is required for dine-in orders"
+        error: "Enter a valid table number or leave it blank"
       });
     }
 
