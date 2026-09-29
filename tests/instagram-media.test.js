@@ -17,9 +17,10 @@ test('invalid and non-Instagram links cannot become embedded frames', () => {
 
 test('original video follows the matching reel even when feed order changes', () => {
   const first = { mediaType: 'VIDEO', permalink: 'https://www.instagram.com/reel/new-post/' };
-  const original = { mediaType: 'VIDEO', permalink: 'https://www.instagram.com/reel/DdtpGVdqeIp/?source=feed', videoUrl: null };
+  const original = { mediaType: 'VIDEO', permalink: 'https://www.instagram.com/reel/DdtpGVdqeIp/?source=feed', videoUrl: null, thumbnailUrl: 'https://example.com/old-poster.jpg' };
   assert.equal(withOriginalVideo(first), first);
   const result = withOriginalVideo(original);
   assert.equal(result.videoUrl, '/videos/ohho-reel-DdtpGVdqeIp.mp4');
+  assert.equal(result.thumbnailUrl, '/videos/ohho-reel-DdtpGVdqeIp-poster.jpg');
   assert.equal(instagramPlayback(result).embedUrl, null);
 });
