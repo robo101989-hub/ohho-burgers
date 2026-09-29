@@ -1837,13 +1837,11 @@ body{font-size:14px}
         <div id="settingsOutletList" class="settings-outlet-list"><div class="settings-empty">Loading outlet settings…</div></div>
       </article>
       <article class="settings-panel" id="spinSettingsPanel">
-        <div class="settings-panel-head"><div><div class="eyebrow">Cart marketing</div><h2>Spin &amp; Win discounts</h2></div><span>Admin only</span></div>
+        <div class="settings-panel-head"><div><div class="eyebrow">Cart marketing</div><h2>Spin &amp; Win rewards</h2></div><span>Admin only</span></div>
         <div class="settings-detail-list">
           <label class="spin-setting-field"><span>OUTLET</span><select id="spinSettingsOutlet"></select></label>
-          <label class="spin-setting-field"><span>PRIZE 1</span><input id="spinPrizeOne" value="5% OFF" maxlength="40"></label>
-          <label class="spin-setting-field"><span>PRIZE 2</span><input id="spinPrizeTwo" value="10% OFF" maxlength="40"></label>
-          <label class="spin-setting-field"><span>PRIZE 3</span><input id="spinPrizeThree" value="₹20 OFF" maxlength="40"></label>
-          <label class="spin-setting-field"><span>PRIZE 4</span><input id="spinPrizeFour" value="₹30 OFF" maxlength="40"></label>
+          <div id="spinPrizeCards" class="spin-prize-cards"></div>
+          <div class="spin-campaign-tip"><strong>Mix your rewards</strong><p>Try 5% off, ₹30 off, free fries and a free cold drink. Use the minimum spend to protect your margin. Each card has a 1-in-6 chance; two slices are “Better luck next time”.</p><small>Free food and drinks must be menu items so POS can record the gift and deduct its stock.</small></div>
           <label class="spin-setting-field"><span>MINIMUM ORDER FOR SPIN ELIGIBILITY (₹)</span><input id="spinMinimumOrder" type="number" min="0" step="1" value="0"></label>
           <label class="spin-settings-toggle"><input id="spinEnabled" type="checkbox" checked><span>Spin &amp; Win is active at this cart</span></label>
           <button id="saveSpinSettingsBtn" class="primary" type="button">SAVE SPIN SETTINGS</button>

@@ -1,3 +1,4 @@
+import { rewardDiscount } from '../../lib/spin-rewards.js';
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -541,7 +542,7 @@ export default async function handler(req, res) {
     if (spinRewardCode) {
       const { data: reward, error: rewardError } = await supabase
         .from("spin_rewards")
-        .select("id,code,label,reward_type,reward_value,status,expires_at")
+        .select("id,code,label,reward_type,reward_value,reward_details,status,expires_at")
         .eq("outlet_id", outlet.id)
         .eq("code", spinRewardCode)
         .maybeSingle();
@@ -553,9 +554,10 @@ export default async function handler(req, res) {
         await supabase.from("spin_rewards").update({ status: "EXPIRED" }).eq("id", reward.id).eq("status", "ISSUED");
         return res.status(400).json({ error: "Spin & Win reward has expired" });
       }
-      if (reward.reward_type === "PERCENT") spinDiscount = Math.round((subtotal * Number(reward.reward_value || 0)) / 100);
-      if (reward.reward_type === "FLAT") spinDiscount = Number(reward.reward_value || 0);
-      spinDiscount = Math.max(0, Math.min(subtotal, spinDiscount));
+      try { spinDiscount = rewardDiscount(reward, orderItems, subtotal); }
+      catch (error) { return res.status(400).json({ error: error.message }); }
+      // The gift cannot count towards the qualifying paid basket.
+      if (reward.reward_type === 'FREE_ITEM' && subtotal - spinDiscount < minimumOrder) return res.status(400).json({ error: `Add ₹${minimumOrder} of paid items, excluding the free reward.` });
       spinReward = reward;
     }
 

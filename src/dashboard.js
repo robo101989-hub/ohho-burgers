@@ -1,3 +1,4 @@
+import { cleanPrizes, normalizePrize, rewardDiscount } from '../lib/spin-rewards.js';
 import { installSectionDisclosures } from './section-disclosures.js';
 import { stockHistoryRows, orderUtilisation, recipeCostLines } from '../lib/inventory-reporting.js';
 import { groupExpenseSessions } from '../lib/expense-sessions.js';
@@ -1385,16 +1386,17 @@ function renderPosCart() {
   );
 
   const spinReward = state.pos.spinReward;
-  const discount = spinReward?.type === 'PERCENT'
-    ? Math.min(subtotal, Math.round((subtotal * Number(spinReward.value || 0)) / 100))
-    : spinReward?.type === 'FLAT'
-      ? Math.min(subtotal, Number(spinReward.value || 0))
-      : 0;
+  let discount = 0;
+  let rewardError = '';
+  try { discount = rewardDiscount(spinReward, state.pos.cart, subtotal); }
+  catch (error) { rewardError = error.message; }
+  if (spinReward?.type === 'FREE_ITEM' && subtotal - discount < Number(spinReward.minimumOrder || 0)) rewardError = `Add ₹${spinReward.minimumOrder} of paid items, excluding the free reward.`;
+  if (spinReward && $('#posSpinHint')) $('#posSpinHint').textContent = rewardError || `${spinReward.label} ready — one code per order.`;
 
   if (subtotalNode) subtotalNode.textContent = `₹${subtotal.toFixed(0)}`;
   if ($('#posDiscount')) $('#posDiscount').textContent = discount ? `−₹${discount.toFixed(0)}` : spinReward?.type === 'FREE_ITEM' ? spinReward.label : '₹0';
   if (totalNode) totalNode.textContent = `₹${Math.max(0, subtotal - discount).toFixed(0)}`;
-  if (placeButton) placeButton.disabled = state.pos.cart.length === 0;
+  if (placeButton) placeButton.disabled = state.pos.cart.length === 0 || Boolean(rewardError);
 }
 
 function resetPosOrder() {
@@ -1653,6 +1655,11 @@ function wirePosActions() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Reward could not be verified.');
+      if (result.reward.type === 'FREE_ITEM') {
+        const gift = state.pos.items.find(item => item.id === result.reward.menuItemId && item.outletAvailable);
+        if (!gift) throw new Error('The reward item is unavailable at this outlet.');
+        if (!state.pos.cart.some(item => item.id === gift.id)) addPosItem(gift.id);
+      }
       state.pos.spinReward = result.reward;
       $('#posSpinCode').value = result.reward.code;
       $('#posSpinReward')?.classList.add('active');
@@ -6481,15 +6488,6 @@ function renderSettings() {
   renderSpinSettings();
 }
 
-function prizeFromText(text) {
-  const label = String(text || '').trim().slice(0, 40);
-  const percent = label.match(/(\d+(?:\.\d+)?)\s*%/);
-  const rupees = label.match(/[₹Rs.\s]*(\d+(?:\.\d+)?)/i);
-  if (percent) return { label, type: 'PERCENT', value: Number(percent[1]) };
-  if (rupees) return { label, type: 'FLAT', value: Number(rupees[1]) };
-  return null;
-}
-
 function renderSpinSettings() {
   const panel = $('#spinSettingsPanel');
   if (!panel) return;
@@ -6600,13 +6598,34 @@ function fillSpinSettingForm() {
   const isAllOutlets = outletId === '__all__';
   const outlet = state.outlets.find(item => item.id === outletId);
   const setting = isAllOutlets ? state.spinSettings[0] : state.spinSettings.find(item => item.outlet_id === outletId);
-  const prizes = setting?.prizes || [
-    { label: '5% OFF' }, { label: '10% OFF' }, { label: '₹20 OFF' }
-  ];
-  if ($('#spinPrizeOne')) $('#spinPrizeOne').value = prizes[0]?.label || '';
-  if ($('#spinPrizeTwo')) $('#spinPrizeTwo').value = prizes[1]?.label || '';
-  if ($('#spinPrizeThree')) $('#spinPrizeThree').value = prizes[2]?.label || '';
-  if ($('#spinPrizeFour')) $('#spinPrizeFour').value = prizes[3]?.label || '';
+  const prizes = cleanPrizes(setting?.prizes);
+  const cards = $('#spinPrizeCards');
+  const items = menuManagementState.items || [];
+  const categories = new Map((menuManagementState.categories || []).map(item => [item.id, item.name]));
+  cards.innerHTML = prizes.map((prize, index) => {
+    const kind = prize.type === 'FREE_ITEM' ? prize.category : prize.type;
+    return `<article class="spin-prize-card" data-prize-card>
+      <header><span>Reward ${index + 1}</span><small>1 in 6 chance</small></header>
+      <label class="spin-setting-field"><span>Reward type</span><select data-prize-type aria-label="Reward ${index + 1} type">${[['PERCENT','Percentage off'],['FLAT','Flat amount off'],['FOOD','Free food item'],['COLD_DRINK','Free cold drink'],['BEVERAGE','Free other beverage'],['NONE','Better luck next time']].map(([value,label]) => `<option value="${value}" ${value === kind ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
+      <label class="spin-setting-field" data-prize-value-wrap><span data-prize-value-label>Discount</span><input data-prize-value type="number" min="1" step="0.01" value="${Number(prize.value)}" aria-label="Reward ${index + 1} discount"></label>
+      <label class="spin-setting-field" data-prize-item-wrap><span>Free item · one unit</span><select data-prize-item aria-label="Reward ${index + 1} free item"><option value="">Choose a menu item</option>${items.filter(item => item.is_available !== false || item.id === prize.menuItemId).map(item => `<option value="${escapeHtml(item.id)}" ${item.id === prize.menuItemId ? 'selected' : ''}>${escapeHtml(categories.get(item.category_id) || 'Menu')} · ${escapeHtml(item.name)}</option>`).join('')}</select></label>
+      <p data-prize-preview></p>
+    </article>`;
+  }).join('');
+  cards.querySelectorAll('[data-prize-card]').forEach(card => {
+    const update = () => {
+      const kind = card.querySelector('[data-prize-type]').value;
+      const free = ['FOOD','COLD_DRINK','BEVERAGE'].includes(kind);
+      card.querySelector('[data-prize-value-wrap]').hidden = free || kind === 'NONE';
+      card.querySelector('[data-prize-item-wrap]').hidden = !free;
+      card.querySelector('[data-prize-value-label]').textContent = kind === 'PERCENT' ? 'Percentage · %' : 'Amount · ₹';
+      card.querySelector('[data-prize-value]').max = kind === 'PERCENT' ? 100 : 100000;
+      const select = card.querySelector('[data-prize-item]');
+      const item = items.find(item => item.id === select.value);
+      card.querySelector('[data-prize-preview]').textContent = free ? (item ? `Free ${item.name} · 1 unit` : 'Choose the exact item the customer receives.') : kind === 'NONE' ? 'No reward code will be issued.' : `${kind === 'FLAT' ? '₹' : ''}${card.querySelector('[data-prize-value]').value}${kind === 'PERCENT' ? '%' : ''} off the order`;
+    };
+    card.addEventListener('input', update); card.addEventListener('change', update); update();
+  });
   if ($('#spinMinimumOrder')) $('#spinMinimumOrder').value = Number(setting?.minimum_order || setting?.minimumOrder || 0);
   if ($('#spinEnabled')) $('#spinEnabled').checked = setting?.enabled !== false;
   if ($('#spinQrLink')) $('#spinQrLink').href = isAllOutlets ? '/#spin-win' : `/spin.html?outlet=${encodeURIComponent(outlet?.slug || '')}`;
@@ -6630,8 +6649,17 @@ async function loadSpinSettings() {
 async function saveSpinSettings() {
   const outletId = $('#spinSettingsOutlet')?.value;
   const allOutlets = outletId === '__all__';
-  const prizes = [$('#spinPrizeOne')?.value, $('#spinPrizeTwo')?.value, $('#spinPrizeThree')?.value, $('#spinPrizeFour')?.value].map(prizeFromText).filter(Boolean);
-  if ((!outletId && !allOutlets) || prizes.length !== 4) return toast('Use four discount prizes, such as 5% OFF or ₹20 OFF.', 'bad');
+  let prizes;
+  try {
+    prizes = [...document.querySelectorAll('[data-prize-card]')].map(card => {
+      const kind = card.querySelector('[data-prize-type]').value;
+      const free = ['FOOD','COLD_DRINK','BEVERAGE'].includes(kind);
+      const menuItemId = card.querySelector('[data-prize-item]').value;
+      const item = menuManagementState.items.find(item => item.id === menuItemId);
+      return normalizePrize({ type: free ? 'FREE_ITEM' : kind, category: kind, menuItemId, value: card.querySelector('[data-prize-value]').value, label: free ? `Free ${item?.name || 'item'}` : undefined });
+    });
+    if (!outletId || prizes.length !== 4) throw new Error('Choose an outlet and configure four rewards.');
+  } catch (error) { return toast(error.message, 'bad'); }
   const button = $('#saveSpinSettingsBtn');
   button.disabled = true;
   try {

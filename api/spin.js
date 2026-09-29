@@ -1,27 +1,12 @@
+import { randomInt, randomBytes } from 'node:crypto';
+import { cleanPrizes, normalizePrize, wheelSlots } from '../lib/spin-rewards.js';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
-const DEFAULT_PRIZES = [
-  { label: '5% OFF', type: 'PERCENT', value: 5 },
-  { label: '10% OFF', type: 'PERCENT', value: 10 },
-  { label: '₹20 OFF', type: 'FLAT', value: 20 },
-  { label: '₹30 OFF', type: 'FLAT', value: 30 }
-];
-const NO_REWARD = { label: 'BETTER LUCK NEXT TIME', type: 'FREE_ITEM', value: 0 };
-
 const tokenFrom = req => (req.headers?.authorization || '').replace(/^Bearer\s+/i, '') || null;
 const cleanCode = value => String(value || '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
-const publicPrize = prize => ({ label: String(prize.label || 'OHHO REWARD').slice(0, 40), type: prize.type, value: Number(prize.value || 0) });
-function cleanPrizes(value) {
-  if (!Array.isArray(value)) return DEFAULT_PRIZES;
-  const prizes = value.map(item => ({
-    label: String(item?.label || '').trim().slice(0, 40),
-    type: ['PERCENT', 'FLAT', 'FREE_ITEM'].includes(item?.type) ? item.type : 'PERCENT',
-    value: Math.max(0, Math.min(1000, Number(item?.value || 0)))
-  })).filter(item => item.label && (item.type === 'FREE_ITEM' || item.value > 0));
-  return [...prizes, ...DEFAULT_PRIZES.slice(prizes.length)].slice(0, 4);
-}
-const noReward = prize => String(prize?.label || '').toUpperCase().includes('BETTER LUCK');
+const noReward = prize => prize?.type === 'NONE' || /better luck/i.test(prize?.label || '');
+const publicReward = reward => ({ code: reward.code, label: reward.label, type: reward.reward_type, value: Number(reward.reward_value), ...reward.reward_details, status: reward.status, expiresAt: reward.expires_at });
 async function staff(req, res, outletId, adminOnly = false) {
   const token = tokenFrom(req);
   if (!token) { res.status(401).json({ error: 'Sign in to use POS rewards.' }); return null; }
@@ -41,10 +26,11 @@ async function getOutlet(slug) {
   return data;
 }
 async function getSettings(outletId) {
-  const { data } = await supabase.from('outlet_spin_settings').select('enabled,prizes,minimum_order').eq('outlet_id', outletId).maybeSingle();
+  const { data, error } = await supabase.from('outlet_spin_settings').select('enabled,prizes,minimum_order').eq('outlet_id', outletId).maybeSingle();
+  if (error) throw new Error('Could not load reward settings');
   return { enabled: data?.enabled !== false, prizes: cleanPrizes(data?.prizes), minimumOrder: Math.max(0, Number(data?.minimum_order || 0)) };
 }
-function rewardCode() { return `OHHO-${Math.random().toString(36).slice(2, 6).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`; }
+function rewardCode() { return `OHHO-${randomBytes(5).toString('hex').toUpperCase()}`; }
 
 export default async function handler(req, res) {
   try {
@@ -63,7 +49,7 @@ export default async function handler(req, res) {
       if (!outlet || outlet.status !== 'ACTIVE') return res.status(404).json({ error: 'Spin & Win is not active at this outlet.' });
       const settings = await getSettings(outlet.id);
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(200).json({ outlet: { name: outlet.name, slug: outlet.slug }, enabled: settings.enabled, prizes: settings.prizes.map(publicPrize), minimumOrder: settings.minimumOrder });
+      return res.status(200).json({ outlet: { name: outlet.name, slug: outlet.slug }, enabled: settings.enabled, prizes: settings.prizes, slots: wheelSlots(settings.prizes), minimumOrder: settings.minimumOrder });
     }
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     const body = req.body || {};
@@ -75,28 +61,30 @@ export default async function handler(req, res) {
       if (!outlet || outlet.status !== 'ACTIVE' || !deviceKey) return res.status(400).json({ error: 'Choose an active OHHO outlet to spin.' });
       const settings = await getSettings(outlet.id);
       if (!settings.enabled) return res.status(403).json({ error: 'Spin & Win is paused at this cart.' });
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      const { data: existing } = await supabase.from('spin_rewards').select('code,label,reward_type,reward_value,status,expires_at').eq('outlet_id', outlet.id).eq('device_key', deviceKey).gte('issued_at', today.toISOString()).order('issued_at', { ascending: false }).limit(1).maybeSingle();
+      const indiaDate = new Date(Date.now() + 19800000).toISOString().slice(0, 10);
+      const today = new Date(`${indiaDate}T00:00:00+05:30`);
+      const { data: existing, error: existingError } = await supabase.from('spin_rewards').select('code,label,reward_type,reward_value,reward_details,status,expires_at').eq('outlet_id', outlet.id).eq('device_key', deviceKey).gte('issued_at', today.toISOString()).order('issued_at', { ascending: false }).limit(1).maybeSingle();
+      if (existingError) return res.status(503).json({ error: 'Could not check your previous spin. Please try again.' });
       if (existing) {
-        if (noReward(existing)) return res.status(409).json({ error: 'You have already spun today.', outcome: 'NO_REWARD' });
-        return res.status(409).json({ error: 'You have already spun today.', outcome: 'REWARD', reward: { code: existing.code, label: existing.label, type: existing.reward_type, value: Number(existing.reward_value), status: existing.status, expiresAt: existing.expires_at } });
+        if (noReward(existing)) return res.status(409).json({ error: 'You have already spun today.', outcome: 'NO_REWARD', reused: true });
+        return res.status(409).json({ error: 'You have already spun today.', outcome: 'REWARD', reused: true, reward: publicReward(existing) });
       }
-      const slots = [...settings.prizes.slice(0, 4), NO_REWARD, NO_REWARD];
-      const segment = Math.floor(Math.random() * slots.length);
+      const slots = wheelSlots(settings.prizes);
+      const segment = randomInt(slots.length);
       const prize = slots[segment];
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
       if (noReward(prize)) {
-        const { error } = await supabase.from('spin_rewards').insert({ outlet_id: outlet.id, code: rewardCode(), device_key: deviceKey, label: prize.label, reward_type: prize.type, reward_value: 0, status: 'REDEEMED', expires_at: expiresAt, redeemed_at: new Date().toISOString() });
+        const { error } = await supabase.from('spin_rewards').insert({ outlet_id: outlet.id, code: rewardCode(), device_key: deviceKey, label: prize.label, reward_type: 'FREE_ITEM', reward_value: 0, status: 'REDEEMED', expires_at: expiresAt, redeemed_at: new Date().toISOString() });
         if (error) return res.status(500).json({ error: 'Could not record this spin. Please try again.' });
-        return res.status(201).json({ outcome: 'NO_REWARD', segment });
+        return res.status(201).json({ outcome: 'NO_REWARD', segment, slots });
       }
       let reward = null;
       for (let attempt = 0; attempt < 3 && !reward; attempt += 1) {
-        const { data, error } = await supabase.from('spin_rewards').insert({ outlet_id: outlet.id, code: rewardCode(), device_key: deviceKey, label: prize.label, reward_type: prize.type, reward_value: prize.value, expires_at: expiresAt }).select('code,label,reward_type,reward_value,expires_at').maybeSingle();
+        const { data, error } = await supabase.from('spin_rewards').insert({ outlet_id: outlet.id, code: rewardCode(), device_key: deviceKey, label: prize.label, reward_type: prize.type, reward_value: prize.value, reward_details: prize.type === 'FREE_ITEM' ? { menuItemId: prize.menuItemId, category: prize.category } : {}, expires_at: expiresAt }).select('code,label,reward_type,reward_value,reward_details,expires_at').maybeSingle();
         if (!error) reward = data;
       }
       if (!reward) return res.status(500).json({ error: 'Could not create your reward. Please try once more.' });
-      return res.status(201).json({ outcome: 'REWARD', segment, reward: { code: reward.code, label: reward.label, type: reward.reward_type, value: Number(reward.reward_value), expiresAt: reward.expires_at } });
+      return res.status(201).json({ outcome: 'REWARD', segment, slots, reward: { ...publicReward(reward), minimumOrder: settings.minimumOrder } });
     }
 
     if (action === 'verify') {
@@ -108,17 +96,23 @@ export default async function handler(req, res) {
       if (settings.minimumOrder > 0 && orderSubtotal < settings.minimumOrder) {
         return res.status(400).json({ error: `Spin & Win requires a minimum order of ₹${settings.minimumOrder.toFixed(0)}.` });
       }
-      const { data: reward } = await supabase.from('spin_rewards').select('code,label,reward_type,reward_value,status,expires_at').eq('outlet_id', outletId).eq('code', cleanCode(body.code)).maybeSingle();
+      const { data: reward } = await supabase.from('spin_rewards').select('code,label,reward_type,reward_value,reward_details,status,expires_at').eq('outlet_id', outletId).eq('code', cleanCode(body.code)).maybeSingle();
       if (!reward || reward.status !== 'ISSUED') return res.status(404).json({ error: 'This reward is not available.' });
       if (new Date(reward.expires_at).getTime() < Date.now()) return res.status(410).json({ error: 'This reward has expired.' });
-      return res.status(200).json({ reward: { code: reward.code, label: reward.label, type: reward.reward_type, value: Number(reward.reward_value), expiresAt: reward.expires_at } });
+      return res.status(200).json({ reward: { ...publicReward(reward), minimumOrder: settings.minimumOrder } });
     }
 
     if (action === 'settings') {
       const allOutlets = body.allOutlets === true;
       const outletId = String(body.outletId || '').trim();
       const auth = await staff(req, res, allOutlets ? null : outletId, true); if (!auth) return;
+      let prizes;
+      try {
+        if (!Array.isArray(body.prizes) || body.prizes.length !== 4) throw new Error('Configure all four reward cards.');
+        prizes = body.prizes.map(normalizePrize);
+      } catch (error) { return res.status(400).json({ error: error.message }); }
       const minimumOrder = Math.max(0, Math.min(100000, Number(body.minimumOrder || 0)));
+      if (!Number.isFinite(minimumOrder)) return res.status(400).json({ error: 'Enter a valid minimum order.' });
       let outletIds = [outletId];
       if (allOutlets) {
         const { data: outlets, error: outletError } = await supabase.from('outlets').select('id').order('created_at', { ascending: true });
@@ -126,7 +120,13 @@ export default async function handler(req, res) {
         outletIds = (outlets || []).map(outlet => outlet.id);
       }
       if (!outletIds.length || outletIds.some(id => !id)) return res.status(400).json({ error: 'Choose an outlet to save Spin & Win settings.' });
-      const values = outletIds.map(id => ({ outlet_id: id, enabled: body.enabled !== false, prizes: cleanPrizes(body.prizes), minimum_order: minimumOrder, updated_at: new Date().toISOString(), updated_by: auth.user.id }));
+      for (const prize of prizes.filter(item => item.type === 'FREE_ITEM')) {
+        const { data: item } = await supabase.from('menu_items').select('id,name,is_available').eq('id', prize.menuItemId).maybeSingle();
+        const { data: availability } = await supabase.from('outlet_menu_items').select('outlet_id').eq('menu_item_id', prize.menuItemId).eq('is_available', true).in('outlet_id', outletIds);
+        if (!item?.is_available || new Set((availability || []).map(row => row.outlet_id)).size !== outletIds.length) return res.status(400).json({ error: 'The free item must be available at every selected outlet. Choose one outlet or another item.' });
+        prize.label = `Free ${item.name}`;
+      }
+      const values = outletIds.map(id => ({ outlet_id: id, enabled: body.enabled !== false, prizes, minimum_order: minimumOrder, updated_at: new Date().toISOString(), updated_by: auth.user.id }));
       const { data, error } = await supabase.from('outlet_spin_settings').upsert(values, { onConflict: 'outlet_id' }).select('outlet_id,enabled,prizes,minimum_order');
       if (error) return res.status(500).json({ error: 'Could not save Spin & Win settings.' });
       return res.status(200).json({ settings: (data || []).map(item => ({ ...item, prizes: cleanPrizes(item.prizes), minimumOrder: Number(item.minimum_order || 0) })) });

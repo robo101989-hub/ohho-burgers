@@ -118,3 +118,22 @@ body .sidebar .avatar{width:32px;height:32px;flex:0 0 32px;border-radius:9px;bac
 body .sidebar .user strong{font:500 12px Inter,system-ui,sans-serif;color:#e6ecde}
 body .sidebar .user span{font:400 10px Inter,system-ui,sans-serif;color:#99a98b;margin-top:4px}
 @media(max-width:760px){body .app>.sidebar{height:auto;overflow:visible;padding:12px;position:relative}body .sidebar .brand{padding:4px 8px 12px;margin-bottom:10px}body .sidebar .nav{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;overflow:visible}body .sidebar .nav button{flex-direction:column;justify-content:center;text-align:center;gap:6px;min-height:70px;font-size:10px;padding:8px 5px}body .sidebar .nav-ico{flex-basis:26px;width:26px;height:26px}body .sidebar .side-spacer,body .sidebar .system{display:none}body .sidebar .user{margin-top:10px;padding:9px 10px}}
+
+/* Campaign builder follows the dashboard's compact card layout. */
+body #spinSettingsPanel{grid-column:1/-1}
+body #spinSettingsPanel .settings-detail-list{display:grid;gap:18px}
+body #spinSettingsPanel .spin-prize-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+body #spinSettingsPanel .spin-prize-card{padding:18px;border:1px solid #39412b;border-radius:16px;background:linear-gradient(145deg,#202719,#12170f);display:flex;flex-direction:column;gap:14px;min-width:0}
+body #spinSettingsPanel .spin-prize-card header{display:flex;justify-content:space-between;gap:8px;color:#ffe251;font-size:14px}
+body #spinSettingsPanel .spin-prize-card header small{color:#9da58e;font-size:11px}
+body #spinSettingsPanel .spin-setting-field{display:grid;gap:7px;min-width:0}
+body #spinSettingsPanel .spin-setting-field span{font:500 12px/1.4 Arial,sans-serif;letter-spacing:0;text-transform:none}
+body #spinSettingsPanel .spin-setting-field select,body #spinSettingsPanel .spin-setting-field input{width:100%;min-width:0;box-sizing:border-box;font-size:14px}
+body #spinSettingsPanel [hidden]{display:none!important}
+body #spinSettingsPanel [data-prize-preview]{margin:auto 0 0;color:#d8ddca;font-size:12px;line-height:1.5}
+body #spinSettingsPanel .spin-campaign-tip{border-left:3px solid #ffe251;padding:12px 16px;background:#1c2116;border-radius:0 10px 10px 0;color:#b4bca7;font-size:13px;line-height:1.6}
+body #spinSettingsPanel .spin-campaign-tip strong{color:#e9ecdF;font-weight:600}
+body #spinSettingsPanel .spin-campaign-tip p{margin:5px 0;font-size:13px}
+body #spinSettingsPanel #saveSpinSettingsBtn{justify-self:start}
+@media(max-width:1200px){body #spinSettingsPanel .spin-prize-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){body #spinSettingsPanel .spin-prize-cards{grid-template-columns:1fr}}

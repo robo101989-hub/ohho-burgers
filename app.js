@@ -1,3 +1,5 @@
+import { drawWheel, animateWheel, rewardMessage } from './src/spin-wheel.js';
+import { wheelSlots, DEFAULT_PRIZES } from './lib/spin-rewards.js';
 import { supabase } from "./src/supabase.js";
 
 const siteData = {
@@ -238,13 +240,7 @@ function spinDeviceKey() {
 }
 function setHomeSpinMessage(message) { const target = $('#homeSpinMessage'); if (target) target.textContent = message; }
 function setHomeSpinEligibility(minimumOrder) { const target = $('#homeSpinEligibility'); if (target) target.textContent = minimumOrder > 0 ? `SPIN ELIGIBLE ON ORDERS ₹${Number(minimumOrder).toFixed(0)}+` : 'SPIN ELIGIBLE ON ALL ORDERS'; }
-function setHomeSpinPrizes(prizes) {
-  const labels = [prizes?.[0]?.label, 'BETTER LUCK', prizes?.[1]?.label, prizes?.[2]?.label, 'BETTER LUCK', prizes?.[3]?.label];
-  labels.forEach((label, index) => {
-    const slice = document.querySelector(`.slice-${index + 1}`);
-    if (slice) slice.textContent = String(label || (index === 1 || index === 4 ? 'BETTER LUCK' : 'OHHO REWARD')).toUpperCase();
-  });
-}
+function setHomeSpinPrizes(prizes) { drawWheel($('#homeSpinWheel'), wheelSlots(prizes)); }
 function showHomeSpinReward(reward) {
   $('#homeSpinLabel').textContent = reward.label;
   $('#homeSpinCode').textContent = reward.code;
@@ -261,7 +257,7 @@ async function checkHomeSpinOutlet() {
     const response = await fetch(`/api/spin?outlet=${encodeURIComponent(homeSpinOutlet)}`, { cache: 'no-store' });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Spin & Win is unavailable at this outlet.');
-    if (button) button.disabled = !data.enabled;
+    if (button) { button.disabled = !data.enabled; button.textContent = 'START OHHO SPIN ↻'; }
     setHomeSpinEligibility(data.minimumOrder);
     setHomeSpinPrizes(data.prizes);
     setHomeSpinMessage(data.enabled ? 'Ready. Start the spinner and show your code at the POS.' : 'Spin & Win is paused at this outlet.');
@@ -272,6 +268,7 @@ async function checkHomeSpinOutlet() {
 function renderHomeSpinnerOutlets(outlets) {
   const select = $('#homeSpinOutlet');
   if (!select) return;
+  setHomeSpinPrizes(DEFAULT_PRIZES);
   select.disabled = false;
   select.innerHTML = `<option value="">CHOOSE YOUR OUTLET</option>${outlets.filter(outlet => outlet.slug).map(outlet => `<option value="${escapeHtml(outlet.slug)}">${escapeHtml(outlet.name).toUpperCase()}</option>`).join('')}`;
   select.addEventListener('change', () => { homeSpinOutlet = select.value; void checkHomeSpinOutlet(); });
@@ -280,25 +277,22 @@ function renderHomeSpinnerOutlets(outlets) {
     homeSpinBusy = true;
     const button = $('#homeSpinButton');
     button.disabled = true;
+    select.disabled = true;
     $('#homeSpinReward').hidden = true;
     setHomeSpinMessage('Spinning your OHHO reward…');
     try {
       const response = await fetch('/api/spin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'spin', outlet: homeSpinOutlet, deviceKey: spinDeviceKey() }) });
       const data = await response.json();
       if (!response.ok && !data.reward && !data.outcome) throw new Error(data.error || 'Could not create your reward.');
-      const segment = Number.isInteger(data.segment) ? data.segment : Math.floor(Math.random() * 6);
-      $('#homeSpinWheel').style.transform = `rotate(${1800 + 30 - (segment * 60)}deg)`;
-      await new Promise(resolve => setTimeout(resolve, 2800));
-      if (data.outcome === 'NO_REWARD') {
-        setHomeSpinMessage(data.error ? 'You have already used today’s spin at this outlet.' : 'Better luck next time — come back tomorrow for another OHHO spin.');
-        return;
-      }
-      showHomeSpinReward(data.reward);
-      setHomeSpinMessage(data.reward.status === 'REDEEMED' ? 'This code was already redeemed.' : 'Reward ready — give this code to the team before payment.');
+      await animateWheel($('#homeSpinWheel'), data);
+      setHomeSpinMessage(rewardMessage(data));
+      button.textContent = 'Today’s spin used';
+      if (data.outcome !== 'NO_REWARD') showHomeSpinReward(data.reward);
+
     } catch (error) {
       setHomeSpinMessage(error.message || 'Could not spin right now. Please try again.');
       button.disabled = false;
-    } finally { homeSpinBusy = false; }
+    } finally { homeSpinBusy = false; select.disabled = false; }
   });
 }
 
