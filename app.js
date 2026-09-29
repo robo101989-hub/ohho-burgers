@@ -88,7 +88,7 @@ async function loadInstagramReels() {
       const thumbnail = escapeHtml(item.thumbnailUrl);
       const { isVideo, embedUrl } = instagramPlayback(item);
       const player = item.videoUrl
-        ? `<video class="reel-video" controls muted playsinline preload="metadata" poster="${thumbnail}" aria-label="OHHO Instagram reel ${index + 1}"><source src="${escapeHtml(item.videoUrl)}" type="video/mp4"></video>`
+        ? `<video class="reel-video" controls autoplay loop muted playsinline preload="metadata" poster="${thumbnail}" aria-label="OHHO Instagram reel ${index + 1}"><source src="${escapeHtml(item.videoUrl)}" type="video/mp4"></video>`
         : embedUrl
           ? `<iframe class="reel-embed" src="${embedUrl}" title="OHHO Instagram reel ${index + 1}" loading="lazy" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>`
           : `<img loading="lazy" src="${thumbnail}" alt="${caption}">`;
