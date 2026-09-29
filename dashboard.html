@@ -1550,11 +1550,12 @@ body{font-size:14px}
 <details id="packagingRulesPanel" class="inventory-panel inventory-setup-details" data-admin-only>
       <summary><span><small>Shared item usage</small><strong>Order-use stock rules</strong></span><b>OPEN</b></summary>
       <div class="inventory-tool-body">
-      <p class="inventory-edit-help">Set separate rules for the same stock item by order type. For example, use one sheet per dine-in order and one per wrapped takeaway item. A matching rule replaces that item’s recipe deduction only for the selected order types.</p>
+      <p class="inventory-edit-help">Set separate rules for the same stock item by order type. For bag sizing, add a size rule for each inventory item: Small is used for 1 menu item, Medium for 2, and Large for 3 or more. Configure each brown bag and carry bag size. A size-rule item is controlled by the selector and will not also be deducted from a recipe.</p>
       <div class="inventory-form-grid">
         <label><span>STOCK ITEM</span><select id="packagingRuleItem"></select></label>
         <label><span>USED FOR</span><span class="packaging-order-types"><label><input id="packagingDineIn" type="checkbox"> Dine-In</label><label><input id="packagingTakeaway" type="checkbox" checked> Takeaway</label><label><input id="packagingDelivery" type="checkbox"> Delivery</label></span></label>
-        <label><span>USAGE BASIS</span><select id="packagingConsumptionType"><option value="PER_ORDER">Once per order (e.g. shared tray)</option><option value="PER_MENU_ITEM">Per mapped menu item</option><option value="PER_MENU_CATEGORY">Per menu category</option></select></label>
+        <label><span>USAGE BASIS</span><select id="packagingConsumptionType"><option value="PER_ORDER">Once per order (e.g. shared tray)</option><option value="PER_MENU_ITEM">Per mapped menu item</option><option value="PER_MENU_CATEGORY">Per menu category</option><option value="PER_ORDER_SIZE">Choose stock item by order size</option></select></label>
+        <label id="packagingOrderSizeField" class="hidden"><span>ORDER SIZE</span><select id="packagingOrderSizeTier"><option value="SMALL">Small · 1 item</option><option value="MEDIUM">Medium · 2 items</option><option value="LARGE">Large · 3+ items</option></select></label>
         <label><span>QUANTITY</span><input id="packagingQuantity" type="number" min="0.001" step="0.001" value="1"></label>
         <label id="packagingMenuItemField" class="hidden"><span>MENU ITEM</span><select id="packagingMenuItem"></select></label>
         <label id="packagingMenuCategoryField" class="hidden"><span>MENU CATEGORY</span><select id="packagingMenuCategory"></select></label>

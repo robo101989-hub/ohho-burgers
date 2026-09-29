@@ -3485,6 +3485,7 @@ function updatePackagingRuleFields() {
   const type = $('#packagingConsumptionType')?.value || 'PER_ORDER';
   $('#packagingMenuItemField')?.classList.toggle('hidden', type !== 'PER_MENU_ITEM');
   $('#packagingMenuCategoryField')?.classList.toggle('hidden', type !== 'PER_MENU_CATEGORY');
+  $('#packagingOrderSizeField')?.classList.toggle('hidden', type !== 'PER_ORDER_SIZE');
 }
 
 function renderPackagingRules() {
@@ -3493,7 +3494,9 @@ function renderPackagingRules() {
   const rules = state.inventory.packagingRules || [];
   list.innerHTML = rules.length ? rules.map(rule => {
     const item = inventoryItem(rule.item_id) || {};
-    const target = rule.consumption_type === 'PER_MENU_ITEM'
+    const target = rule.consumption_type === 'PER_ORDER_SIZE'
+      ? `${({ SMALL: 'Small · 1 item', MEDIUM: 'Medium · 2 items', LARGE: 'Large · 3+ items' })[rule.order_size_tier] || 'Order size'}`
+      : rule.consumption_type === 'PER_MENU_ITEM'
       ? state.inventory.menuItems.find(row => row.id === rule.menu_item_id)?.name
       : rule.consumption_type === 'PER_MENU_CATEGORY'
         ? state.inventory.menuCategories.find(row => row.id === rule.menu_category_id)?.name : 'whole order';
@@ -3614,6 +3617,7 @@ function editPackagingRule(rule) {
   if ($('#packagingQuantity')) $('#packagingQuantity').value = Number(rule.consumption_quantity);
   if ($('#packagingMenuItem')) $('#packagingMenuItem').value = rule.menu_item_id || '';
   if ($('#packagingMenuCategory')) $('#packagingMenuCategory').value = rule.menu_category_id || '';
+  if ($('#packagingOrderSizeTier')) $('#packagingOrderSizeTier').value = rule.order_size_tier || 'SMALL';
   if ($('#packagingDineIn')) $('#packagingDineIn').checked = rule.order_types?.includes('DINE_IN');
   if ($('#packagingTakeaway')) $('#packagingTakeaway').checked = rule.order_types?.includes('TAKEAWAY');
   if ($('#packagingDelivery')) $('#packagingDelivery').checked = rule.order_types?.includes('DELIVERY');
@@ -3625,7 +3629,7 @@ async function savePackagingRule() {
   const orderTypes = [['DINE_IN','#packagingDineIn'],['TAKEAWAY','#packagingTakeaway'],['DELIVERY','#packagingDelivery']].filter(([,selector]) => $(selector)?.checked).map(([value]) => value);
   const button = $('#savePackagingRule'); button.disabled = true;
   try {
-    await inventoryApi('POST', { action: 'save_packaging_rule', ruleId: state.inventory.editingPackagingRuleId, itemId: $('#packagingRuleItem')?.value, orderTypes, consumptionType: $('#packagingConsumptionType')?.value, quantity: $('#packagingQuantity')?.value, menuItemId: $('#packagingMenuItem')?.value, menuCategoryId: $('#packagingMenuCategory')?.value });
+    await inventoryApi('POST', { action: 'save_packaging_rule', ruleId: state.inventory.editingPackagingRuleId, itemId: $('#packagingRuleItem')?.value, orderTypes, consumptionType: $('#packagingConsumptionType')?.value, orderSizeTier: $('#packagingOrderSizeTier')?.value, quantity: $('#packagingQuantity')?.value, menuItemId: $('#packagingMenuItem')?.value, menuCategoryId: $('#packagingMenuCategory')?.value });
     state.inventory.editingPackagingRuleId = null;
     button.textContent = 'SAVE USAGE RULE';
     await loadInventory();
