@@ -1,0 +1,90 @@
+/* Public homepage only: independent of the operations dashboard. */
+.ohho-home{background:#10110e;color:#f5f1e7;--yellow:#ffdb32;--cream:#f5f1e7}
+.ohho-home .noise{opacity:.018}
+.ohho-home .section-shell{width:min(1240px,calc(100% - 80px))}
+.ohho-home .site-header{height:88px;background:#10110eed;border-bottom:1px solid #ffffff12;backdrop-filter:blur(18px);padding-inline:max(40px,calc((100vw - 1240px)/2))}
+.ohho-home .desktop-nav a{font-size:13px;font-weight:600}
+.ohho-home .pill{min-height:46px;padding:13px 23px;font-size:11px;letter-spacing:.5px;border-radius:12px}
+.ohho-home a:focus-visible,.ohho-home button:focus-visible,.ohho-home select:focus-visible{outline:3px solid #ffdb32;outline-offset:5px}
+.ohho-home .hero{min-height:710px;padding:150px 0 115px;grid-template-columns:1fr 1fr;align-items:center;gap:20px;overflow:visible}
+.ohho-home .hero-copy{padding:0;z-index:2}
+.ohho-home .hero h1{font-size:clamp(58px,6.6vw,94px);line-height:.98;letter-spacing:-3px;margin:25px 0;text-wrap:balance}
+.ohho-home .hero h1 em{font-style:normal}
+.ohho-home .hero-description{font-size:16px;line-height:1.8;color:#bcbcaf;max-width:400px;margin:0 0 28px}
+.ohho-home .hero-actions{gap:24px;align-items:center}
+.ohho-home .hero-art{height:470px;margin:0;min-width:0;position:relative;border-radius:32px;background:radial-gradient(ellipse,#65511b55,transparent 70%)}
+.ohho-home .hero-food{width:108%;height:100%;right:-4%;bottom:0;object-fit:contain;border-radius:30px;filter:drop-shadow(0 25px 35px #0006);animation:none}
+.ohho-home .burst{display:none}
+.hero-art-note{position:absolute;bottom:12px;left:50%;transform:translateX(-50%) rotate(-5deg);z-index:2;background:#f5f1e7;color:#14140d;border-radius:8px;padding:12px 17px;font:700 10px var(--mono);letter-spacing:1px;white-space:nowrap;box-shadow:0 8px 24px #0005}
+.hero-categories{display:flex;gap:8px;flex-wrap:wrap;margin-top:30px}
+.hero-categories a{font-size:11px;text-decoration:none;color:#c4c4b9;border:1px solid #ffffff24;padding:8px 12px;border-radius:30px}
+.hero-categories a:hover{color:var(--yellow);border-color:var(--yellow)}
+.ohho-home .hero-ticker{bottom:0;transform:none;height:42px;border:0;font-size:17px}
+.ohho-home .eyebrow{font-size:10px;letter-spacing:2px}
+.ohho-home .favourites,.ohho-home .locations,.ohho-home .instagram-reels,.ohho-home .customer-reviews{padding:85px 0}
+.ohho-home .section-heading h2,.ohho-home .social-header h2,.ohho-home .review-section-head h2{font-size:clamp(34px,4vw,54px);line-height:1.04;letter-spacing:-1px}
+.ohho-home .section-heading{margin-bottom:32px}
+.ohho-home .section-heading>p:not(.eyebrow){color:#aaa99f;font-size:14px}
+.ohho-home .section-heading .text-link{display:inline-block;margin-top:8px}
+.ohho-home .product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;overflow:visible;width:100%;margin:0}
+.ohho-home .product-card{min-width:0;width:auto;background:#1b1c17;border:1px solid #ffffff15;border-radius:20px;overflow:hidden;transition:transform .2s,border-color .2s}
+.ohho-home .product-card:hover{transform:translateY(-5px);border-color:#ffdb3280}
+.ohho-home .product-image{height:auto;aspect-ratio:1.05;overflow:hidden;border-radius:0;position:relative;background:#25261f}
+.ohho-home .product-image img{width:100%;height:100%;object-fit:cover}
+.ohho-home .product-order{position:absolute;right:14px;bottom:14px;width:40px;height:40px;background:var(--yellow);color:#161610;border-radius:50%;display:grid;place-items:center;font-size:23px;text-decoration:none}
+.ohho-home .product-info{display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding:20px;min-height:170px}
+.ohho-home .product-info h3{font:700 16px/1.4 var(--sans);text-transform:none;margin:0 0 8px}
+.ohho-home .product-info p{font-size:12px;line-height:1.65;color:#adada0;margin:0}
+.ohho-home .product-info>b{font:700 19px var(--sans);color:var(--yellow);margin-top:auto}
+.ohho-home .locations{border-top:1px solid #ffffff12}
+.ohho-home .locations .location-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.ohho-home .locations .location-card.location-card-premium{border:1px solid #ffffff22;background:#1b1c17;border-radius:20px}
+.ohho-home .locations .location-card.location-card-premium .location-visual{height:160px;border-color:#ffffff15}
+.ohho-home .locations .location-card.location-card-premium .location-content{padding:24px}
+.ohho-home .location-card-premium h3{font:700 27px var(--sans);text-transform:none;letter-spacing:-.5px}
+.ohho-home .location-card-premium .location-address{font-size:13px;line-height:1.65;-webkit-line-clamp:unset;min-height:44px}
+.ohho-home .location-card-premium .location-meta span{font-size:12px}
+.ohho-home .location-card-premium .location-order{font-size:11px!important;padding:14px!important}
+.ohho-home .location-card-premium .location-secondary a{font-size:10px!important;min-height:40px;border-color:#ffffff25!important}
+.ohho-home #spin.spin-teaser{margin:15px auto 60px;padding:40px;border-radius:28px;background:radial-gradient(ellipse at 10% 40%,#5b481d70,transparent 60%),#1d2016;border:1px solid #ffdb3233;grid-template-columns:.85fr 1fr .85fr}
+.ohho-home .spin-teaser-copy h2{font-size:46px;line-height:1.03}
+.ohho-home .spin-teaser-copy p{font-size:13px;line-height:1.8;color:#c0c0b3}
+.ohho-home .spin-teaser-action{background:#10110e77;border:1px solid #ffffff15;border-radius:18px;padding:22px}
+.ohho-home .story{padding:70px 0 100px;gap:65px;grid-template-columns:1fr 1fr}
+.ohho-home .story:before{display:none}
+.ohho-home .story-image{height:460px;border-radius:24px;padding:0;border:1px solid #ffffff20}
+.ohho-home .story-image img{border-radius:24px}
+.ohho-home .story-stamp{right:12px;bottom:12px;width:135px;height:135px;font-size:13px}
+.ohho-home .story-copy{padding:20px 0;border:0}
+.ohho-home .story-copy:before{display:none}
+.ohho-home .story-copy h2{font-size:clamp(36px,4vw,58px)}
+.ohho-home .franchise-highlight{border-radius:24px;background:#202219;border:1px solid #ffdb3233;padding:42px;margin:40px auto 80px}
+.ohho-home .franchise-highlight h2{font-size:clamp(30px,3.2vw,46px)}
+.ohho-home .order-cta{background:var(--yellow);border-radius:32px 32px 0 0}
+.ohho-home .order-inner{padding-top:65px;padding-bottom:65px}
+.ohho-home .order-inner h2{font-size:70px}
+.ohho-home footer{background:#0c0d0a}
+@media(max-width:1000px){.ohho-home .nav-actions .franchise-link{display:none}.ohho-home .hero h1{font-size:66px}.ohho-home .hero-art{height:390px}.ohho-home .product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ohho-home #spin.spin-teaser{grid-template-columns:1fr 1fr}.ohho-home #spin .spin-teaser-action{grid-column:1/-1}.ohho-home .story{gap:32px}}
+@media(max-width:680px){.ohho-home .section-shell{width:calc(100% - 36px)}.ohho-home .site-header{height:72px;padding-inline:18px;gap:14px}.ohho-home .site-header .pill{padding:11px 16px;min-height:42px}.ohho-home .hero{padding:110px 0 65px;display:flex;flex-direction:column;gap:20px;min-height:0}.ohho-home .hero-copy{width:100%;text-align:left}.ohho-home .hero h1{font-size:clamp(49px,12.7vw,80px);letter-spacing:-2px;margin:20px 0}.ohho-home .hero-description{font-size:14px;max-width:360px}.ohho-home .hero-art{width:100%;height:310px}.ohho-home .hero-food{width:100%;right:0}.hero-categories{gap:6px;margin-top:24px}.hero-categories a{font-size:10px;padding:7px 10px}.ohho-home .hero-ticker{height:34px;font-size:14px}.ohho-home .favourites,.ohho-home .locations,.ohho-home .instagram-reels,.ohho-home .customer-reviews{padding:52px 0}.ohho-home .product-grid{gap:12px}.ohho-home .product-info{padding:14px;min-height:175px;gap:10px}.ohho-home .product-info h3{font-size:14px}.ohho-home .product-info p{font-size:11px}.ohho-home .product-order{width:34px;height:34px;right:9px;bottom:9px}.ohho-home .locations .location-grid{grid-template-columns:1fr}.ohho-home #spin.spin-teaser{grid-template-columns:1fr;padding:28px 20px;margin-bottom:25px;gap:25px}.ohho-home #spin .home-spin-wheel-wrap{margin:auto}.ohho-home .spin-teaser-copy h2{font-size:40px}.ohho-home .story{grid-template-columns:1fr;padding:35px 0 50px;gap:25px}.ohho-home .story-image{height:350px}.ohho-home .franchise-highlight{padding:28px;display:block;margin:25px auto 55px}.ohho-home .franchise-highlight .pill{margin-top:22px}.ohho-home .order-inner{padding:45px 0}.ohho-home .order-inner h2{font-size:58px}.ohho-home footer{padding-bottom:70px}.ohho-home .mobile-order{border-radius:14px 14px 0 0}}
+@media(prefers-reduced-motion:reduce){.ohho-home *{animation:none!important;scroll-behavior:auto!important;transition:none!important}.ohho-home .reveal{opacity:1;transform:none}}
+.ohho-home .hero-food{transform:none;object-fit:cover;border-radius:48% 48% 38% 38%;mix-blend-mode:lighten}
+.ohho-home .hero-ticker{transform:translateX(-50%)}
+.ohho-home .mobile-order{padding:15px 20px;text-decoration:none;font:800 12px var(--sans);display:none;align-items:center;justify-content:space-between;color:#111}
+@media(max-width:680px){.ohho-home .mobile-order{display:flex}.ohho-home .hero-copy{transform:none}}
+/* Content stays readable immediately, including slow connections. */
+.ohho-home .reveal{opacity:1;transform:none;transition:transform .2s ease,border-color .2s ease}
+.ohho-home section[id]{scroll-margin-top:100px}
+/* Separate captions from media so reel playback controls remain usable. */
+.ohho-home .reel-card{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;border-radius:20px;background:#1b1c17;min-height:0}
+.ohho-home .reel-card img,.ohho-home .reel-card .reel-video{position:relative;inset:auto;display:block;width:100%;height:270px;object-fit:cover;flex-shrink:0}
+.ohho-home .reel-card:after{display:none}
+.ohho-home .reel-card>div{padding:18px;min-height:125px}
+.ohho-home .reel-card:hover img,.ohho-home .reel-card:hover .reel-video{transform:none}
+.ohho-home .reel-card p{font-size:13px;line-height:1.55;font-weight:600}
+.ohho-home .reel-card .reel-embed{display:block;width:100%;height:410px;border:0;background:#fff;flex-shrink:0}
+.ohho-home .reel-card:has(.reel-embed)>div{min-height:100px}
+.ohho-home .reels-grid{grid-auto-columns:minmax(326px,1fr)}
+.ohho-home .reel-card:has(.reel-embed){min-width:326px}
+.ohho-home .reels-grid{grid-template-columns:repeat(8,minmax(326px,1fr));overflow-x:auto;align-items:start;scroll-snap-type:x proximity;padding-bottom:14px}
+.ohho-home .reel-card{scroll-snap-align:start}
+.ohho-home .reel-playback-note{display:block;margin:8px 0;color:#bcbcaf;text-transform:none;letter-spacing:0}

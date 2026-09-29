@@ -1,3 +1,4 @@
+import { instagramPlayback, withOriginalVideo } from './lib/instagram-media.js';
 import { drawWheel, animateWheel, rewardMessage } from './src/spin-wheel.js';
 import { wheelSlots, DEFAULT_PRIZES } from './lib/spin-rewards.js';
 import { supabase } from "./src/supabase.js";
@@ -65,36 +66,9 @@ if (isMenuPage) {
     </section>`;
   }).join(''));
 } else {
-  render('#productGrid', visibleProducts.map((p, i) => `<article class="product-card reveal delay-${i % 3}"><div class="product-image"><img loading="lazy" src="${p.image}" alt="${p.name}"/><span class="food-dot ${p.veg ? 'veg' : 'nonveg'}"></span><button aria-label="Add ${p.name}">+</button></div><div class="product-info"><div><h3>${p.name}</h3><p>${p.desc}</p></div><b>${p.price}</b></div></article>`).join(''));
+  render('#productGrid', visibleProducts.map((p, i) => `<article class="product-card reveal delay-${i % 3}"><div class="product-image"><img loading="lazy" src="${p.image}" alt="${p.name}"/><span class="food-dot ${p.veg ? 'veg' : 'nonveg'}"></span><a class="product-order" href="#order" aria-label="Order ${p.name}">↗</a></div><div class="product-info"><div><h3>${p.name}</h3><p>${p.desc}</p></div><b>${p.price}</b></div></article>`).join(''));
 }
 
-function setupMobileProductSlideshow() {
-  const carousel = $('#productGrid');
-  if (!carousel) return;
-
-  const mobile = window.matchMedia('(max-width: 860px)');
-  let timer;
-  const showNext = () => {
-    if (!mobile.matches) return;
-    const cards = [...carousel.querySelectorAll('.product-card')];
-    if (cards.length < 2) return;
-    const current = cards.reduce((best, card, index) =>
-      Math.abs(card.offsetLeft - carousel.scrollLeft) < Math.abs(cards[best].offsetLeft - carousel.scrollLeft) ? index : best, 0);
-    const nextCard = cards[(current + 1) % cards.length];
-    carousel.scrollTo({ left: nextCard.offsetLeft, behavior: 'smooth' });
-  };
-  const start = () => {
-    clearInterval(timer);
-    if (mobile.matches) timer = setInterval(showNext, 4000);
-  };
-
-  ['pointerdown', 'touchstart'].forEach(event => carousel.addEventListener(event, () => clearInterval(timer), { passive: true }));
-  carousel.addEventListener('pointerup', start, { passive: true });
-  window.addEventListener('resize', start);
-  start();
-}
-
-setupMobileProductSlideshow();
 render('#whyGrid', siteData.why.map(x => `<article class="why-card reveal"><span>${x[0]}</span><h3>${x[1]}</h3><p>${x[2]}</p></article>`).join(''));
 render('#timeline', siteData.journey.map((x, i) => `<article class="timeline-item reveal"><span>${x[0]}</span><div class="timeline-dot"></div><h3>${x[1]}</h3><p>${x[2]}</p></article>`).join(''));
 render('#offerCards', siteData.offers.map((x, i) => `<article class="offer-card offer-${i} reveal"><span>LIMITED-TIME</span><h3>${x[0]}</h3><p>${x[1]}</p><b>→</b></article>`).join(''));
@@ -107,16 +81,18 @@ async function loadInstagramReels() {
     const refreshMinute = Math.floor(Date.now() / 60000);
     const response = await fetch(`/api/instagram/reels?refresh=${refreshMinute}`, { cache: 'no-store' });
     const payload = await response.json();
-    const media = Array.isArray(payload.media) ? payload.media : [];
+    const media = Array.isArray(payload.media) ? payload.media.map(withOriginalVideo) : [];
     if (!response.ok || !media.length) throw new Error('No Instagram media');
     const cards = media.map((item, index) => {
       const caption = escapeHtml(item.caption || 'Fresh from OHHO Burgers');
       const thumbnail = escapeHtml(item.thumbnailUrl);
-      const isVideo = Boolean(item.videoUrl);
-      const player = isVideo
-        ? `<video class="reel-video" autoplay muted loop playsinline preload="metadata" poster="${thumbnail}" aria-label="OHHO Instagram reel ${index + 1}"><source src="${escapeHtml(item.videoUrl)}" type="video/mp4"></video>`
-        : `<img loading="lazy" src="${thumbnail}" alt="${caption}">`;
-      return `<article class="reel-card reveal in-view">${player}<div><small>${isVideo ? 'Instagram Reel' : 'Instagram Post'}</small><p>${caption}</p><a href="${escapeHtml(item.permalink)}" target="_blank" rel="noopener">View on Instagram ↗</a></div></article>`;
+      const { isVideo, embedUrl } = instagramPlayback(item);
+      const player = item.videoUrl
+        ? `<video class="reel-video" controls muted playsinline preload="metadata" poster="${thumbnail}" aria-label="OHHO Instagram reel ${index + 1}"><source src="${escapeHtml(item.videoUrl)}" type="video/mp4"></video>`
+        : embedUrl
+          ? `<iframe class="reel-embed" src="${embedUrl}" title="OHHO Instagram reel ${index + 1}" loading="lazy" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>`
+          : `<img loading="lazy" src="${thumbnail}" alt="${caption}">`;
+      return `<article class="reel-card reveal in-view">${player}<div><small>${isVideo ? 'Instagram Reel' : 'Instagram Post'}</small><p>${caption}</p>${embedUrl ? '<small class="reel-playback-note">Watch this reel on Instagram</small>' : ''}<a href="${escapeHtml(item.permalink)}" target="_blank" rel="noopener">View on Instagram ↗</a></div></article>`;
     }).join('');
     target.innerHTML = `<div class="social-feed-label"><span>01</span><h3>LATEST <em>FROM OHHO.</em></h3><p>New reels and posts, together in one live feed.</p></div><div class="reels-grid" tabindex="0" role="region" aria-label="Latest Instagram reels and posts. Scroll for more.">${cards}</div>`;
   } catch {
@@ -272,6 +248,10 @@ function renderHomeSpinnerOutlets(outlets) {
   select.disabled = false;
   select.innerHTML = `<option value="">CHOOSE YOUR OUTLET</option>${outlets.filter(outlet => outlet.slug).map(outlet => `<option value="${escapeHtml(outlet.slug)}">${escapeHtml(outlet.name).toUpperCase()}</option>`).join('')}`;
   select.addEventListener('change', () => { homeSpinOutlet = select.value; void checkHomeSpinOutlet(); });
+  const requestedOutlet = new URLSearchParams(location.search).get('outlet');
+  if (requestedOutlet && outlets.some(outlet => outlet.slug === requestedOutlet)) {
+    select.value = requestedOutlet; homeSpinOutlet = requestedOutlet; void checkHomeSpinOutlet();
+  }
   $('#homeSpinButton')?.addEventListener('click', async () => {
     if (homeSpinBusy || !homeSpinOutlet) return;
     homeSpinBusy = true;
@@ -380,7 +360,7 @@ renderMenuImageFallback();
 setTimeout(() => { void loadPublicMenu(); }, 150);
 
 $('.menu-toggle')?.addEventListener('click', () => { const open = document.body.classList.toggle('menu-open'); $('.menu-toggle').setAttribute('aria-expanded', open); });
-document.querySelectorAll('.mobile-nav a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('menu-open')));
+document.querySelectorAll('.mobile-nav a').forEach(a => a.addEventListener('click', () => { document.body.classList.remove('menu-open'); $('.menu-toggle')?.setAttribute('aria-expanded', 'false'); }));
 window.addEventListener('scroll', () => document.body.classList.toggle('scrolled', window.scrollY > 30));
 const watcher = new IntersectionObserver(entries => entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('in-view'); watcher.unobserve(entry.target); } }), { threshold: .12 });
 document.querySelectorAll('.reveal').forEach(el => watcher.observe(el));

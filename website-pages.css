@@ -1,0 +1,50 @@
+/* Shared public-page treatments; dashboard and checkout logic are untouched. */
+.ohho-inner .page-hero,.ohho-inner .about-hero{padding:150px 0 65px;min-height:0;border-bottom:1px solid #ffffff18;margin-bottom:55px}
+.ohho-inner .page-hero h1,.ohho-inner .about-hero h1,.ohho-inner .legal h1{font:900 clamp(48px,6vw,80px)/1.02 var(--display);letter-spacing:-2px;max-width:950px;margin:22px 0}
+.ohho-inner .page-hero p:not(.eyebrow),.ohho-inner .about-hero-copy{font:400 16px/1.8 var(--sans);max-width:620px;color:#bcbcaf}
+.ohho-inner .page-hero .pill{margin-top:18px}
+.ohho-inner .clean-menu{padding-top:145px}
+.ohho-inner .clean-menu-intro{padding:32px;border:1px solid #ffffff18;background:radial-gradient(ellipse at top right,#ffdb3217,transparent 60%),#1b1c17;border-radius:24px;margin-bottom:35px}
+.ohho-inner .clean-menu-intro h1{font:900 clamp(48px,6vw,78px)/1 var(--display);letter-spacing:-2px}
+.ohho-inner .clean-menu .menu-list{gap:20px}
+.ohho-inner .clean-menu .menu-item.menu-product-card{border:1px solid #ffffff20!important;border-radius:20px!important;background:#1b1c17!important}
+.ohho-inner .menu-product-info{padding:20px;min-height:135px;flex-wrap:wrap}
+.ohho-inner .menu-product-info h3{font:700 16px/1.4 var(--sans)}
+.ohho-inner .menu-product-info p{font-size:12px;line-height:1.6;color:#b3b3a6}
+.ohho-inner .menu-product-info>b{font:700 18px var(--sans)}
+.ohho-inner .clean-menu .menu-category-header h2{font:700 clamp(24px,3vw,36px)/1.2 var(--sans);letter-spacing:-.7px}
+.ohho-inner .contact-page{gap:45px;padding-bottom:80px;align-items:start}
+.ohho-inner .contact-page>div,.ohho-inner .contact-form{background:#1b1c17;border:1px solid #ffffff20;border-radius:24px;padding:32px}
+.ohho-inner .contact-page h2{font-size:42px;line-height:1.05}
+.ohho-inner .contact-page>div>p{font-size:14px;color:#bcbcaf}
+.ohho-inner .contact-form label,.ohho-inner .lead-form label{font:600 12px var(--sans);letter-spacing:0;text-transform:none}
+.ohho-inner .contact-form input,.ohho-inner .contact-form textarea{margin-top:9px;border:1px solid #ffffff25;border-radius:10px;padding:14px;background:#12130f;color:#f5f1e7;font-size:14px}
+.ohho-inner .contact-form input:focus,.ohho-inner .contact-form textarea:focus{outline:2px solid var(--yellow);outline-offset:2px}
+.ohho-inner .franchise{padding:20px 0 70px;background:transparent}
+.ohho-inner .franchise-model-layout{gap:28px;align-items:start}
+.ohho-inner .franchise-model-card,.ohho-inner .approach{padding:30px;background:#1b1c17;border:1px solid #ffffff20;border-radius:24px}
+.ohho-inner .franchise-model-card h2{font-size:clamp(30px,3vw,44px);line-height:1.1}
+.ohho-inner .franchise-model-card p{font-size:14px;line-height:1.8}
+.ohho-inner .benefits{padding:30px 0 70px}
+.ohho-inner .benefit-grid{gap:18px}
+.ohho-inner .benefit-card{background:#1b1c17;border:1px solid #ffffff20;border-radius:18px;padding:26px}
+.ohho-inner .benefit-card h3{font:700 18px var(--sans)}
+.ohho-inner .benefit-card p{font-size:13px;line-height:1.7}
+.ohho-inner .lead-section{border-radius:26px;padding:40px;margin-bottom:70px;gap:35px}
+.ohho-inner .lead-form input,.ohho-inner .lead-form select{border-radius:10px;padding:13px;margin-top:7px;font-size:14px}
+.ohho-inner .locations{padding:0 0 70px;border-top:0}
+.ohho-inner .legal{padding-top:140px;padding-bottom:70px;max-width:850px}
+.ohho-inner .legal h2{font:700 24px var(--sans);margin:36px 0 14px}
+.ohho-inner .legal p{font-size:15px;line-height:1.85;color:#c1c1b7}
+.ohho-inner .legal-updated{display:inline-block;border:1px solid #ffffff20;border-radius:30px;padding:9px 14px}
+.ohho-inner .about-card,.ohho-inner .why-card,.ohho-inner .timeline-item{border-radius:20px}
+.ohho-inner .footer-bottom{padding-block:26px}
+@media(max-width:1000px){.ohho-inner .nav-actions .pill-outline{display:none}.ohho-inner .franchise-model-layout{grid-template-columns:1fr}.ohho-inner .clean-menu .menu-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.ohho-inner .page-hero,.ohho-inner .about-hero{padding:115px 0 35px;margin-bottom:30px}.ohho-inner .page-hero h1,.ohho-inner .about-hero h1,.ohho-inner .legal h1{font-size:clamp(42px,11vw,64px);letter-spacing:-1.5px}.ohho-inner .page-hero p:not(.eyebrow){font-size:14px}.ohho-inner .clean-menu{padding-top:105px}.ohho-inner .clean-menu-intro{padding:23px}.ohho-inner .clean-menu .menu-list{gap:12px}.ohho-inner .menu-product-info{padding:14px;min-height:155px;gap:8px}.ohho-inner .menu-product-info h3{font-size:14px}.ohho-inner .menu-product-info p{font-size:11px}.ohho-inner .contact-page{display:grid;grid-template-columns:1fr;gap:20px}.ohho-inner .contact-page>div,.ohho-inner .contact-form,.ohho-inner .franchise-model-card,.ohho-inner .approach{padding:23px}.ohho-inner .lead-section{padding:24px;display:block}.ohho-inner .lead-form{margin-top:25px}.ohho-inner .legal{padding-top:110px}.ohho-inner .legal p{font-size:14px}.ohho-inner .benefit-grid{grid-template-columns:1fr 1fr;gap:12px}.ohho-inner .benefit-card{padding:20px}.ohho-inner .nav-actions{margin-left:auto}}
+.ohho-reward-page{background:radial-gradient(ellipse at top,#423b1655,transparent 65%),#10110e;color:#f5f1e7}
+.ohho-reward-page .wheel-card,.ohho-reward-page .reward-card{border-radius:24px;background:#1b1c17;border:1px solid #ffdb3240;box-shadow:0 20px 60px #0003}
+.ohho-reward-page button{border-radius:12px;min-height:46px;background:#ffdb32}
+.ohho-reward-page h1{letter-spacing:-1.5px}
+@media(max-width:680px){.ohho-inner .franchise-contact-actions{display:grid;grid-template-columns:1fr}.ohho-inner .contact-chip{min-width:0;width:100%;overflow-wrap:anywhere}.ohho-inner .lead-form .form-row{grid-template-columns:1fr}}
+.about-welcome,.direct-spin-intro{padding:150px 0 45px}.about-welcome h1,.direct-spin-intro h1{font:900 clamp(50px,6.5vw,86px)/1 var(--display);letter-spacing:-2px;margin:20px 0}.about-welcome h1 em,.direct-spin-intro h1 em{color:var(--yellow);font-style:normal}.about-welcome>p:last-child,.direct-spin-intro>p:last-child{font-size:16px;line-height:1.8;color:#bcbcaf;max-width:560px}.ohho-home .about-story-page .story{padding:25px 0 75px}.about-values{padding:20px 0 65px}.about-values h2,.about-invitation h2{font:900 clamp(36px,4vw,56px)/1.05 var(--display);margin:20px 0 30px}.about-values h2 em,.about-invitation h2 em{color:var(--yellow)}.about-value-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.about-value-grid article{padding:30px;border:1px solid #ffffff20;background:#1b1c17;border-radius:22px}.about-value-grid article>span{font:500 11px var(--mono);color:var(--yellow)}.about-value-grid h3{font:700 22px var(--sans);margin:24px 0 14px}.about-value-grid p,.about-invitation p,.about-grow p{font-size:14px;color:#bcbcaf;line-height:1.8}.about-invitation{display:flex;align-items:center;justify-content:space-between;gap:30px;padding:40px;background:radial-gradient(ellipse at top right,#ffdb3220,transparent 65%),#1b1c17;border:1px solid #ffdb3233;border-radius:24px}.about-invitation-actions{display:flex;flex-direction:column;gap:14px;flex-shrink:0}.about-grow{padding:60px 0 80px}.about-grow h3{font-size:24px}.direct-spin-page #spin{margin-bottom:80px}
+@media(max-width:680px){.about-welcome,.direct-spin-intro{padding:110px 0 30px}.about-welcome h1,.direct-spin-intro h1{font-size:52px}.about-value-grid{grid-template-columns:1fr;gap:14px}.about-value-grid article{padding:25px}.about-invitation{display:block;padding:25px}.about-invitation-actions{margin-top:25px}.about-grow{padding:40px 0 70px}}

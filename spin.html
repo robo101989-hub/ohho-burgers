@@ -1,31 +1,17 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#ffd21c" />
-  <title>Spin & Win | OHHO Burgers</title>
-  <link rel="stylesheet" href="spin.css" />
-</head>
-<body>
-  <main class="spin-page">
-    <a class="brand" href="/">OHHO <span>BURGERS</span></a>
-    <p class="eyebrow">PHYSICAL CART REWARD</p>
-    <h1>SPIN FOR<br><em>HAPPINESS.</em></h1>
-    <p id="outletName" class="outlet">Loading your OHHO cart…</p>
-    <section class="wheel-card" aria-live="polite">
-      <div class="pointer">▼</div>
-      <div id="wheel" class="wheel"><div class="wheel-core">OHHO<br><span>SPIN</span></div></div>
-      <button id="spinButton" type="button" disabled>SPIN &amp; WIN <b>↻</b></button>
-      <p id="spinMessage" class="message">Open this page by scanning the QR at an OHHO cart.</p>
-    </section>
-    <section id="rewardCard" class="reward-card hidden">
-      <p>YOUR CART REWARD</p><strong id="rewardLabel">—</strong>
-      <code id="rewardCode">—</code>
-      <small>Show this code to the OHHO team before payment. Valid for 30 minutes.</small>
-    </section>
-    <p class="fine-print">One spin per phone, per cart, each day. Cannot be exchanged for cash.</p>
-  </main>
-  <script type="module" src="spin.js"></script>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spin & Win | OHHO Burgers</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="website-refresh.css?v=6"><link rel="stylesheet" href="website-pages.css?v=3"></head><body class="ohho-home ohho-inner direct-spin-page">    <header class="site-header" id="home">
+      <a href="index.html" class="brand" aria-label="OHHO Burgers home"><span>OHHO</span><small>BURGERS</small></a>
+      <nav class="desktop-nav" aria-label="Primary navigation">
+        <a href="index.html">Home</a><a href="menu.html">Menu</a><a href="about.html">About Us</a><a href="franchise.html">Franchise</a><a href="contact.html">Contact</a>
+      </nav>
+      <div class="nav-actions"><a class="pill pill-outline franchise-link" href="franchise.html">Franchise with us</a><a class="pill pill-yellow order-link" href="index.html#order">Order now <span>↗</span></a></div>
+      <button class="menu-toggle" aria-label="Open menu" aria-expanded="false"><i></i><i></i></button>
+      <nav class="mobile-nav" aria-label="Mobile navigation"><a href="menu.html">Menu</a><a href="about.html">About Us</a><a href="franchise.html">Franchise</a><a href="contact.html">Contact</a></nav>
+    </header>
+
+<main><div class="section-shell direct-spin-intro"><p class="eyebrow">A little extra happiness</p><h1>YOUR NEXT BITE.<br><em>WITH A TWIST.</em></h1><p>Your outlet. Your spin. Your reward code.</p></div>      <section class="spin-teaser section-shell" id="spin">
+        <div class="home-spin-wheel-wrap"><i class="home-spin-pointer" aria-hidden="true">▼</i><div id="homeSpinWheel" class="home-spin-wheel" aria-label="OHHO six-section Spin and Win wheel"><span class="spin-slice slice-1">5% OFF</span><span class="spin-slice slice-2">BETTER<br>LUCK</span><span class="spin-slice slice-3">10% OFF</span><span class="spin-slice slice-4">₹20 OFF</span><span class="spin-slice slice-5">BETTER<br>LUCK</span><span class="spin-slice slice-6">₹30 OFF</span><b>OHHO<small>SPINNER</small></b></div></div>
+        <div class="spin-teaser-copy reveal"><p class="eyebrow"><span></span> Choose. Spin. Enjoy.</p><h2>SPIN FOR<br><em>HAPPINESS.</em></h2><p>Choose your outlet, spin for a reward and use your code when ordering. No QR code needed.</p><small>One spin per phone per outlet each day. Your reward expires after 30 minutes.</small><strong id="homeSpinEligibility" class="spin-eligibility">SELECT AN OUTLET TO SEE ELIGIBILITY</strong></div>
+        <div class="spin-teaser-action"><label for="homeSpinOutlet">YOUR OUTLET</label><select id="homeSpinOutlet" disabled><option>LOADING OUTLETS…</option></select><button id="homeSpinButton" class="pill pill-yellow" type="button" disabled>START OHHO SPIN <span>↻</span></button><p id="homeSpinMessage" aria-live="polite">Choose the cart where you are ordering.</p><div id="homeSpinReward" class="home-spin-reward" hidden><span>YOUR OHHO CODE</span><strong id="homeSpinLabel">—</strong><code id="homeSpinCode">—</code><small>Give this code to the team before payment.</small></div></div>
+      </section>
+
+</main><script type="module" src="app.js"></script></body></html>

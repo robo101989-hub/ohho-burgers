@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
 export default defineConfig({
+  // Read-only public feed for local design previews; no production writes are proxied.
+  server: { proxy: { "/api/spin": { target: "https://ohho-burgers.vercel.app", changeOrigin: true, bypass(req) { if (req.method !== "GET") return false; } }, "/api/instagram/reels": { target: "https://ohho-burgers.vercel.app", changeOrigin: true } } },
   build: {
     rollupOptions: {
       input: {
