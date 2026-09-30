@@ -43,7 +43,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
-  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], staffRules: [], staffEvents: [], openSessions: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, editingStaffRuleId: null, historyItemId: null, historyMode: 'ALL', historyFrom: '', historyTo: '', expenseHistoryMode: 'ALL', expenseHistoryFrom: '', expenseHistoryTo: '', loaded: false },
+  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], staffRules: [], staffEvents: [], openSessions: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], openingStockDrafts: {}, billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, editingStaffRuleId: null, historyItemId: null, historyMode: 'ALL', historyFrom: '', historyTo: '', expenseHistoryMode: 'ALL', expenseHistoryFrom: '', expenseHistoryTo: '', loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -3663,6 +3663,7 @@ function renderOpeningStock() {
   if (!list || state.profile?.role !== 'ADMIN') return;
   const outletId = $('#openingStockOutlet')?.value || state.inventory.outlets[0]?.id || '';
   const previous = state.inventory.openingStockEvents.find(row => row.outlet_id === outletId);
+  const draft = state.inventory.openingStockDrafts[outletId] || {};
   if ($('#openingStockStatus')) $('#openingStockStatus').textContent = previous ? `Confirmed ${inventoryDate(previous.confirmed_at)} · corrections require a reason` : 'Enter the physical stock currently available';
   if ($('#confirmOpeningStock')) $('#confirmOpeningStock').textContent = previous ? 'SAVE PHYSICAL STOCK CORRECTION' : 'CONFIRM OPENING STOCK';
   $('#clearOpeningStock')?.classList.toggle('hidden', !previous);
@@ -3674,7 +3675,7 @@ function renderOpeningStock() {
     const categoryItems = items.filter(item => categoryName(item) === category).sort((a, b) => a.name.localeCompare(b.name));
     return `<details class="recipe-monitor-group" open><summary><div><strong>${escapeHtml(category)}</strong><span>Opening stock items</span></div><b>${categoryItems.length} ITEMS</b></summary><div class="recipe-monitor-lines">${categoryItems.map(item => {
       const balance = state.inventory.balances.find(row => row.outlet_id === outletId && row.item_id === item.id);
-      const value = previous ? Number(balance?.quantity_on_hand || 0) : '';
+      const value = Object.hasOwn(draft, item.id) ? draft[item.id] : previous ? Number(balance?.quantity_on_hand || 0) : '';
       const unit = inventoryInternalUnit(item);
       return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name)}</strong><span>Physical quantity in ${escapeHtml(unit)}</span></div><div class="supply-line-actual"><input type="number" min="0" step="${(item.inventory_unit || item.base_unit) === 'EACH' ? '1' : '0.001'}" value="${value}" placeholder="0" data-opening-item="${item.id}"><span>${escapeHtml(unit)}</span></div></div>`;
     }).join('')}</div></details>`;
@@ -3695,6 +3696,7 @@ async function clearOpeningStock() {
       items: items.map(item => ({ itemId: item.id, quantity: 0 })),
       reason: 'Clear test opening stock data'
     });
+    delete state.inventory.openingStockDrafts[outletId];
     await loadInventory();
     toast(`Test opening stock cleared for ${outlet?.name || 'this outlet'}; the correction is recorded.`, 'ok');
   } catch (error) { toast(error.message, 'bad'); }
@@ -3717,6 +3719,7 @@ async function confirmOpeningStock() {
   const button = $('#confirmOpeningStock'); button.disabled = true;
   try {
     const result = await inventoryApi('POST', { action: 'set_opening_stock', outletId, items, reason });
+    delete state.inventory.openingStockDrafts[outletId];
     if ($('#openingStockReason')) $('#openingStockReason').value = '';
     await loadInventory();
     toast(result.correction ? 'Physical stock correction saved with its reason.' : 'Opening stock confirmed. Automatic stock is ready.', 'ok');
@@ -4632,6 +4635,14 @@ function wireInventoryActions() {
   $$('[data-inventory-modal-close]').forEach(button => button.addEventListener('click', closeInventoryItemModal));
   $('#saveInventoryItemChanges')?.addEventListener('click', saveInventoryItemChanges);
   $('#openingStockOutlet')?.addEventListener('change', renderOpeningStock);
+  $('#openingStockItems')?.addEventListener('input', event => {
+    const input = event.target.closest('[data-opening-item]');
+    if (!input) return;
+    const outletId = $('#openingStockOutlet')?.value || state.inventory.outlets[0]?.id || '';
+    if (!outletId) return;
+    const draft = state.inventory.openingStockDrafts[outletId] ||= {};
+    draft[input.dataset.openingItem] = input.value;
+  });
   $('#confirmOpeningStock')?.addEventListener('click', confirmOpeningStock);
   $('#clearOpeningStock')?.addEventListener('click', clearOpeningStock);
   ['#recipeIngredientList', '#recipeMonitorList'].forEach(selector => $(selector)?.addEventListener('click', event => {
