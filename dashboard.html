@@ -668,6 +668,10 @@ body{font-size:14px}
 .pos-table-wrap label{color:#777;font:800 8px var(--mono);letter-spacing:1px}
 .pos-table-wrap input{width:70px;background:#111;border:1px solid #333;color:#fff;border-radius:7px;padding:10px 9px;font:800 12px var(--mono);outline:none}
 .pos-table-wrap input:focus{border-color:var(--yellow)}
+.pos-menu-search{display:block;margin:0 0 12px}
+.pos-menu-search input{width:100%;height:42px;padding:0 13px;border:1px solid #2b2b2b;border-radius:9px;background:#101010;color:#f5f5f0;font-size:12px;font-weight:600;outline:none}
+.pos-menu-search input:focus{border-color:var(--yellow)}
+.pos-menu-search input::placeholder{color:#686861}
 .pos-category-tabs{display:flex;gap:7px;overflow-x:auto;padding-bottom:13px;border-bottom:1px solid #222;scrollbar-width:none}
 .pos-category-tabs::-webkit-scrollbar{display:none}
 .pos-category-btn{flex:0 0 auto;border:1px solid #292929;background:#111;color:#888;border-radius:7px;padding:9px 12px;font:800 9px var(--mono);letter-spacing:.7px;cursor:pointer;white-space:nowrap}
@@ -997,6 +1001,8 @@ body{font-size:14px}
           <input id="posTableNumber" type="number" min="1" max="999" inputmode="numeric" placeholder="No.">
         </div>
       </div>
+
+      <label class="pos-menu-search"><input id="posMenuSearch" type="search" autocomplete="off" placeholder="Find a menu item…" aria-label="Search menu items"></label>
 
       <div id="posCategories" class="pos-category-tabs" role="tablist" aria-label="Menu categories">
         <button type="button" class="pos-category-btn active" data-category="ALL">ALL</button>

@@ -52,6 +52,7 @@ const state = {
     items: [],
     categories: [],
     activeCategory: 'ALL',
+    search: '',
     orderType: 'TAKEAWAY',
     tableNumber: '',
     customerName: '',
@@ -59,7 +60,8 @@ const state = {
     paymentMethod: 'CASH',
     orderSource: 'POS',
     spinReward: null,
-    cart: []
+    cart: [],
+    submitting: false
   }
 };
 
@@ -1184,7 +1186,6 @@ async function loadPosMenu() {
       : availabilityMap.get(item.id) === true
   }));
 
-  state.pos.activeCategory = 'ALL';
   renderPosCategories();
   renderPosMenu();
   updatePosOutletName();
@@ -1201,13 +1202,13 @@ function renderPosCategories() {
   });
 
   container.innerHTML = `
-    <button type="button" class="pos-category-btn active" data-category="ALL">
+    <button type="button" class="pos-category-btn${state.pos.activeCategory === 'ALL' ? ' active' : ''}" data-category="ALL">
       ALL <span>${state.pos.items.length}</span>
     </button>
     ${state.pos.categories
       .filter(category => counts.has(category.id))
       .map(category => `
-        <button type="button" class="pos-category-btn" data-category="${escapeHtml(category.id)}">
+        <button type="button" class="pos-category-btn${state.pos.activeCategory === category.id ? ' active' : ''}" data-category="${escapeHtml(category.id)}">
           ${escapeHtml(category.name)}
         </button>
       `).join('')}
@@ -1229,8 +1230,10 @@ function renderPosMenu() {
   if (!grid) return;
 
   const category = state.pos.activeCategory;
+  const query = String(state.pos.search || '').trim().toLocaleLowerCase();
   const items = state.pos.items.filter(item =>
-    category === 'ALL' || item.category_id === category
+    (category === 'ALL' || item.category_id === category) &&
+    (!query || item.name.toLocaleLowerCase().includes(query) || item.slug?.toLocaleLowerCase().includes(query))
   );
 
   if (!items.length) {
@@ -1243,11 +1246,11 @@ function renderPosMenu() {
   );
 
   grid.innerHTML = items.map(item => `
-    <article class="pos-menu-card ${item.outletAvailable ? '' : 'off'}"
+    <article class="pos-menu-card ${state.selectedOutlet !== 'ALL' && item.outletAvailable ? '' : 'off'}"
       data-menu-id="${escapeHtml(item.id)}"
-      title="${item.outletAvailable ? 'Add to order' : 'Not available at this outlet'}">
+      title="${state.selectedOutlet === 'ALL' ? 'Select a specific outlet before adding items' : item.outletAvailable ? 'Add to order' : 'Not available at this outlet'}">
       ${item.image_url
-        ? `<div class="pos-menu-card-image"><img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}"></div>`
+        ? `<div class="pos-menu-card-image"><img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}" loading="lazy" decoding="async"></div>`
         : ''}
       <div>
         <div class="pos-menu-card-top">
@@ -1258,9 +1261,9 @@ function renderPosMenu() {
       </div>
       <div>
         <span class="pos-menu-price">₹${Number(item.price).toFixed(0)}</span>
-        ${item.outletAvailable
+        ${state.selectedOutlet !== 'ALL' && item.outletAvailable
           ? '<button type="button" class="pos-menu-add" aria-label="Add item">+</button>'
-          : '<span class="pos-unavailable">UNAVAILABLE</span>'}
+          : `<span class="pos-unavailable">${state.selectedOutlet === 'ALL' ? 'SELECT OUTLET' : 'UNAVAILABLE'}</span>`}
       </div>
     </article>
   `).join('');
@@ -1302,7 +1305,7 @@ function updatePosOutletName() {
 
 function addPosItem(menuItemId) {
   const item = state.pos.items.find(entry => entry.id === menuItemId);
-  if (!item || !item.outletAvailable) return;
+  if (!item || state.selectedOutlet === 'ALL' || !item.outletAvailable) return;
 
   const existing = state.pos.cart.find(entry => entry.id === menuItemId);
   if (existing) {
@@ -1396,7 +1399,11 @@ function renderPosCart() {
   if (subtotalNode) subtotalNode.textContent = `₹${subtotal.toFixed(0)}`;
   if ($('#posDiscount')) $('#posDiscount').textContent = discount ? `−₹${discount.toFixed(0)}` : spinReward?.type === 'FREE_ITEM' ? spinReward.label : '₹0';
   if (totalNode) totalNode.textContent = `₹${Math.max(0, subtotal - discount).toFixed(0)}`;
-  if (placeButton) placeButton.disabled = state.pos.cart.length === 0 || Boolean(rewardError);
+  const selectedOutlet = state.outlets.some(outlet => outlet.slug === state.selectedOutlet);
+  if (placeButton) {
+    placeButton.disabled = state.pos.submitting || state.pos.cart.length === 0 || Boolean(rewardError) || !selectedOutlet;
+    placeButton.innerHTML = selectedOutlet ? 'PLACE ORDER <span>→</span>' : 'SELECT OUTLET FIRST';
+  }
 }
 
 function resetPosOrder() {
@@ -1597,6 +1604,10 @@ async function printOhhoReceipt(order, outlet, cart) {
 
 function wirePosActions() {
   $('#posPrinterBtn')?.addEventListener('click', connectOhhoPrinter);
+  $('#posMenuSearch')?.addEventListener('input', event => {
+    state.pos.search = event.target.value;
+    renderPosMenu();
+  });
 
   $('#posOutletToggleBtn')?.addEventListener('click', async () => {
     const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
@@ -1724,6 +1735,7 @@ function wirePosActions() {
     const button = $('#posPlaceOrderBtn');
     if (!button || button.disabled) return;
 
+    state.pos.submitting = true;
     button.disabled = true;
     const originalText = button.innerHTML;
     button.innerHTML = 'PLACING ORDER…';
@@ -1777,37 +1789,22 @@ function wirePosActions() {
         'ok'
       );
 
-      try {
-        await printOhhoReceipt(
-          result.order,
-          completedOutlet,
-          completedCart
-        );
-
-        toast(
-          `Order #${result.order.order_number} sent to printer.`,
-          'ok'
-        );
-      } catch (printError) {
-        console.error('Unable to print POS order:', printError);
-
-        toast(
-          `Order created, but printing failed: ${printError.message || 'Printer unavailable.'}`,
-          'bad'
-        );
-      }
-
-      try {
-        await Promise.all([loadOrders(), loadReports()]);
-      } catch (refreshError) {
+      void printOhhoReceipt(result.order, completedOutlet, completedCart)
+        .then(() => toast(`Order #${result.order.order_number} sent to printer.`, 'ok'))
+        .catch(printError => {
+          console.error('Unable to print POS order:', printError);
+          toast(`Order created, but printing failed: ${printError.message || 'Printer unavailable.'}`, 'bad');
+        });
+      void Promise.all([loadOrders(), loadReports()]).catch(refreshError => {
         console.error('Unable to refresh live session sales:', refreshError);
-      }
+      });
     } catch (error) {
       console.error('Unable to create POS order:', error);
       toast(error.message || 'Unable to create POS order.', 'bad');
     } finally {
-      button.disabled = false;
+      state.pos.submitting = false;
       button.innerHTML = originalText;
+      renderPosCart();
     }
   });
 }
@@ -6737,23 +6734,32 @@ async function startApp(session) {
     await loadProfile();
     applyRolePermissions();
     updateUserCard();
-    $('#authGate')?.classList.add('hidden');
     await loadOutlets();
-    if (['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) await loadInventory();
-    if (state.profile?.role === 'ADMIN') {
-      await loadStaff();
-    }
-    await loadMenuManagement();
-    await loadPosMenu();
-    await loadOrders();
-    await loadReports();
+    const posMenuReady = loadPosMenu();
+    $('#authGate')?.classList.add('hidden');
     renderSettings();
-    await loadSpinSettings();
-    await loadCustomerReviews();
     updateDashboardContext();
     renderOverview();
     startLiveDashboardRefresh();
     startDashboardVersionCheck();
+
+    const backgroundLoads = [
+      ['POS menu', posMenuReady],
+      ['orders', loadOrders()],
+      ['reports', loadReports()],
+      ['menu management', loadMenuManagement()],
+      ['Spin & Win settings', loadSpinSettings()],
+      ['customer reviews', loadCustomerReviews()]
+    ];
+    if (['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) backgroundLoads.push(['stock and expenses', loadInventory()]);
+    if (state.profile?.role === 'ADMIN') backgroundLoads.push(['staff', loadStaff()]);
+    void Promise.allSettled(backgroundLoads.map(([, task]) => task)).then(results => {
+      results.forEach((result, index) => {
+        if (result.status !== 'rejected') return;
+        console.error(`Unable to load ${backgroundLoads[index][0]}:`, result.reason);
+        if (backgroundLoads[index][0] === 'POS menu') toast(result.reason?.message || 'Unable to load the POS menu.', 'bad');
+      });
+    });
   } catch (error) {
     await supabase.auth.signOut();
     setAuthError(error.message || 'Unable to authorize this account.');
