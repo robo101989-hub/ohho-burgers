@@ -3665,14 +3665,40 @@ function renderOpeningStock() {
   const previous = state.inventory.openingStockEvents.find(row => row.outlet_id === outletId);
   if ($('#openingStockStatus')) $('#openingStockStatus').textContent = previous ? `Confirmed ${inventoryDate(previous.confirmed_at)} · corrections require a reason` : 'Enter the physical stock currently available';
   if ($('#confirmOpeningStock')) $('#confirmOpeningStock').textContent = previous ? 'SAVE PHYSICAL STOCK CORRECTION' : 'CONFIRM OPENING STOCK';
+  $('#clearOpeningStock')?.classList.toggle('hidden', !previous);
   if ($('#openingStockReason')) $('#openingStockReason').placeholder = previous ? 'Required: explain this correction' : 'Optional opening note';
   const items = state.inventory.items.filter(item => item.active !== false);
-  list.innerHTML = items.length ? items.map(item => {
-    const balance = state.inventory.balances.find(row => row.outlet_id === outletId && row.item_id === item.id);
-    const value = previous ? Number(balance?.quantity_on_hand || 0) : '';
-    const unit = inventoryInternalUnit(item);
-    return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name)}</strong><span>Physical quantity in ${escapeHtml(unit)}</span></div><div class="supply-line-actual"><input type="number" min="0" step="${(item.inventory_unit || item.base_unit) === 'EACH' ? '1' : '0.001'}" value="${value}" placeholder="0" data-opening-item="${item.id}"><span>${escapeHtml(unit)}</span></div></div>`;
+  const categoryName = item => state.inventory.stockCategories.find(category => category.id === item.category_id)?.name || 'Uncategorised stock';
+  const categories = [...new Set(items.map(categoryName))].sort((a, b) => a.localeCompare(b));
+  list.innerHTML = items.length ? categories.map(category => {
+    const categoryItems = items.filter(item => categoryName(item) === category).sort((a, b) => a.name.localeCompare(b.name));
+    return `<details class="recipe-monitor-group" open><summary><div><strong>${escapeHtml(category)}</strong><span>Opening stock items</span></div><b>${categoryItems.length} ITEMS</b></summary><div class="recipe-monitor-lines">${categoryItems.map(item => {
+      const balance = state.inventory.balances.find(row => row.outlet_id === outletId && row.item_id === item.id);
+      const value = previous ? Number(balance?.quantity_on_hand || 0) : '';
+      const unit = inventoryInternalUnit(item);
+      return `<div class="daily-expense-row"><div><strong>${escapeHtml(item.name)}</strong><span>Physical quantity in ${escapeHtml(unit)}</span></div><div class="supply-line-actual"><input type="number" min="0" step="${(item.inventory_unit || item.base_unit) === 'EACH' ? '1' : '0.001'}" value="${value}" placeholder="0" data-opening-item="${item.id}"><span>${escapeHtml(unit)}</span></div></div>`;
+    }).join('')}</div></details>`;
   }).join('') : '<div class="inventory-empty">Create stock items before entering opening stock.</div>';
+}
+
+async function clearOpeningStock() {
+  const outletId = $('#openingStockOutlet')?.value;
+  const outlet = state.inventory.outlets.find(row => row.id === outletId);
+  const previous = state.inventory.openingStockEvents.some(row => row.outlet_id === outletId);
+  const items = state.inventory.items.filter(item => item.active !== false);
+  if (!outletId || !previous || !items.length) return toast('There is no confirmed opening stock to clear for this outlet.', 'bad');
+  if (!window.confirm(`Set all ${items.length} active stock item balances at ${outlet?.name || 'this outlet'} to zero? This records an audited physical stock correction; existing stock history remains.`)) return;
+  const button = $('#clearOpeningStock'); button.disabled = true;
+  try {
+    await inventoryApi('POST', {
+      action: 'set_opening_stock', outletId,
+      items: items.map(item => ({ itemId: item.id, quantity: 0 })),
+      reason: 'Clear test opening stock data'
+    });
+    await loadInventory();
+    toast(`Test opening stock cleared for ${outlet?.name || 'this outlet'}; the correction is recorded.`, 'ok');
+  } catch (error) { toast(error.message, 'bad'); }
+  finally { button.disabled = false; }
 }
 
 async function confirmOpeningStock() {
@@ -4607,6 +4633,7 @@ function wireInventoryActions() {
   $('#saveInventoryItemChanges')?.addEventListener('click', saveInventoryItemChanges);
   $('#openingStockOutlet')?.addEventListener('change', renderOpeningStock);
   $('#confirmOpeningStock')?.addEventListener('click', confirmOpeningStock);
+  $('#clearOpeningStock')?.addEventListener('click', clearOpeningStock);
   ['#recipeIngredientList', '#recipeMonitorList'].forEach(selector => $(selector)?.addEventListener('click', event => {
     const edit = event.target.closest('[data-edit-recipe-item]');
     const remove = event.target.closest('[data-delete-recipe-item]');

@@ -1305,6 +1305,8 @@ body{font-size:14px}
 #inventory .opening-stock-details>summary{padding:3px 2px}
 #inventory .opening-stock-details .opening-stock-body{padding-top:18px}
 #inventory #openingStockItems{max-height:430px;overflow:auto;margin-top:12px;padding-right:6px}
+.opening-stock-actions{display:grid;grid-template-columns:1fr 2fr;gap:9px;margin-top:10px}.opening-stock-actions button{margin:0!important}.opening-stock-actions #clearOpeningStock{padding:10px 14px}
+@media(max-width:760px){.opening-stock-actions{grid-template-columns:1fr}}
 #inventory #inventoryMasterList{max-height:560px;overflow:auto;padding-right:5px}
 #inventory #inventoryMovementList{max-height:620px;overflow:auto;padding-right:5px}
 #inventory .inventory-bill-detail{margin-top:12px;border:1px solid #2d2f2c;border-radius:9px;background:#0d0e0d}
@@ -1600,7 +1602,7 @@ body{font-size:14px}
       <label><span>REASON / NOTE</span><input id="openingStockReason" type="text" maxlength="500" placeholder="Required for later corrections"></label>
     </div>
     <div id="openingStockItems" class="daily-expense-list"></div>
-    <button id="confirmOpeningStock" class="primary inventory-wide-btn" type="button">CONFIRM OPENING STOCK</button>
+    <div class="opening-stock-actions"><button id="clearOpeningStock" class="secondary danger hidden" type="button">CLEAR TEST OPENING STOCK</button><button id="confirmOpeningStock" class="primary inventory-wide-btn" type="button">CONFIRM OPENING STOCK</button></div>
     </div>
   </details>
   <details id="inventoryMasterPanel" class="inventory-panel inventory-table-panel inventory-setup-details">
