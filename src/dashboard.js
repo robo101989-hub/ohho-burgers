@@ -1330,11 +1330,25 @@ function changePosQuantity(menuItemId, delta) {
   const item = state.pos.cart.find(entry => entry.id === menuItemId);
   if (!item) return;
 
-  item.quantity += delta;
+  item.quantity = Math.min(99, item.quantity + delta);
   if (item.quantity <= 0) {
     state.pos.cart = state.pos.cart.filter(entry => entry.id !== menuItemId);
   }
 
+  renderPosCart();
+}
+
+function setPosQuantity(menuItemId, value) {
+  const item = state.pos.cart.find(entry => entry.id === menuItemId);
+  if (!item) return;
+
+  const quantity = Number(value);
+  if (!Number.isFinite(quantity)) {
+    renderPosCart();
+    return;
+  }
+
+  item.quantity = Math.min(99, Math.max(1, Math.floor(quantity)));
   renderPosCart();
 }
 
@@ -1363,7 +1377,7 @@ function renderPosCart() {
           <div class="pos-line-total">₹${(item.price * item.quantity).toFixed(0)}</div>
           <div class="pos-qty">
             <button type="button" data-pos-minus="${escapeHtml(item.id)}">−</button>
-            <span>${item.quantity}</span>
+            <input type="number" min="1" max="99" step="1" inputmode="numeric" value="${item.quantity}" data-pos-quantity="${escapeHtml(item.id)}" aria-label="Quantity for ${escapeHtml(item.name)}">
             <button type="button" data-pos-plus="${escapeHtml(item.id)}">+</button>
           </div>
         </div>
@@ -1604,6 +1618,10 @@ async function printOhhoReceipt(order, outlet, cart) {
 
 function wirePosActions() {
   $('#posPrinterBtn')?.addEventListener('click', connectOhhoPrinter);
+  $('#posCartItems')?.addEventListener('change', event => {
+    const input = event.target.closest('[data-pos-quantity]');
+    if (input) setPosQuantity(input.dataset.posQuantity, input.value);
+  });
   $('#posMenuSearch')?.addEventListener('input', event => {
     state.pos.search = event.target.value;
     renderPosMenu();
