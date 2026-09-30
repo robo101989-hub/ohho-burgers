@@ -3489,6 +3489,7 @@ function updatePackagingRuleFields() {
   $('#packagingGroupField')?.classList.toggle('hidden', !sizeRule);
   $('#packagingOrderSizeField')?.classList.toggle('hidden', !sizeRule);
   $('#packagingItemCountField')?.classList.toggle('hidden', type !== 'PER_ORDER_SIZE');
+  $('#packagingItemCountMaxField')?.classList.toggle('hidden', type !== 'PER_ORDER_SIZE');
   if ($('#packagingOrderSizeLabel')) $('#packagingOrderSizeLabel').textContent = type === 'PER_ORDER_SIZE' ? 'PACKAGE SIZE' : 'MINIMUM PACKAGE SIZE';
   if ($('#packagingQuantityLabel')) $('#packagingQuantityLabel').textContent = type === 'MINIMUM_ITEM_SIZE' || type === 'MINIMUM_CATEGORY_SIZE' ? 'BAGS PER MATCHING MENU ITEM' : type === 'PER_ORDER_SIZE' ? 'BAGS PER ORDER' : 'QUANTITY';
 }
@@ -3500,7 +3501,7 @@ function renderPackagingRules() {
   list.innerHTML = rules.length ? rules.map(rule => {
     const item = inventoryItem(rule.item_id) || {};
     const target = rule.consumption_type === 'PER_ORDER_SIZE'
-      ? `${({ SMALL: 'Small', MEDIUM: 'Medium', LARGE: 'Large' })[rule.order_size_tier] || 'Package size'} · from ${Number(rule.minimum_order_item_count || 1)} item${Number(rule.minimum_order_item_count || 1) === 1 ? '' : 's'}`
+      ? `${({ SMALL: 'Small', MEDIUM: 'Medium', LARGE: 'Large' })[rule.order_size_tier] || 'Package size'} · ${Number(rule.minimum_order_item_count || 1)}${rule.maximum_order_item_count == null ? '+' : `–${Number(rule.maximum_order_item_count)}`} items`
       : ['MINIMUM_ITEM_SIZE','MINIMUM_CATEGORY_SIZE'].includes(rule.consumption_type)
       ? `minimum ${rule.order_size_tier?.toLowerCase() || 'size'} for ${rule.consumption_type === 'MINIMUM_ITEM_SIZE' ? state.inventory.menuItems.find(row => row.id === rule.menu_item_id)?.name || 'menu item' : state.inventory.menuCategories.find(row => row.id === rule.menu_category_id)?.name || 'category'}`
       : rule.consumption_type === 'PER_MENU_ITEM'
@@ -3628,6 +3629,7 @@ function editPackagingRule(rule) {
   if ($('#packagingMenuCategory')) $('#packagingMenuCategory').value = rule.menu_category_id || '';
   if ($('#packagingOrderSizeTier')) $('#packagingOrderSizeTier').value = rule.order_size_tier || 'SMALL';
   if ($('#packagingItemCount')) $('#packagingItemCount').value = rule.minimum_order_item_count || '';
+  if ($('#packagingItemCountMax')) $('#packagingItemCountMax').value = rule.maximum_order_item_count ?? '';
   if ($('#packagingDineIn')) $('#packagingDineIn').checked = rule.order_types?.includes('DINE_IN');
   if ($('#packagingTakeaway')) $('#packagingTakeaway').checked = rule.order_types?.includes('TAKEAWAY');
   if ($('#packagingDelivery')) $('#packagingDelivery').checked = rule.order_types?.includes('DELIVERY');
@@ -3639,7 +3641,7 @@ async function savePackagingRule() {
   const orderTypes = [['DINE_IN','#packagingDineIn'],['TAKEAWAY','#packagingTakeaway'],['DELIVERY','#packagingDelivery']].filter(([,selector]) => $(selector)?.checked).map(([value]) => value);
   const button = $('#savePackagingRule'); button.disabled = true;
   try {
-    await inventoryApi('POST', { action: 'save_packaging_rule', ruleId: state.inventory.editingPackagingRuleId, itemId: $('#packagingRuleItem')?.value, orderTypes, consumptionType: $('#packagingConsumptionType')?.value, packagingGroup: $('#packagingGroup')?.value, orderSizeTier: $('#packagingOrderSizeTier')?.value, minimumOrderItemCount: $('#packagingItemCount')?.value, quantity: $('#packagingQuantity')?.value, menuItemId: $('#packagingMenuItem')?.value, menuCategoryId: $('#packagingMenuCategory')?.value });
+    await inventoryApi('POST', { action: 'save_packaging_rule', ruleId: state.inventory.editingPackagingRuleId, itemId: $('#packagingRuleItem')?.value, orderTypes, consumptionType: $('#packagingConsumptionType')?.value, packagingGroup: $('#packagingGroup')?.value, orderSizeTier: $('#packagingOrderSizeTier')?.value, minimumOrderItemCount: $('#packagingItemCount')?.value, maximumOrderItemCount: $('#packagingItemCountMax')?.value, quantity: $('#packagingQuantity')?.value, menuItemId: $('#packagingMenuItem')?.value, menuCategoryId: $('#packagingMenuCategory')?.value });
     state.inventory.editingPackagingRuleId = null;
     button.textContent = 'SAVE USAGE RULE';
     await loadInventory();
