@@ -3283,6 +3283,9 @@ function inventoryHistorySessions() {
 function inventoryHistoryRows(rows, field) {
   return stockHistoryRows(rows, field, { mode:state.inventory.historyMode, outletId:inventorySelectedOutletId(), sessions:inventoryHistorySessions(), from:state.inventory.historyFrom, to:state.inventory.historyTo });
 }
+function centralSupplyHistoryRows() {
+  return inventoryHistoryRows(state.inventory.bills, 'supplied_at').filter(row => (row.purchase_source || 'CENTRAL') === 'CENTRAL');
+}
 
 function currentInventorySessionRows(rows, field, outletId = '') {
   return (rows || []).filter(row => (!outletId || row.outlet_id === outletId) && recordIsInOpenSessions(row, field, state.inventory.outlets));
@@ -3893,7 +3896,7 @@ function renderInventory() {
   fillInventoryControls();
   const outletId = inventorySelectedOutletId();
   const balances = state.inventory.balances.filter(row => (!outletId || row.outlet_id === outletId) && inventoryItem(row.item_id)?.active !== false);
-  const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at').filter(row => !$('#supplyPurchaseSource')?.value || $('#supplyPurchaseSource').value === 'ALL' || (row.purchase_source || 'CENTRAL') === $('#supplyPurchaseSource').value);
+  const bills = centralSupplyHistoryRows();
   const allMovements = inventoryHistoryRows(state.inventory.movements, 'occurred_at');
   const movements = state.inventory.historyItemId ? allMovements.filter(row => row.item_id === state.inventory.historyItemId) : allMovements;
   const calculateStockValue = createStockValueCalculator({ items: state.inventory.items, bills: state.inventory.bills, movements: state.inventory.movements });
@@ -3931,7 +3934,7 @@ function renderInventory() {
   if ($('#supplyHistoryRangeLabel')) {
     const from = state.inventory.historyFrom || '';
     const to = state.inventory.historyTo || '';
-    $('#supplyHistoryRangeLabel').textContent = currentHistory ? 'Current open sessions' : (from || to ? `Sessions opened ${from} to ${to} · including open sessions` : 'All supply bills and stock history');
+    $('#supplyHistoryRangeLabel').textContent = currentHistory ? 'Current open sessions' : (from || to ? `Sessions opened ${from} to ${to} · including open sessions` : 'All central supply bills and stock history');
   }
 
   const masterList = $('#inventoryMasterList');
@@ -3980,8 +3983,8 @@ function renderInventory() {
     const outstanding = Math.max(0, Number(bill.total_amount || 0) - Number(bill.paid_amount || 0));
     const receiptStatus = bill.receipt_status || 'RECEIVED';
     const lines = bill.supply_bill_items || [];
-    return `<div class="inventory-bill"><div class="inventory-bill-top"><div><h3>${escapeHtml(bill.bill_number)} <span class="bill-source">${bill.purchase_source === 'LOCAL' ? 'Local purchase' : 'Central supply'}</span></h3><div class="inventory-bill-meta">${escapeHtml(inventoryOutlet(bill.outlet_id)?.name || 'Outlet')} · ${inventoryDate(bill.supplied_at)} · <span class="inventory-status ${receiptStatus === 'RECEIVED' ? 'in' : 'low'}">${receiptStatus === 'RECEIVED' ? 'RECEIVED' : 'AWAITING RECEIPT'}</span></div></div><div class="inventory-bill-total"><strong>${formatReportMoney(bill.total_amount)}</strong><span>${escapeHtml(bill.payment_status)} · DUE ${formatReportMoney(outstanding)}</span></div></div><details class="inventory-bill-detail"><summary>${lines.length} ITEM${lines.length === 1 ? '' : 'S'} IN THIS BILL</summary><div class="inventory-bill-items">${lines.map(line => { const item = inventoryItem(line.item_id); const billed = `${inventoryQty(line.quantity)} ${unitLabel(line.unit, line.quantity)}`; return `<span>${escapeHtml(line.item_name)} · Inventory +${inventoryQty(line.base_quantity)} ${escapeHtml(unitLabel(line.inventory_unit || item?.inventory_unit || item?.base_unit, line.base_quantity))} · Supply ${billed} × ${formatReportMoney(line.unit_price)}</span>`; }).join('')}</div></details><div class="inventory-bill-actions"><button class="secondary" data-inventory-view="${bill.id}">VIEW BILL</button><button class="secondary" data-inventory-print="${bill.id}">PRINT / SAVE PDF</button><button class="secondary" data-inventory-bill-csv="${bill.id}">DOWNLOAD CSV</button>${state.profile?.role === 'OWNER' && receiptStatus === 'PENDING' ? `<button class="primary" data-inventory-receive="${bill.id}">CONFIRM STOCK RECEIPT</button>` : ''}${state.profile?.role === 'ADMIN' && outstanding > 0 ? `<button class="primary" data-inventory-pay="${bill.id}">RECORD PAYMENT</button>` : ''}</div></div>`;
-  }).join('') : '<div class="inventory-empty">No supply bills in this period.</div>';
+    return `<div class="inventory-bill"><div class="inventory-bill-top"><div><h3>${escapeHtml(bill.bill_number)} <span class="bill-source">Central supply</span></h3><div class="inventory-bill-meta">${escapeHtml(inventoryOutlet(bill.outlet_id)?.name || 'Outlet')} · ${inventoryDate(bill.supplied_at)} · <span class="inventory-status ${receiptStatus === 'RECEIVED' ? 'in' : 'low'}">${receiptStatus === 'RECEIVED' ? 'RECEIVED' : 'AWAITING RECEIPT'}</span></div></div><div class="inventory-bill-total"><strong>${formatReportMoney(bill.total_amount)}</strong><span>${escapeHtml(bill.payment_status)} · DUE ${formatReportMoney(outstanding)}</span></div></div><details class="inventory-bill-detail"><summary>${lines.length} ITEM${lines.length === 1 ? '' : 'S'} IN THIS BILL</summary><div class="inventory-bill-items">${lines.map(line => { const item = inventoryItem(line.item_id); const billed = `${inventoryQty(line.quantity)} ${unitLabel(line.unit, line.quantity)}`; return `<span>${escapeHtml(line.item_name)} · Inventory +${inventoryQty(line.base_quantity)} ${escapeHtml(unitLabel(line.inventory_unit || item?.inventory_unit || item?.base_unit, line.base_quantity))} · Supply ${billed} × ${formatReportMoney(line.unit_price)}</span>`; }).join('')}</div></details><div class="inventory-bill-actions"><button class="secondary" data-inventory-view="${bill.id}">VIEW BILL</button><button class="secondary" data-inventory-print="${bill.id}">PRINT / SAVE PDF</button><button class="secondary" data-inventory-bill-csv="${bill.id}">DOWNLOAD CSV</button>${state.profile?.role === 'OWNER' && receiptStatus === 'PENDING' ? `<button class="primary" data-inventory-receive="${bill.id}">CONFIRM STOCK RECEIPT</button>` : ''}${state.profile?.role === 'ADMIN' && outstanding > 0 ? `<button class="primary" data-inventory-pay="${bill.id}">RECORD PAYMENT</button>` : ''}</div></div>`;
+  }).join('') : '<div class="inventory-empty">No central supply bills in this period.</div>';
 
   const movementList = $('#inventoryMovementList');
   if (movementList) movementList.innerHTML = movements.length ? '<div class="inventory-movement inventory-movement-heading"><span>Date / time</span><span>Stock item</span><span>Outlet</span><span>Change</span><span>Activity / note</span></div>' + movements.map(row => {
@@ -4562,10 +4565,10 @@ function downloadSupplyBillCsv(bill) {
 }
 
 function downloadSupplyHistoryCsv() {
-  const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at').filter(row => !$('#supplyPurchaseSource')?.value || $('#supplyPurchaseSource').value === 'ALL' || (row.purchase_source || 'CENTRAL') === $('#supplyPurchaseSource').value);
-  if (!bills.length) return toast('There are no supply bills to download for this range.', 'bad');
+  const bills = centralSupplyHistoryRows();
+  if (!bills.length) return toast('There are no central supply bills to download for this range.', 'bad');
   const rows = [
-    ['OHHO BURGERS SUPPLY BILL HISTORY'],
+    ['OHHO BURGERS CENTRAL SUPPLY BILL HISTORY'],
     ['Session selection', state.inventory.historyMode === 'CURRENT' ? 'Current open sessions' : state.inventory.historyMode === 'ALL' ? 'All completed sessions' : 'Completed sessions by closing date'],
     ['Session closed from', state.inventory.historyFrom || 'Beginning'],
     ['Session closed to', state.inventory.historyTo || 'Latest'],
@@ -4582,7 +4585,7 @@ function downloadSupplyHistoryCsv() {
       });
     })
   ];
-  downloadCsv(`ohho-supply-bill-history-${new Date().toISOString().slice(0,10)}.csv`, rows);
+  downloadCsv(`ohho-central-supply-bill-history-${new Date().toISOString().slice(0,10)}.csv`, rows);
 }
 
 function printSupplyBill(bill, autoPrint = true) {
@@ -4630,7 +4633,7 @@ function wireInventoryActions() {
       state.inventory.historyFrom = from;
       state.inventory.historyTo = to;
       renderInventory();
-      const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at').length;
+      const bills = centralSupplyHistoryRows().length;
       const movements = inventoryHistoryRows(state.inventory.movements, 'occurred_at').length;
       revealAndScroll($('#inventoryRecords'));
       toast(`Showing ${bounds.sessions.length} session${bounds.sessions.length === 1 ? '' : 's'}, ${bills} bill${bills === 1 ? '' : 's'} and ${movements} stock movement${movements === 1 ? '' : 's'}.`, 'ok');
@@ -4644,7 +4647,7 @@ function wireInventoryActions() {
     state.inventory.historyTo = '';
     renderInventory();
     revealAndScroll($('#inventoryRecords'));
-    toast(`Showing all stock history: ${inventoryHistoryRows(state.inventory.bills, 'supplied_at').length} supply bills and ${inventoryHistoryRows(state.inventory.movements, 'occurred_at').length} stock movements.`, 'ok');
+    toast(`Showing all stock history: ${centralSupplyHistoryRows().length} supply bills and ${inventoryHistoryRows(state.inventory.movements, 'occurred_at').length} stock movements.`, 'ok');
   });
   $('#inventoryCurrentSession')?.addEventListener('click', () => {
     if ($('#inventoryFrom')) $('#inventoryFrom').value = '';
@@ -4742,7 +4745,6 @@ function wireInventoryActions() {
     if (edit) editLocalPurchase(edit.dataset.localPurchaseEdit);
     if (remove) removeLocalPurchase(remove.dataset.localPurchaseRemove);
   });
-  $('#supplyPurchaseSource')?.addEventListener('change', renderInventory);
   $('#inventoryCreateItem')?.addEventListener('click', createInventoryItem);
   ['#inventoryRequestUnit','#inventorySupplyUnit','#inventoryInternalUnit'].forEach(selector => $(selector)?.addEventListener('change', syncCreateConversionDefaults));
   $('#recipeMenuCategory')?.addEventListener('change', () => { fillInventoryControls(); resetRecipeEditor(); renderRecipeIngredients(); });

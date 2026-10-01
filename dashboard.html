@@ -832,34 +832,35 @@ body{font-size:14px}
 
 <style>
 /* Compact bill history, shared by all outlet roles. */
-#inventoryRecords{padding:20px;border-radius:16px}
-#inventoryRecords .inventory-panel-head{align-items:center;gap:12px;margin-bottom:16px}
-#inventoryRecords .inventory-panel-head>div{flex:1}
-#inventoryRecords .eyebrow{font-size:10px;margin-bottom:6px}
-#inventoryRecords h2{font-size:20px;font-weight:600;margin:0}
-#inventoryRecords #inventoryBillCount{font-size:12px;font-weight:400;white-space:nowrap}
-#inventoryRecords button{min-height:34px;padding:8px 12px;font-size:11px;font-weight:500;letter-spacing:0;border-radius:7px}
-#inventoryRecords .supply-history-toolbar{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px;margin:0 0 14px;padding:0 0 14px;border-bottom:1px solid #292d29}
-#inventoryRecords .supply-source-filter{display:grid;gap:5px;margin-right:8px;min-width:180px}
-#inventoryRecords .supply-source-filter span{font-size:11px;font-weight:400;color:#9a9e9b}
-#inventoryRecords .supply-source-filter select{height:34px;width:100%;padding:0 10px;border:1px solid #363936;border-radius:7px;background:#101210;color:#eee;color-scheme:dark;font-size:12px;font-weight:400}
-#inventoryRecords #supplyHistoryRangeLabel{flex-basis:100%;margin:2px 0 0;font:400 11px/1.4 var(--sans, sans-serif);color:#929792;text-align:left}
-#inventoryRecords .inventory-bills-list{gap:10px}
-#inventoryRecords .inventory-bill{padding:14px;border-radius:10px}
-#inventoryRecords .inventory-bill h3{font-size:13px;font-weight:500;line-height:1.5;overflow-wrap:anywhere}
-#inventoryRecords .bill-source{display:inline-block;margin-left:8px;padding:2px 6px;border:1px solid #353935;border-radius:4px;color:#a6aaa6;font-size:10px;font-weight:400;vertical-align:middle}
-#inventoryRecords .inventory-bill-meta{font-size:11px;font-weight:400;line-height:1.8;margin-top:4px}
-#inventoryRecords .inventory-status{font-size:9px;font-weight:500;padding:3px 6px}
-#inventoryRecords .inventory-bill-total{flex-shrink:0}
-#inventoryRecords .inventory-bill-total strong{font-size:19px;font-weight:600;line-height:1.4}
-#inventoryRecords .inventory-bill-total span{font-size:10px;font-weight:400;margin-top:4px}
-#inventoryRecords .inventory-bill-detail{margin-top:10px;border-radius:7px}
-#inventoryRecords .inventory-bill-detail>summary{padding:6px 10px;min-height:34px;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:space-between;gap:12px}
-#inventoryRecords .inventory-bill-detail .disclosure-action{min-height:26px;padding:4px 9px;font-size:10px}
-#inventoryRecords .inventory-bill-actions{gap:6px;margin-top:10px}
-#inventoryRecords .inventory-bill-items{margin:8px 10px 10px}
-#inventoryRecords .inventory-bill-items span{font-size:11px;font-weight:400}
-@media(max-width:600px){#inventoryRecords{padding:14px}#inventoryRecords .inventory-bill-top{flex-direction:column;gap:8px}#inventoryRecords .inventory-bill-total{text-align:left}#inventoryRecords .supply-source-filter{flex-basis:100%;margin-right:0}#inventoryRecords .bill-source{margin-left:0;display:table;margin-top:4px}}
+#inventory #inventoryRecords{padding:20px;border-radius:16px}
+#inventory #inventoryRecords .inventory-panel-head{align-items:center;gap:12px;margin-bottom:16px}
+#inventory #inventoryRecords .inventory-panel-head>div{flex:1}
+#inventory #inventoryRecords .eyebrow{font-size:10px;margin-bottom:6px}
+#inventory #inventoryRecords h2{font-size:20px;font-weight:600;margin:0}
+#inventory #inventoryRecords #inventoryBillCount{font-size:12px;font-weight:400;white-space:nowrap}
+#inventory #inventoryRecords button{min-height:34px;padding:8px 12px;font-size:11px;font-weight:500;letter-spacing:0;border-radius:7px}
+#inventory #inventoryRecords .supply-history-toolbar{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px;margin:0 0 14px;padding:0 0 14px;border-bottom:1px solid #292d29}
+#inventory #inventoryRecords #supplyHistoryRangeLabel{flex-basis:100%;margin:2px 0 0;font:400 11px/1.4 var(--sans, sans-serif);color:#929792;text-align:left}
+#inventory #inventoryRecords .inventory-bills-list{gap:6px}
+#inventory #inventoryRecords .inventory-bill{padding:9px 12px;border-radius:10px}
+#inventory #inventoryRecords .inventory-bill h3{font-size:13px;font-weight:500;line-height:1.5;overflow-wrap:anywhere}
+#inventory #inventoryRecords .bill-source{display:inline-block;margin-left:8px;padding:2px 6px;border:1px solid #353935;border-radius:4px;color:#a6aaa6;font-size:10px;font-weight:400;vertical-align:middle}
+#inventory #inventoryRecords .inventory-bill-meta{font-size:11px;font-weight:400;line-height:1.4;margin-top:2px}
+#inventory #inventoryRecords .inventory-status{font-size:9px;font-weight:500;padding:3px 6px}
+#inventory #inventoryRecords .inventory-bill-total{flex-shrink:0}
+#inventory #inventoryRecords .inventory-bill-total strong{font-size:17px;font-weight:600;line-height:1.3}
+#inventory #inventoryRecords .inventory-bill-total span{font-size:9px;font-weight:400;margin-top:2px}
+#inventory #inventoryRecords .inventory-bill-detail{margin-top:3px;border:0;border-radius:0;background:transparent}
+#inventory #inventoryRecords .inventory-bill-detail>summary{padding:0;min-height:21px;font-size:10px;font-weight:500;display:inline-flex;align-items:center;justify-content:flex-start;gap:8px;list-style:none}
+#inventory #inventoryRecords .inventory-bill-detail>summary::-webkit-details-marker{display:none}
+#inventory #inventoryRecords .inventory-bill-detail>summary::after{content:"SHOW +";color:#9a9c96;font-size:9px}
+#inventory #inventoryRecords .inventory-bill-detail[open]>summary::after{content:"HIDE −"}
+#inventory #inventoryRecords .inventory-bill-detail .disclosure-action{min-height:26px;padding:4px 9px;font-size:10px}
+#inventory #inventoryRecords .inventory-bill-actions{gap:5px;margin-top:5px}
+#inventory #inventoryRecords .inventory-bill-actions button{min-height:29px;padding:5px 9px;font-size:10px}
+#inventory #inventoryRecords .inventory-bill-items{margin:4px 0 2px}
+#inventory #inventoryRecords .inventory-bill-items span{font-size:11px;font-weight:400}
+@media(max-width:600px){#inventory #inventoryRecords{padding:14px}#inventory #inventoryRecords .inventory-bill-top{flex-direction:row;align-items:flex-start;gap:8px}#inventory #inventoryRecords .inventory-bill-top>div:first-child{min-width:0;flex:1}#inventory #inventoryRecords .inventory-bill h3{font-size:12px}#inventory #inventoryRecords .inventory-bill-total{text-align:right}#inventory #inventoryRecords .inventory-bill-total strong{font-size:15px}#inventory #inventoryRecords .bill-source{margin-left:4px;padding:1px 4px;font-size:9px}}
 </style>
 <style>
 #costing{color:#e8eae5}#costing .cost-heading{margin-bottom:24px}#costing h1{font:600 30px/1.3 var(--sans,sans-serif);letter-spacing:-.7px;margin:8px 0}#costing p{font-size:13px;line-height:1.6;color:#a2a79f;font-weight:400}#costing .cost-filters{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:20px}#costing [hidden]{display:none!important}#costing label{display:grid;gap:7px;min-width:200px;font-size:12px;color:#a2a79f}#costing select{height:40px;background:#131511;color:#eee;border:1px solid #373b32;border-radius:8px;padding:0 12px;font-size:13px}#costing .cost-layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:20px;align-items:start}#costing .cost-card{border:1px solid #33382e;background:#11140f;border-radius:12px;padding:22px;margin-bottom:18px}#costing h2{font-size:17px;font-weight:500;margin:0 0 16px}#costing .cost-card-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline}#costing .cost-card-head span,#costing .cost-summary>span{color:#969e8c;font-size:11px}#costing .cost-summary h2{margin-top:16px}#costing .cost-figure{font-size:30px;font-weight:600;color:#ffd900}#costing dl{display:grid;grid-template-columns:1fr auto;gap:16px 12px;font-size:13px;margin:24px 0}#costing dd{margin:0;text-align:right}#costing dt{color:#a2a79f}#costing .cost-note{font-size:12px;border-top:1px solid #30362b;padding-top:16px;margin-top:20px}#costing .cost-table{overflow:auto}#costing table{width:100%;border-collapse:collapse;min-width:480px;text-align:left}#costing td,#costing th{padding:13px 8px;border-bottom:1px solid #2c3227;font-size:13px;font-weight:400}#costing th{color:#969e8c;font-size:11px}#costing td:last-child,#costing th:last-child{text-align:right}#costing .cost-empty{padding:30px;border:1px dashed #33382e;border-radius:12px}@media(max-width:1000px){#costing .cost-layout{grid-template-columns:1fr}#costing .cost-filters label{flex:1;min-width:160px}}
@@ -1626,9 +1627,8 @@ body{font-size:14px}
     <div class="inventory-table-wrap"><div class="inventory-table-head"><span>ITEM</span><span>OUTLET</span><span>RECEIVED THIS SESSION</span><span>USED / WASTE THIS SESSION</span><span>CURRENT STOCK</span><span>STATUS</span></div><div id="inventoryStockList"></div></div>
   </article>
   <article id="inventoryRecords" class="inventory-panel inventory-table-panel">
-    <div class="inventory-panel-head"><div><div class="eyebrow">Billing history</div><h2>Supply bills</h2></div><span id="inventoryBillCount">0 bills</span></div>
+    <div class="inventory-panel-head"><div><div class="eyebrow">Central billing history</div><h2>Supply bills</h2></div><span id="inventoryBillCount">0 bills</span></div>
     <div class="orders-history-toolbar supply-history-toolbar">
-      <label class="supply-source-filter"><span>Purchase source</span><select id="supplyPurchaseSource"><option value="ALL">All purchases</option><option value="CENTRAL">Central supply</option><option value="LOCAL">Local purchases</option></select></label>
       <button id="supplyHistoryCustomToggle" class="secondary" type="button" aria-expanded="false">CUSTOM SESSIONS</button>
       <button id="supplyHistoryCurrentSession" class="secondary" type="button">CURRENT SESSION</button>
       <button id="supplyHistoryShowAll" class="secondary" type="button">ALL BILLS</button>
