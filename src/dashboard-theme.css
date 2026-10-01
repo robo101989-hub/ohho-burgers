@@ -225,4 +225,16 @@ body #spinSettingsPanel #saveSpinSettingsBtn{justify-self:start}
   body .content #localPurchaseHistory td:nth-child(5){grid-column:2;grid-row:4;text-align:right;color:#f1d755;white-space:nowrap}
   body .content #localPurchaseHistory td:nth-child(6){grid-column:1/-1;grid-row:5;display:flex;gap:8px;flex-wrap:wrap}
   body .content #localPurchaseHistory td:nth-child(6) button{min-height:38px}
+
+  /* Supply bill entries need room for both quantity controls on phones.
+     Keep the item description on its own row so grid sizing cannot squeeze
+     the name into a one-letter column. */
+  body .content #inventory .supply-line{grid-template-columns:minmax(0,1fr) auto;gap:8px;min-width:0}
+  body .content #inventory .supply-line>div:first-child{grid-column:1/-1;grid-row:1;min-width:0;overflow-wrap:normal;word-break:normal}
+  body .content #inventory .supply-line>div:first-child strong{display:block;min-width:0;overflow-wrap:break-word;word-break:normal;line-height:1.35}
+  body .content #inventory .supply-line>div:first-child small{overflow-wrap:break-word;word-break:normal;line-height:1.4}
+  body .content #inventory .supply-line .supply-line-actual{grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto;align-items:center;gap:6px;min-width:0;width:100%}
+  body .content #inventory .supply-line .supply-line-actual input{box-sizing:border-box;min-width:0;width:100%;height:40px;padding:0 8px}
+  body .content #inventory .supply-line>b{grid-column:1;grid-row:3;align-self:center;white-space:nowrap}
+  body .content #inventory .supply-line>button{grid-column:2;grid-row:3;justify-self:end;min-width:38px;min-height:36px}
 }
