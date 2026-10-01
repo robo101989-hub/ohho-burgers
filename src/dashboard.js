@@ -61,9 +61,13 @@ const state = {
     orderSource: 'POS',
     spinReward: null,
     cart: [],
-    submitting: false
+    submitting: false,
+    menuLoaded: false
   }
 };
+
+let restoringDashboardHistory = false;
+let dashboardLastInteractionAt = Date.now();
 
 function safeUrl(value = "") {
   const raw = String(value || "").trim();
@@ -1185,6 +1189,7 @@ async function loadPosMenu() {
       ? true
       : availabilityMap.get(item.id) === true
   }));
+  state.pos.menuLoaded = true;
 
   renderPosCategories();
   renderPosMenu();
@@ -4923,12 +4928,18 @@ function wireDashboardActions() {
   ['#costingOutlet','#costingCategory','#costingMenu','#costingService','#costingMode','#costingOrderStatus'].forEach(id => $(id)?.addEventListener('change',renderCostingScreen));
   $$('.nav-btn[data-section]').forEach(button => button.addEventListener('click', () => {
     let id = button.dataset.section;
+    const previousSection = state.selectedSection;
     const role = state.profile?.role || '';
     const permissions = ROLE_PERMISSIONS[role] || [];
     if (!permissions.includes(id)) id = permissions[0] || 'overview';
     sections.forEach(section => section.classList.toggle('active', section.id === id));
     $$('.nav-btn').forEach(navButton => navButton.classList.toggle('active', navButton.dataset.section === id));
     state.selectedSection = id;
+    if (!restoringDashboardHistory && previousSection !== id) {
+      const url = new URL(window.location.href);
+      url.hash = id;
+      window.history.pushState({ ohhoDashboardSection: id }, '', url);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (id === 'settings') renderSettings();
     if (id === 'reports') {
@@ -4938,8 +4949,30 @@ function wireDashboardActions() {
       });
     }
     if (id === 'costing') loadReports().then(renderCostingScreen).catch(error => toast(error.message, 'bad'));
-    if (id === 'costing' || id === 'inventory' || id === 'daily-expenses') loadInventory().catch(error => { console.error('Unable to load stock and expense records:', error); toast(error.message || 'Unable to load records.', 'bad'); });
+    if (id === 'costing' || id === 'inventory' || id === 'daily-expenses' || id === 'reports') loadInventory().catch(error => { console.error('Unable to load stock and expense records:', error); toast(error.message || 'Unable to load records.', 'bad'); });
+    if (id === 'overview' && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role) && !state.inventory.loaded) {
+      loadInventory().catch(error => console.error('Unable to load overview operations:', error));
+    }
+    if (id === 'pos' && !state.pos.menuLoaded) loadPosMenu().catch(error => toast(error.message || 'Unable to load the POS menu.', 'bad'));
+    if (id === 'orders') loadOrders().catch(error => toast(error.message || 'Unable to load orders.', 'bad'));
+    if (id === 'menu') loadMenuManagement().catch(error => toast(error.message || 'Unable to load menu management.', 'bad'));
+    if (id === 'staff' && state.profile?.role === 'ADMIN') loadStaff().catch(error => toast(error.message || 'Unable to load staff.', 'bad'));
+    if (id === 'settings') {
+      Promise.allSettled([loadSpinSettings(), loadCustomerReviews()]).then(results => results.forEach(result => {
+        if (result.status === 'rejected') console.error('Unable to load settings data:', result.reason);
+      }));
+    }
   }));
+
+  window.addEventListener('popstate', event => {
+    const sectionId = event.state?.ohhoDashboardSection;
+    if (!sectionId) return;
+    const button = $(`.nav-btn[data-section="${sectionId}"]`);
+    if (!button) return;
+    restoringDashboardHistory = true;
+    button.click();
+    restoringDashboardHistory = false;
+  });
 
   $$('#overview [data-section]').forEach(button => button.addEventListener('click', () => {
     const target = button.dataset.section;
@@ -5049,7 +5082,7 @@ async function loadOrders({ silent = false } = {}) {
     .from('orders')
     .select('id, order_number, token_number, order_type, status, payment_method, payment_status, order_source, table_number, customer_note, subtotal, discount, total, created_at, outlet_id')
     .order('created_at', { ascending: false })
-    .limit(1000);
+    .limit(100);
 
   if (state.selectedOutlet !== 'ALL') {
     const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
@@ -6432,19 +6465,19 @@ function updateUserCard() {
 function startLiveDashboardRefresh() {
   if (state.liveRefreshTimer) clearInterval(state.liveRefreshTimer);
   state.liveRefreshTimer = setInterval(async () => {
-    if (document.hidden || state.liveRefreshBusy) return;
+    if (document.hidden || state.liveRefreshBusy || state.pos.submitting || Date.now() - dashboardLastInteractionAt < 8000) return;
     state.liveRefreshBusy = true;
     try {
-      await loadOutlets();
-      await loadOrders({ silent: true });
-      if (state.selectedSection === 'reports') await loadReports();
-      if (['overview', 'inventory', 'costing', 'daily-expenses', 'pos', 'reports'].includes(state.selectedSection) && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) await loadInventory();
+      const section = state.selectedSection;
+      if (['overview', 'pos', 'outlets'].includes(section)) await loadOutlets();
+      if (['overview', 'orders'].includes(section)) await loadOrders({ silent: true });
+      if (['overview', 'inventory'].includes(section) && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) await loadInventory();
     } catch (error) {
       console.error('Unable to refresh live dashboard feed:', error);
     } finally {
       state.liveRefreshBusy = false;
     }
-  }, 20000);
+  }, 90000);
 }
 
 function dashboardAssetPath(root = document) {
@@ -6751,6 +6784,7 @@ async function startApp(session) {
   try {
     await loadProfile();
     applyRolePermissions();
+    window.history.replaceState({ ohhoDashboardSection: state.selectedSection || 'overview' }, document.title, window.location.href);
     updateUserCard();
     await loadOutlets();
     const posMenuReady = loadPosMenu();
@@ -6763,14 +6797,17 @@ async function startApp(session) {
 
     const backgroundLoads = [
       ['POS menu', posMenuReady],
-      ['orders', loadOrders()],
-      ['reports', loadReports()],
-      ['menu management', loadMenuManagement()],
-      ['Spin & Win settings', loadSpinSettings()],
-      ['customer reviews', loadCustomerReviews()]
+      ['recent orders', loadOrders()]
     ];
-    if (['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) backgroundLoads.push(['stock and expenses', loadInventory()]);
-    if (state.profile?.role === 'ADMIN') backgroundLoads.push(['staff', loadStaff()]);
+    if (['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) {
+      const loadOverviewOperations = () => {
+        if (state.selectedSection === 'overview' && !state.inventory.loaded) {
+          loadInventory().catch(error => console.error('Unable to load overview operations:', error));
+        }
+      };
+      if ('requestIdleCallback' in window) window.requestIdleCallback(loadOverviewOperations, { timeout: 7000 });
+      else window.setTimeout(loadOverviewOperations, 2500);
+    }
     void Promise.allSettled(backgroundLoads.map(([, task]) => task)).then(results => {
       results.forEach((result, index) => {
         if (result.status !== 'rejected') return;
@@ -6787,6 +6824,9 @@ async function startApp(session) {
 
 async function init() {
   injectStyles();
+  ['pointerdown', 'keydown', 'touchstart'].forEach(eventName => {
+    window.addEventListener(eventName, () => { dashboardLastInteractionAt = Date.now(); }, { passive: true });
+  });
   buildAuthGate();
   buildOutletModal();
   buildStaffModal();
