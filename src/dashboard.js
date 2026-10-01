@@ -43,7 +43,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
-  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], staffRules: [], staffEvents: [], openSessions: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], openingStockDrafts: {}, billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, editingStaffRuleId: null, historyItemId: null, historyMode: 'ALL', historyFrom: '', historyTo: '', expenseHistoryMode: 'ALL', expenseHistoryFrom: '', expenseHistoryTo: '', loaded: false },
+  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], staffRules: [], staffEvents: [], openSessions: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], openingStockDrafts: {}, billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, editingStaffRuleId: null, localPurchaseEditingBillId: null, historyItemId: null, historyMode: 'ALL', historyFrom: '', historyTo: '', expenseHistoryMode: 'ALL', expenseHistoryFrom: '', expenseHistoryTo: '', loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -4343,7 +4343,9 @@ async function deleteManagedCategory(type, row) {
 
 function renderLocalPurchases() {
   const outletId = $('#localPurchaseOutlet')?.value;
-  const availableItems = state.inventory.items.filter(item => item.active !== false && (!item.local_outlet_id || item.local_outlet_id === outletId));
+  const editingBill = state.inventory.bills.find(row => row.id === state.inventory.localPurchaseEditingBillId);
+  const editingItemId = editingBill?.supply_bill_items?.[0]?.item_id;
+  const availableItems = state.inventory.items.filter(item => (item.active !== false || item.id === editingItemId) && (!item.local_outlet_id || item.local_outlet_id === outletId));
   const categories = state.inventory.stockCategories.filter(row => row.active !== false || availableItems.some(item => item.category_id === row.id)).map(row => ({ value: row.id, label: row.name }));
   if (availableItems.some(item => !categories.some(category => category.value === item.category_id))) categories.push({ value: 'UNCATEGORIZED', label: 'Uncategorized' });
   categories.sort((a,b) => a.label.localeCompare(b.label));
@@ -4353,13 +4355,61 @@ function renderLocalPurchases() {
   const canAddItem = state.inventory.stockCategories.some(row => row.id === categoryId && row.active !== false);
   inventorySelectOptions($('#localPurchaseItem'), [{ value: '', label: categoryId ? 'Choose an item' : 'Choose a category first' }, ...(categoryId ? items.map(item => ({ value: item.id, label: item.name })) : []), ...(canAddItem ? [{ value: 'NEW', label: '+ Add item to this category' }] : [])], $('#localPurchaseItem')?.value);
   if ($('#localPurchaseItem')) $('#localPurchaseItem').disabled = !categoryId;
+  if ($('#localPurchaseOutlet')) $('#localPurchaseOutlet').disabled = Boolean(editingBill);
   updateLocalPurchaseFields();
   const open = state.inventory.openSessions.some(row => row.outlet_id === outletId);
   if ($('#localPurchaseSessionHint')) $('#localPurchaseSessionHint').textContent = open ? 'Recording in the current open session.' : 'Open an outlet session to record a purchase.';
-  if ($('#saveLocalPurchase')) $('#saveLocalPurchase').disabled = !open || Boolean(state.inventory.localPurchaseSaving);
-  const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at').filter(row => row.purchase_source === 'LOCAL');
+  if ($('#saveLocalPurchase')) {
+    $('#saveLocalPurchase').disabled = (!open && !editingBill) || Boolean(state.inventory.localPurchaseSaving);
+    $('#saveLocalPurchase').textContent = editingBill ? 'Update purchase' : 'Save purchase & add stock';
+  }
+  const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at').filter(row => row.purchase_source === 'LOCAL' && row.status !== 'VOID');
   if ($('#localPurchaseTotal')) $('#localPurchaseTotal').textContent = formatReportMoney(bills.reduce((sum, bill) => sum + Number(bill.total_amount), 0));
-  if ($('#localPurchaseHistory')) $('#localPurchaseHistory').innerHTML = bills.length ? `<table><thead><tr><th>Date / receipt</th><th>Outlet</th><th>Item</th><th>Received</th><th>Total paid</th></tr></thead><tbody>${bills.flatMap(bill => (bill.supply_bill_items || []).map(line => `<tr><td>${escapeHtml(inventoryDate(bill.supplied_at))}<br>${escapeHtml(bill.bill_number)}</td><td>${escapeHtml(inventoryOutlet(bill.outlet_id)?.name || '')}</td><td>${escapeHtml(line.item_name)}</td><td>${inventoryQty(line.quantity)} ${escapeHtml(unitLabel(line.unit))}</td><td>${formatReportMoney(line.line_total)}</td></tr>`)).join('')}</tbody></table>` : '<div class="inventory-empty">No local purchases in the selected outlet/session range.</div>';
+  if ($('#localPurchaseHistory')) $('#localPurchaseHistory').innerHTML = bills.length ? `<table><thead><tr><th>Date / receipt</th><th>Outlet</th><th>Item</th><th>Received</th><th>Total paid</th><th>Actions</th></tr></thead><tbody>${bills.flatMap(bill => (bill.supply_bill_items || []).map(line => `<tr><td>${escapeHtml(inventoryDate(bill.supplied_at))}<br>${escapeHtml(bill.bill_number)}</td><td>${escapeHtml(inventoryOutlet(bill.outlet_id)?.name || '')}</td><td>${escapeHtml(line.item_name)}</td><td>${inventoryQty(line.quantity)} ${escapeHtml(unitLabel(line.unit))}</td><td>${formatReportMoney(line.line_total)}</td><td><button class="secondary" type="button" data-local-purchase-edit="${escapeHtml(bill.id)}">${state.inventory.localPurchaseEditingBillId === bill.id ? 'CANCEL' : 'EDIT'}</button> <button class="secondary" type="button" data-local-purchase-remove="${escapeHtml(bill.id)}">REMOVE</button></td></tr>`)).join('')}</tbody></table>` : '<div class="inventory-empty">No local purchases in the selected outlet/session range.</div>';
+}
+
+function editLocalPurchase(billId) {
+  if (state.inventory.localPurchaseEditingBillId === billId) return cancelLocalPurchaseEdit();
+  const bill = state.inventory.bills.find(row => row.id === billId && row.purchase_source === 'LOCAL' && row.status !== 'VOID');
+  const line = bill?.supply_bill_items?.[0];
+  const item = line && inventoryItem(line.item_id);
+  if (!bill || !line || !item) return toast('This local purchase is no longer available to edit.', 'bad');
+  state.inventory.localPurchaseEditingBillId = bill.id;
+  $('#localPurchaseOutlet').value = bill.outlet_id;
+  renderLocalPurchases();
+  $('#localPurchaseCategory').value = item.category_id || '';
+  renderLocalPurchases();
+  $('#localPurchaseItem').value = item.id;
+  updateLocalPurchaseFields();
+  $('#localPurchaseQuantity').value = line.quantity;
+  $('#localPurchaseUnit').value = line.unit;
+  $('#localPurchaseCost').value = Number(bill.total_amount).toFixed(2);
+  $('#localPurchasePayment').value = bill.supply_bill_payments?.[0]?.payment_method || 'OTHER';
+  $('#localPurchaseNote').value = String(bill.notes || '').replace(/^Local purchase\s*·?\s*/i, '');
+  $('#localPurchaseQuantity')?.focus();
+  $('#localPurchasesPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelLocalPurchaseEdit() {
+  state.inventory.localPurchaseEditingBillId = null;
+  ['#localPurchaseQuantity','#localPurchaseCost','#localPurchaseName','#localPurchaseNote'].forEach(selector => { if ($(selector)) $(selector).value = ''; });
+  if ($('#localPurchasePayment')) $('#localPurchasePayment').value = 'CASH';
+  if ($('#localPurchaseCategory')) $('#localPurchaseCategory').value = '';
+  if ($('#localPurchaseItem')) $('#localPurchaseItem').value = '';
+  if ($('#localPurchaseOutlet')) $('#localPurchaseOutlet').disabled = false;
+  renderLocalPurchases();
+}
+
+async function removeLocalPurchase(billId) {
+  const bill = state.inventory.bills.find(row => row.id === billId && row.purchase_source === 'LOCAL' && row.status !== 'VOID');
+  if (!bill) return toast('This local purchase is no longer available.', 'bad');
+  if (!window.confirm(`Remove local purchase ${bill.bill_number}?\n\nThis will reverse its stock quantity, remove it from totals, and keep an audit record. It cannot be removed if that stock has already been used.`)) return;
+  try {
+    await inventoryApi('POST', { action: 'void_local_purchase', billId });
+    if (state.inventory.localPurchaseEditingBillId === billId) cancelLocalPurchaseEdit();
+    await loadInventory();
+    toast('Local purchase removed and stock corrected.', 'ok');
+  } catch (error) { toast(error.message || 'Unable to remove the local purchase.', 'bad'); }
 }
 
 function updateLocalPurchaseFields() {
@@ -4373,16 +4423,19 @@ function updateLocalPurchaseFields() {
 
 async function saveLocalPurchase() {
   if (state.inventory.localPurchaseSaving) return;
+  const editingBillId = state.inventory.localPurchaseEditingBillId;
   const selected = $('#localPurchaseItem')?.value;
   if (!selected) return toast('Choose a stock item or add a missing item.', 'bad');
-  const body = { action: 'record_local_purchase', outletId: $('#localPurchaseOutlet')?.value, itemId: selected === 'NEW' ? null : selected, name: $('#localPurchaseName')?.value, categoryId: $('#localPurchaseCategory')?.value, quantity: $('#localPurchaseQuantity')?.value, unit: $('#localPurchaseUnit')?.value, cost: $('#localPurchaseCost')?.value, paymentMethod: $('#localPurchasePayment')?.value, notes: $('#localPurchaseNote')?.value };
+  const body = { action: editingBillId ? 'edit_local_purchase' : 'record_local_purchase', billId: editingBillId, outletId: $('#localPurchaseOutlet')?.value, itemId: selected === 'NEW' ? null : selected, name: $('#localPurchaseName')?.value, categoryId: $('#localPurchaseCategory')?.value, quantity: $('#localPurchaseQuantity')?.value, unit: $('#localPurchaseUnit')?.value, cost: $('#localPurchaseCost')?.value, paymentMethod: $('#localPurchasePayment')?.value, notes: $('#localPurchaseNote')?.value };
   try { normalizeLocalPurchase(body, state.inventory.items); } catch (error) { return toast(error.message, 'bad'); }
-  const fingerprint = JSON.stringify(body);
-  if (state.inventory.localPurchaseFingerprint !== fingerprint) {
-    state.inventory.localPurchaseFingerprint = fingerprint;
-    state.inventory.localPurchaseKey = crypto.randomUUID();
+  if (!editingBillId) {
+    const fingerprint = JSON.stringify(body);
+    if (state.inventory.localPurchaseFingerprint !== fingerprint) {
+      state.inventory.localPurchaseFingerprint = fingerprint;
+      state.inventory.localPurchaseKey = crypto.randomUUID();
+    }
+    body.entryKey = state.inventory.localPurchaseKey;
   }
-  body.entryKey = state.inventory.localPurchaseKey;
   state.inventory.localPurchaseSaving = true;
   $('#saveLocalPurchase').disabled = true;
   let saved = false;
@@ -4390,9 +4443,10 @@ async function saveLocalPurchase() {
     await inventoryApi('POST', body);
     saved = true;
     ['#localPurchaseQuantity','#localPurchaseCost','#localPurchaseName','#localPurchaseNote'].forEach(selector => { $(selector).value = ''; });
+    state.inventory.localPurchaseEditingBillId = null;
     state.inventory.localPurchaseFingerprint = null;
     state.inventory.localPurchaseKey = null;
-    toast('Local purchase saved. Stock and session purchase costs updated.', 'ok');
+    toast(editingBillId ? 'Local purchase updated. Stock totals were corrected.' : 'Local purchase saved. Stock and session purchase costs updated.', 'ok');
     await loadInventory();
   } catch (error) { toast(saved ? 'Purchase saved, but the list could not refresh. Refresh the page to view it.' : error.message, 'bad'); }
   finally { state.inventory.localPurchaseSaving = false; renderLocalPurchases(); }
@@ -4616,6 +4670,12 @@ function wireInventoryActions() {
   $('#localPurchaseOutlet')?.addEventListener('change', renderLocalPurchases);
   $('#localPurchaseItem')?.addEventListener('change', updateLocalPurchaseFields);
   $('#localPurchaseCategory')?.addEventListener('change', renderLocalPurchases);
+  $('#localPurchaseHistory')?.addEventListener('click', event => {
+    const edit = event.target.closest('[data-local-purchase-edit]');
+    const remove = event.target.closest('[data-local-purchase-remove]');
+    if (edit) editLocalPurchase(edit.dataset.localPurchaseEdit);
+    if (remove) removeLocalPurchase(remove.dataset.localPurchaseRemove);
+  });
   $('#supplyPurchaseSource')?.addEventListener('change', renderInventory);
   $('#inventoryCreateItem')?.addEventListener('click', createInventoryItem);
   ['#inventoryRequestUnit','#inventorySupplyUnit','#inventoryInternalUnit'].forEach(selector => $(selector)?.addEventListener('change', syncCreateConversionDefaults));
@@ -5568,7 +5628,7 @@ function operationsSnapshot(bounds) {
     operationInRange(order, 'created_at', bounds) && isReportableOrder(order) && !isFamilyFriendsOrder(order)
   );
   const bills = (state.inventory.bills || [])
-    .filter(row => (row.receipt_status || 'RECEIVED') === 'RECEIVED')
+    .filter(row => row.status !== 'VOID' && (row.receipt_status || 'RECEIVED') === 'RECEIVED')
     .map(row => ({ ...row, operation_at: row.received_at || row.supplied_at }))
     .filter(row => operationInRange(row, 'operation_at', bounds));
   const expenses = (state.inventory.expenses || []).filter(row => operationInRange(row, 'occurred_at', bounds));
