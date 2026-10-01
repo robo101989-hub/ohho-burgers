@@ -2,7 +2,13 @@
 export function installSectionDisclosures(root = document) {
   const saved = new Map();
   let scheduled = false;
+  const pendingNodes = new Set();
   const selector = '#inventory, #overview, #reports, #daily-expenses';
+  const panelSelector = `${selector.split(', ').map(s => s + ' article.inventory-panel').join(', ')}, #overview article.panel, #reports article.panel`;
+  const includingSelf = (scope, query) => [
+    ...(scope?.matches?.(query) ? [scope] : []),
+    ...(scope?.querySelectorAll ? scope.querySelectorAll(query) : [])
+  ];
   const keyFor = details => {
     const parts = [];
     for (let node = details; node; node = node.parentElement?.closest('details')) {
@@ -11,12 +17,12 @@ export function installSectionDisclosures(root = document) {
     }
     return `${details.closest('.section')?.id}:${parts.join('/')}`;
   };
-  function enhance() {
+  function enhance(scope = root) {
     scheduled = false;
-    root.querySelectorAll(`${selector.split(', ').map(s => s + ' article.inventory-panel').join(', ')}, #overview article.panel, #reports article.panel`).forEach(panel => {
-      if (panel.dataset.collapsibleReady) return;
+    for (const panel of includingSelf(scope, panelSelector)) {
+      if (panel.dataset.collapsibleReady) continue;
       const head = panel.querySelector(':scope > .inventory-panel-head, :scope > .panel-head');
-      if (!head) return;
+      if (!head) continue;
       panel.dataset.collapsibleReady = 'true';
       const body = document.createElement('div');
       body.className = 'section-disclosure-body';
@@ -31,11 +37,11 @@ export function installSectionDisclosures(root = document) {
         toggle.setAttribute('aria-expanded', String(!body.hidden));
       });
       head.append(toggle); panel.append(body);
-    });
-    root.querySelectorAll(selector).forEach(section => section.querySelectorAll('details').forEach(details => {
-      if (details.dataset.disclosureReady) return;
+    }
+    for (const details of includingSelf(scope, 'details')) {
+      if (details.dataset.disclosureReady || !details.closest(selector)) continue;
       const summary = details.querySelector(':scope > summary');
-      if (!summary) return;
+      if (!summary) continue;
       const key = keyFor(details);
       if (saved.has(key)) details.open = saved.get(key);
       details.dataset.disclosureReady = 'true';
@@ -45,7 +51,7 @@ export function installSectionDisclosures(root = document) {
       const update = () => { button.textContent = details.open ? 'CLOSE' : 'OPEN'; button.setAttribute('aria-expanded',String(details.open)); saved.set(key,details.open); };
       button.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); details.open = !details.open; update(); });
       summary.append(button); details.addEventListener('toggle',update); update();
-    }));
+    }
   }
   // Jump links and edit actions must reopen parent sections before scrolling.
   root.addEventListener('click', event => {
@@ -64,8 +70,19 @@ export function installSectionDisclosures(root = document) {
       if (body) { body.hidden = false; const button = root.querySelector(`[aria-controls="${body.id}"]`); if(button){button.textContent='CLOSE';button.setAttribute('aria-expanded','true');} }
     }
   }
-  enhance();
-  const observer = new MutationObserver(() => { if (!scheduled) { scheduled = true; requestAnimationFrame(enhance); } });
+  enhance(root);
+  const observer = new MutationObserver(records => {
+    for (const record of records) {
+      for (const node of record.addedNodes) if (node.nodeType === Node.ELEMENT_NODE) pendingNodes.add(node);
+    }
+    if (!pendingNodes.size || scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => {
+      const added = [...pendingNodes];
+      pendingNodes.clear();
+      for (const node of added) enhance(node);
+    });
+  });
   root.querySelectorAll(selector).forEach(section => observer.observe(section,{childList:true,subtree:true}));
   return { reveal, disconnect:()=>observer.disconnect() };
 }

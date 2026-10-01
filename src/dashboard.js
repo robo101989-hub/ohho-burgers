@@ -6,7 +6,7 @@ import { supabase } from './supabase.js';
 import { historyBounds } from '../lib/history.js';
 import { normalizeLocalPurchase } from '../lib/local-purchases.js';
 import { calculateSuggestedRequirements, closedSessionRequirementReview } from '../lib/stock-requirements.js';
-import { calculateCurrentStockValue } from '../lib/inventory-valuation.js';
+import { createStockValueCalculator } from '../lib/inventory-valuation.js';
 import { defaultNetQuantity, standardConversion, unitLabel, stockRequestUnit, requestSupplyQuantities } from '../lib/inventory-measurements.js';
 import { recordIsInOpenSessions, recordIsInSessions, selectCompletedSessions } from '../lib/session-reporting.js';
 
@@ -43,7 +43,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
-  inventory: { items: [], stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], staffRules: [], staffEvents: [], openSessions: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], openingStockDrafts: {}, billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, editingStaffRuleId: null, localPurchaseEditingBillId: null, historyItemId: null, historyMode: 'ALL', historyFrom: '', historyTo: '', expenseHistoryMode: 'ALL', expenseHistoryFrom: '', expenseHistoryTo: '', loaded: false },
+  inventory: { items: [], itemById: new Map(), stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], staffRules: [], staffEvents: [], openSessions: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], openingStockDrafts: {}, billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, editingStaffRuleId: null, localPurchaseEditingBillId: null, historyItemId: null, historyMode: 'ALL', historyFrom: '', historyTo: '', expenseHistoryMode: 'ALL', expenseHistoryFrom: '', expenseHistoryTo: '', loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -189,8 +189,10 @@ function injectStyles() {
     .menu-outlet-pill{cursor:pointer;min-width:43px}
     .menu-outlet-pill:hover{border-color:#ffd21c;color:#ffd21c}
     .menu-favourite-star{color:#ffd21c;font-size:12px;margin-left:4px}
-    .menu-edit-btn{width:100%;border:1px solid #303030;background:#111;color:#ddd;border-radius:7px;padding:8px 7px;font:900 7px var(--mono);letter-spacing:.6px;cursor:pointer}
-    .menu-edit-btn:hover{border-color:#ffd21c;color:#ffd21c}
+    .menu-row-actions{display:grid;gap:5px;min-width:0}
+    .menu-row-actions button{width:100%;min-width:0;height:28px;padding:0 4px;border:1px solid #303030;background:#111;color:#aaa;border-radius:7px;font:900 7px var(--mono);letter-spacing:.45px;white-space:nowrap;cursor:pointer}
+    .menu-row-actions button:hover:not(:disabled){border-color:#ffd21c;color:#ffd21c}
+    .menu-row-actions button:disabled{opacity:.6;cursor:wait}
     .menu-management-loading,.menu-management-empty{padding:50px 20px;text-align:center;color:#666;font-size:11px}
     .menu-management-empty strong{display:block;color:#eee;font-size:14px;margin-bottom:6px}
 
@@ -260,9 +262,8 @@ function injectStyles() {
       .menu-status-cell,.menu-outlet-cell,.menu-row-actions{min-width:0;width:100%}
       .menu-status-cell,.menu-outlet-cell{display:flex;align-items:center}
       .menu-status-pill,.menu-outlet-pill{min-height:34px;padding:8px 10px;width:100%;justify-content:center}
-      .menu-edit-btn{width:100%;min-height:36px;padding:9px 10px;border:1px solid #303030;background:#111;color:#ddd;border-radius:7px;font:900 8px var(--mono);letter-spacing:.6px}
-      .menu-row-actions button{width:100%;min-height:36px;padding:9px 10px;border:1px solid #303030;background:#111;color:#aaa;border-radius:7px;font:900 8px var(--mono);letter-spacing:.6px;cursor:pointer}
-      .menu-row-actions button:hover{border-color:#ffd21c;color:#ffd21c}
+      .menu-row-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+      .menu-row-actions button{height:32px;padding:0 8px;font-size:8px}
 
       .menu-page-head{align-items:flex-start;width:100%;text-align:left}
       .menu-page-head>div:first-child{width:100%;margin-left:0}
@@ -2520,6 +2521,7 @@ const menuManagementState = {
   items: [],
   categories: [],
   outletAvailability: new Map(),
+  pendingOutletAvailability: new Set(),
   editingId: null,
   imageRemoved: false
 };
@@ -2694,9 +2696,11 @@ function renderMenuManagement() {
         </div>
 
         ${menuOutlets.map(outlet => {
-          const available = menuManagementState.outletAvailability.get(`${outlet.id}:${item.id}`) === true;
+          const key = `${outlet.id}:${item.id}`;
+          const available = menuManagementState.outletAvailability.get(key) === true;
+          const pending = menuManagementState.pendingOutletAvailability.has(key);
           return `<div class="menu-outlet-cell">
-            <button type="button" class="menu-outlet-pill ${available ? 'on' : 'off'}" data-menu-outlet="${escapeHtml(outlet.id)}" data-menu-item="${escapeHtml(item.id)}" data-menu-outlet-name="${escapeHtml(outlet.name || outlet.slug || 'OUTLET')}">${available ? 'ON' : 'OFF'}</button>
+            <button type="button" class="menu-outlet-pill ${available ? 'on' : 'off'}" data-menu-outlet="${escapeHtml(outlet.id)}" data-menu-item="${escapeHtml(item.id)}" data-menu-outlet-name="${escapeHtml(outlet.name || outlet.slug || 'OUTLET')}" aria-label="${escapeHtml(outlet.name || outlet.slug || 'Outlet')} availability for ${escapeHtml(item.name)}" aria-busy="${pending}" ${pending ? 'disabled' : ''}>${pending ? 'SAVING' : available ? 'ON' : 'OFF'}</button>
           </div>`;
         }).join('')}
 
@@ -3177,24 +3181,48 @@ async function toggleMenuOutletAvailability(outletId, menuItemId, outletName) {
   }
 
   const key = `${outletId}:${menuItemId}`;
+  if (menuManagementState.pendingOutletAvailability.has(key)) return;
   const current = menuManagementState.outletAvailability.get(key) === true;
   const next = !current;
 
-  const { error } = await supabase
-    .from('outlet_menu_items')
-    .update({ is_available: next })
-    .eq('outlet_id', outletId)
-    .eq('menu_item_id', menuItemId);
-
-  if (error) {
-    toast(error.message || `Unable to update ${outletName}.`, 'bad');
-    return;
-  }
-
-  menuManagementState.outletAvailability.set(key, next);
+  menuManagementState.pendingOutletAvailability.add(key);
   renderMenuManagement();
-  await loadPosMenu();
-  toast(`${outletName} · ${next ? 'item enabled' : 'item disabled'}.`, 'ok');
+
+  try {
+    let result;
+    if (['ADMIN', 'OWNER'].includes(role)) {
+      result = await supabase
+        .from('outlet_menu_items')
+        .upsert({ outlet_id: outletId, menu_item_id: menuItemId, is_available: next }, {
+          onConflict: 'outlet_id,menu_item_id'
+        })
+        .select('outlet_id,menu_item_id,is_available')
+        .single();
+    } else {
+      result = await supabase
+        .from('outlet_menu_items')
+        .update({ is_available: next })
+        .eq('outlet_id', outletId)
+        .eq('menu_item_id', menuItemId)
+        .select('outlet_id,menu_item_id,is_available')
+        .maybeSingle();
+    }
+
+    if (result.error) throw result.error;
+    if (!result.data) {
+      throw new Error(`No saved availability record exists for ${outletName}. Ask an Admin or Owner to toggle this item once to create its outlet mapping.`);
+    }
+
+    menuManagementState.outletAvailability.set(key, result.data.is_available === true);
+    toast(`${outletName} · item ${result.data.is_available ? 'enabled' : 'disabled'}.`, 'ok');
+    loadPosMenu().catch(error => console.error('Unable to refresh POS menu availability:', error));
+  } catch (error) {
+    console.error('Unable to change outlet menu availability:', error);
+    toast(error.message || `Unable to update ${outletName}.`, 'bad');
+  } finally {
+    menuManagementState.pendingOutletAvailability.delete(key);
+    renderMenuManagement();
+  }
 }
 
 async function inventoryApi(method = 'GET', body = null, params = {}) {
@@ -3214,7 +3242,7 @@ async function inventoryApi(method = 'GET', body = null, params = {}) {
   return payload;
 }
 
-function inventoryItem(id) { return state.inventory.items.find(item => item.id === id); }
+function inventoryItem(id) { return state.inventory.itemById?.get(id) || state.inventory.items.find(item => item.id === id); }
 function inventoryOutlet(id) { return state.inventory.outlets.find(outlet => outlet.id === id); }
 function inventoryDisplayQuantity(item, baseQuantity) {
   const value = Number(baseQuantity || 0);
@@ -3851,28 +3879,44 @@ function renderSupplyNotification() {
   panel.innerHTML = `<div><strong>● ${escapeHtml(notification.title)}</strong><span>${escapeHtml(notification.message)} · ${inventoryDate(notification.created_at)}</span></div><div class="pos-supply-notice-actions"><button class="primary" type="button" data-supply-notice-view="${notification.id}">VIEW BILL</button><button class="secondary" type="button" data-supply-notice-dismiss="${notification.id}">DISMISS</button></div>`;
 }
 
-function inventoryMovementTotals(outletId, itemId) {
-  const rows = currentInventorySessionRows(state.inventory.movements, 'occurred_at', outletId).filter(row => row.item_id === itemId);
-  return {
-    received: rows.filter(row => row.movement_type === 'STOCK_RECEIVED').reduce((sum, row) => sum + Number(row.quantity_delta || 0), 0),
-    used: Math.abs(rows.filter(row => ['USAGE', 'WASTE', 'SALE_DEDUCTION', 'PACKAGING_CONSUMPTION', 'STAFF_CONSUMPTION'].includes(row.movement_type)).reduce((sum, row) => sum + Number(row.quantity_delta || 0), 0))
-  };
+function inventoryMovementTotals(totals, outletId, itemId) {
+  const current = totals.get(`${outletId}:${itemId}`) || { received: 0, used: 0 };
+  return { received: current.received, used: Math.abs(current.used) };
 }
 
 function renderInventory() {
+  if (state.selectedSection === 'costing') { renderCostingScreen(); return; }
+  if (state.selectedSection === 'daily-expenses') { fillInventoryControls(); renderDailyExpenses(); return; }
+  if (state.selectedSection === 'reports') { renderReportDashboard(); return; }
+  if (state.selectedSection !== 'inventory') { renderOverviewOperations(); return; }
+
   fillInventoryControls();
   const outletId = inventorySelectedOutletId();
   const balances = state.inventory.balances.filter(row => (!outletId || row.outlet_id === outletId) && inventoryItem(row.item_id)?.active !== false);
   const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at').filter(row => !$('#supplyPurchaseSource')?.value || $('#supplyPurchaseSource').value === 'ALL' || (row.purchase_source || 'CENTRAL') === $('#supplyPurchaseSource').value);
   const allMovements = inventoryHistoryRows(state.inventory.movements, 'occurred_at');
   const movements = state.inventory.historyItemId ? allMovements.filter(row => row.item_id === state.inventory.historyItemId) : allMovements;
-  const stockValue = calculateCurrentStockValue({ items: state.inventory.items, balances, bills: state.inventory.bills, movements: state.inventory.movements, outletId });
+  const calculateStockValue = createStockValueCalculator({ items: state.inventory.items, bills: state.inventory.bills, movements: state.inventory.movements });
+  const stockValue = calculateStockValue(balances, outletId);
   const lowCount = balances.filter(row => {
     const item = inventoryItem(row.item_id);
     return inventoryDisplayQuantity(item, row.quantity_on_hand) <= Number(item?.low_stock_threshold || 0);
   }).length;
   const due = state.inventory.bills.filter(row => !outletId || row.outlet_id === outletId).reduce((sum, bill) => sum + Math.max(0, Number(bill.total_amount || 0) - Number(bill.paid_amount || 0)), 0);
-  const sessionReceived = currentInventorySessionRows(state.inventory.movements, 'occurred_at', outletId).filter(row => row.movement_type === 'STOCK_RECEIVED').length;
+  const currentMovements = currentInventorySessionRows(state.inventory.movements, 'occurred_at', outletId);
+  const movementTotals = new Map();
+  let sessionReceived = 0;
+  for (const row of currentMovements) {
+    const key = `${row.outlet_id}:${row.item_id}`;
+    const totals = movementTotals.get(key) || { received: 0, used: 0 };
+    if (row.movement_type === 'STOCK_RECEIVED') {
+      totals.received += Number(row.quantity_delta || 0);
+      sessionReceived += 1;
+    } else if (['USAGE', 'WASTE', 'SALE_DEDUCTION', 'PACKAGING_CONSUMPTION', 'STAFF_CONSUMPTION'].includes(row.movement_type)) {
+      totals.used += Number(row.quantity_delta || 0);
+    }
+    movementTotals.set(key, totals);
+  }
   if ($('#inventoryStockValue')) $('#inventoryStockValue').textContent = formatReportMoney(stockValue);
   if ($('#inventoryLowCount')) $('#inventoryLowCount').textContent = String(lowCount);
   if ($('#inventoryDue')) $('#inventoryDue').textContent = formatReportMoney(due);
@@ -3892,7 +3936,8 @@ function renderInventory() {
 
   const masterList = $('#inventoryMasterList');
   if (masterList) {
-    const groupName = item => state.inventory.stockCategories.find(row => row.id === item.category_id)?.name || 'Other items';
+    const categoryNames = new Map(state.inventory.stockCategories.map(row => [row.id, row.name]));
+    const groupName = item => categoryNames.get(item.category_id) || 'Other items';
     const categoryId = $('#inventoryMasterCategory')?.value || '';
     const search = String($('#inventoryMasterSearch')?.value || '').trim().toLowerCase();
     const filteredItems = state.inventory.items.filter(item => item.active !== false && (!categoryId || item.category_id === categoryId) && (!search || item.name.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search)));
@@ -3900,7 +3945,6 @@ function renderInventory() {
     masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}${item.active === false ? ' · INACTIVE' : ''}</strong><small>${escapeHtml(item.sku)} · REQUEST ${escapeHtml(unitLabel(item.request_unit).toUpperCase())} × ${inventoryQty(item.request_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · BILL ${escapeHtml(unitLabel(item.billing_unit || item.supply_unit).toUpperCase())} × ${inventoryQty(item.billing_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · LOW ${inventoryQty(item.low_stock_threshold)} · TARGET ${inventoryQty(item.target_stock_level)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${inventoryBillingUnit(item)}` : 'SET RATE'}</b><div class="inventory-row-actions"><button type="button" data-inventory-edit-item="${item.id}">EDIT</button><button class="danger" type="button" data-inventory-delete-item="${item.id}">DEACTIVATE</button></div></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
   }
 
-  renderCostingScreen();
   const stockList = $('#inventoryStockList');
   const selectedCategory = $('#liveStockCategory')?.value || '';
   inventorySelectOptions($('#liveStockCategory'), [{ value: '', label: 'All categories' }, ...state.inventory.stockCategories.map(c => ({ value:c.id, label:c.name })), { value:'unassigned', label:'Unassigned' }], selectedCategory);
@@ -3918,14 +3962,14 @@ function renderInventory() {
     stockGroups.get(key).rows.push(row);
   }
   if (stockList) stockList.innerHTML = stockGroups.size ? [...stockGroups.values()].sort((a,b) => a.name.localeCompare(b.name)).map(group => {
-    const value = calculateCurrentStockValue({ items:state.inventory.items, balances:group.rows, bills:state.inventory.bills, movements:state.inventory.movements });
+    const value = calculateStockValue(group.rows);
     return `<details class="request-group" data-disclosure-key="${escapeHtml(group.name)}"><summary><strong>${escapeHtml(group.name)}</strong> · ${group.rows.length} items · ${formatReportMoney(value)}</summary>${group.rows.sort((a,b) => (inventoryItem(a.item_id)?.name || '').localeCompare(inventoryItem(b.item_id)?.name || '')).map(row => {
     const item = inventoryItem(row.item_id) || {};
     const outlet = inventoryOutlet(row.outlet_id) || {};
     const quantity = inventoryDisplayQuantity(item, row.quantity_on_hand);
     const threshold = Number(item.low_stock_threshold || 0);
     const status = quantity <= 0 ? ['OUT OF STOCK', 'out'] : quantity <= threshold ? ['LOW STOCK', 'low'] : ['IN STOCK', 'in'];
-    const totals = inventoryMovementTotals(row.outlet_id, row.item_id);
+    const totals = inventoryMovementTotals(movementTotals, row.outlet_id, row.item_id);
     return `<div class="inventory-stock-row"><strong>${escapeHtml(item.name || 'Item')}<button class="inventory-history-link" type="button" data-view-item-history="${row.item_id}">VIEW HISTORY</button></strong><span>${escapeHtml(outlet.name || 'Outlet')}</span><span>${inventoryQty(inventoryDisplayQuantity(item, totals.received))} ${escapeHtml(item.display_unit || '')}</span><span>${inventoryQty(inventoryDisplayQuantity(item, totals.used))} ${escapeHtml(item.display_unit || '')}</span><span class="inventory-qty">${inventoryQty(quantity)} ${escapeHtml(item.display_unit || '')}</span><span class="inventory-status ${status[1]}">${status[0]}</span></div>`;
     }).join('')}</details>`;
   }).join('') : '<div class="inventory-empty">No stock matches these filters.</div>';
@@ -3955,7 +3999,6 @@ function renderInventory() {
   prepareClosedSessionRequirements();
   renderStockRequestCatalogue();
   renderStockRequests();
-  renderDailyExpenses();
   renderStockCategories();
   renderExpenseCategories();
   renderRecipeIngredients();
@@ -3969,6 +4012,30 @@ function renderInventory() {
 }
 
 let inventoryLoadVersion = 0;
+let overviewLoadVersion = 0;
+async function loadOverviewOperationsData(from = '', to = '') {
+  const version = ++overviewLoadVersion;
+  const params = { scope: 'overview' };
+  if (from && to) {
+    const start = new Date(`${from}T00:00:00`);
+    const end = new Date(`${to}T00:00:00`);
+    end.setDate(end.getDate() + 1);
+    params.from = start.toISOString();
+    params.to = end.toISOString();
+  }
+  const payload = await inventoryApi('GET', null, params);
+  if (version !== overviewLoadVersion) return;
+
+  state.inventory.outlets = [...new Map([...(state.inventory.outlets || []), ...(payload.outlets || [])].map(row => [row.id, row])).values()];
+  state.inventory.openSessions = payload.openSessions || [];
+  if ((payload.salesReports || []).length) {
+    state.salesReports = [...new Map([...(state.salesReports || []), ...payload.salesReports].map(row => [row.id, row])).values()];
+  }
+  state.inventory.bills = [...new Map([...(state.inventory.bills || []), ...(payload.bills || [])].map(row => [row.id, row])).values()];
+  state.inventory.expenses = [...new Map([...(state.inventory.expenses || []), ...(payload.expenses || [])].map(row => [row.id, row])).values()];
+  if (state.selectedSection === 'overview') renderOverviewOperations();
+}
+
 async function loadInventory() {
   // Keep one complete, authorized snapshot so one screen's filters cannot erase
   // records needed by Expenses, Financial Summary, or another outlet selection.
@@ -3976,6 +4043,7 @@ async function loadInventory() {
   const payload = await inventoryApi('GET');
   if (version !== inventoryLoadVersion) return;
   state.inventory.items = payload.items || [];
+  state.inventory.itemById = new Map(state.inventory.items.map(item => [item.id, item]));
   state.inventory.stockCategories = payload.stockCategories || [];
   state.inventory.expenseCategories = payload.expenseCategories || [];
   state.inventory.menuItems = payload.menuItems || [];
@@ -3996,8 +4064,6 @@ async function loadInventory() {
   state.inventory.openingStockEvents = payload.openingStockEvents || [];
   state.inventory.loaded = true;
   renderInventory();
-  renderOverviewOperations();
-  if (state.selectedSection === 'reports') renderReportDashboard();
 }
 
 function updateSupplyDefaultPrice() {
@@ -4940,11 +5006,13 @@ function wireDashboardActions() {
       state.overviewOperationsFrom = from;
       state.overviewOperationsTo = to;
       renderOverviewOperations();
+      loadOverviewOperationsData(from, to).catch(error => toast(error.message || 'Unable to refresh session operations.', 'bad'));
     } catch (error) { toast(error.message, 'bad'); }
   });
   $('#overviewOperationsToday')?.addEventListener('click', () => {
     state.overviewOperationsMode = 'SESSION';
     renderOverviewOperations();
+    loadOverviewOperationsData().catch(error => console.error('Unable to refresh current session operations:', error));
   });
   $('#overviewOperationsClear')?.addEventListener('click', () => {
     state.overviewOperationsMode = 'SESSION';
@@ -4953,6 +5021,7 @@ function wireDashboardActions() {
     $('#overviewOperationsCustomPanel')?.classList.add('hidden');
     $('#overviewOperationsCustomToggle')?.setAttribute('aria-expanded', 'false');
     renderOverviewOperations();
+    loadOverviewOperationsData().catch(error => console.error('Unable to refresh current session operations:', error));
   });
   $('#overviewOperationsDownload')?.addEventListener('click', () => {
     const bounds = overviewOperationsBounds();
@@ -5010,8 +5079,8 @@ function wireDashboardActions() {
     }
     if (id === 'costing') loadReports().then(renderCostingScreen).catch(error => toast(error.message, 'bad'));
     if (id === 'costing' || id === 'inventory' || id === 'daily-expenses' || id === 'reports') loadInventory().catch(error => { console.error('Unable to load stock and expense records:', error); toast(error.message || 'Unable to load records.', 'bad'); });
-    if (id === 'overview' && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role) && !state.inventory.loaded) {
-      loadInventory().catch(error => console.error('Unable to load overview operations:', error));
+    if (id === 'overview' && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) {
+      loadOverviewOperationsData().catch(error => console.error('Unable to load overview operations:', error));
     }
     if (id === 'pos' && !state.pos.menuLoaded) loadPosMenu().catch(error => toast(error.message || 'Unable to load the POS menu.', 'bad'));
     if (id === 'orders') loadOrders().catch(error => toast(error.message || 'Unable to load orders.', 'bad'));
@@ -6531,7 +6600,7 @@ function startLiveDashboardRefresh() {
       const section = state.selectedSection;
       if (['overview', 'pos', 'outlets'].includes(section)) await loadOutlets();
       if (['overview', 'orders'].includes(section)) await loadOrders({ silent: true });
-      if (['overview', 'inventory'].includes(section) && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) await loadInventory();
+      if (section === 'overview' && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) await loadOverviewOperationsData();
     } catch (error) {
       console.error('Unable to refresh live dashboard feed:', error);
     } finally {
@@ -6861,8 +6930,8 @@ async function startApp(session) {
     ];
     if (['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) {
       const loadOverviewOperations = () => {
-        if (state.selectedSection === 'overview' && !state.inventory.loaded) {
-          loadInventory().catch(error => console.error('Unable to load overview operations:', error));
+        if (state.selectedSection === 'overview') {
+          loadOverviewOperationsData().catch(error => console.error('Unable to load overview operations:', error));
         }
       };
       if ('requestIdleCallback' in window) window.requestIdleCallback(loadOverviewOperations, { timeout: 7000 });
@@ -6884,7 +6953,7 @@ async function startApp(session) {
 
 async function init() {
   injectStyles();
-  ['pointerdown', 'keydown', 'touchstart'].forEach(eventName => {
+  ['pointerdown', 'keydown', 'touchstart', 'touchmove', 'wheel', 'scroll'].forEach(eventName => {
     window.addEventListener(eventName, () => { dashboardLastInteractionAt = Date.now(); }, { passive: true });
   });
   buildAuthGate();

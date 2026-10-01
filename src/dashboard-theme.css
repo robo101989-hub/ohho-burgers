@@ -187,3 +187,42 @@ body #spinSettingsPanel #saveSpinSettingsBtn{justify-self:start}
   body .content #costing .cost-table tbody td:nth-child(4){grid-column:2;grid-row:2/4;align-self:center;color:#f1d755;text-align:right}
   body .content #costing .cost-table tbody td:nth-child(4)::before{content:'Cost · ';color:#818b76}
 }
+
+/* Keep wide dashboard panels inside the phone viewport. Dense records retain
+   their data while using stacked rows instead of forcing the page sideways. */
+@media(max-width:760px){
+  html,body{max-width:100%;overflow-x:clip}
+  body .app,body .main,body .content,body .content>.section,body .content>.section.active,
+  body .content .inventory-panel,body .content .panel,body .content .card,
+  body .content .section-disclosure-body{min-width:0;max-width:100%}
+  body .content .section{overflow-wrap:anywhere}
+  body .content #inventory .inventory-table-wrap{max-width:100%;overflow-x:hidden}
+  body .content #inventory .inventory-table-head{display:none}
+  body .content #inventory .inventory-stock-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;min-width:0;padding:12px}
+  body .content #inventory .inventory-stock-row>strong{grid-column:1/-1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:8px;overflow-wrap:anywhere}
+  body .content #inventory .inventory-stock-row>span{min-width:0;overflow-wrap:anywhere}
+  body .content #inventory .inventory-stock-row>span:nth-of-type(1){grid-column:1/-1;color:#a2aa98;font-size:11px}
+  body .content #inventory .inventory-stock-row>span:nth-of-type(1)::before{content:'Outlet · ';color:#818b76}
+  body .content #inventory .inventory-stock-row>span:nth-of-type(2){grid-column:1;grid-row:3;color:#a2aa98}
+  body .content #inventory .inventory-stock-row>span:nth-of-type(2)::before{content:'Received · ';color:#818b76}
+  body .content #inventory .inventory-stock-row>span:nth-of-type(3){grid-column:1;grid-row:4;color:#a2aa98}
+  body .content #inventory .inventory-stock-row>span:nth-of-type(3)::before{content:'Used / waste · ';color:#818b76}
+  body .content #inventory .inventory-stock-row>span:nth-of-type(4){grid-column:2;grid-row:3/5;align-self:center;text-align:right}
+  body .content #inventory .inventory-stock-row>span:nth-of-type(4)::before{content:'Stock · ';color:#818b76}
+  body .content #inventory .inventory-stock-row>span:nth-of-type(5){grid-column:2;grid-row:2;text-align:right;white-space:nowrap}
+
+  body .content #localPurchaseHistory.table-scroll{width:100%;max-width:100%;overflow:visible}
+  body .content #localPurchaseHistory table{display:block;width:100%;min-width:0;table-layout:fixed}
+  body .content #localPurchaseHistory thead{display:none}
+  body .content #localPurchaseHistory tbody{display:block;width:100%}
+  body .content #localPurchaseHistory tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid #2c3227}
+  body .content #localPurchaseHistory td{min-width:0;padding:4px 6px;border:0;overflow-wrap:anywhere}
+  body .content #localPurchaseHistory td:nth-child(1){grid-column:1/-1;grid-row:1;color:#aeb69f;font-size:11px}
+  body .content #localPurchaseHistory td:nth-child(2){grid-column:1/-1;grid-row:2;color:#a2aa98;font-size:11px}
+  body .content #localPurchaseHistory td:nth-child(3){grid-column:1/-1;grid-row:3;font-weight:500}
+  body .content #localPurchaseHistory td:nth-child(4){grid-column:1;grid-row:4;color:#aeb69f}
+  body .content #localPurchaseHistory td:nth-child(4)::before{content:'Received · ';color:#818b76}
+  body .content #localPurchaseHistory td:nth-child(5){grid-column:2;grid-row:4;text-align:right;color:#f1d755;white-space:nowrap}
+  body .content #localPurchaseHistory td:nth-child(6){grid-column:1/-1;grid-row:5;display:flex;gap:8px;flex-wrap:wrap}
+  body .content #localPurchaseHistory td:nth-child(6) button{min-height:38px}
+}
