@@ -42,8 +42,9 @@ body .content .section:not(#costing) .pos-menu-card h3{font-size:14px;font-weigh
 body .content .section:not(#costing) :is(.pos-menu-card.selected,.pos-source-card.active){border-color:#ffdb24;background:#302e18}
 @media(max-width:760px){body .content .section:not(#costing) :is(.hero-head,.page-head){padding:18px;align-items:stretch}body .content .section:not(#costing) :is(.hero-head,.page-head) h1{font-size:24px}body .content .section:not(#costing) :is(.panel,.card,.inventory-panel,.report-panel,.order-card,.outlet-card){padding:15px}body .content .section:not(#costing) :is(.panel-head,.inventory-panel-head,.report-section-head){flex-wrap:wrap}body .content .section:not(#costing) :is(.primary,.secondary){min-height:40px}body .content .section:not(#costing) :is(.kpi,.inventory-summary article,.report-stat-card){padding:14px}}
 /* Stock & Supply: consistent section rhythm and dense operational tables. */
-body .content #inventory .inventory-quick-nav{position:static;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;padding:12px;overflow:visible;box-shadow:none;margin:0 0 20px;background:#11150e}
-body .content #inventory .inventory-quick-nav button{white-space:normal;min-height:38px;padding:8px;font-size:11px;font-weight:500;letter-spacing:0;text-align:center}
+body .content #inventory .inventory-quick-nav{position:sticky;top:8px;z-index:25;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:6px;overflow:visible;margin:0 0 12px;border:1px solid #30322f;border-radius:11px;background:#11150e;box-shadow:0 6px 18px rgba(0,0,0,.22)}
+body .content #inventory .inventory-quick-nav button{white-space:normal;min-height:36px;padding:7px;font-size:10px;font-weight:600;letter-spacing:0;text-align:center;border-radius:7px}
+body .content #inventory .inventory-quick-nav button.active{border-color:#6a5a17;background:#29240f;color:#ffd21c}
 body .content #inventory .inventory-panel{margin:0 0 18px;padding:18px;scroll-margin-top:20px}
 body .content #inventory .inventory-admin-grid{gap:0;margin-bottom:0}
 body .content #inventory .inventory-panel-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;margin-bottom:16px;align-items:start}
@@ -88,8 +89,8 @@ body .content #inventory .inventory-wide-btn{margin-top:14px}
 body .content #inventory .supply-total{margin-top:16px;padding-top:14px}
 body .content #inventory .local-purchase-actions{margin-top:14px}
 body .content #inventory .local-purchase-history-head{margin-top:18px;padding-top:16px}
-@media(max-width:1100px){body .content #inventory .inventory-quick-nav{grid-template-columns:repeat(3,minmax(0,1fr))}body .content #inventory .inventory-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:700px){body .content #inventory .inventory-quick-nav{grid-template-columns:repeat(2,minmax(0,1fr))}body .content #inventory :is(.inventory-filterbar,.inventory-master-toolbar){grid-template-columns:1fr}body .content #inventory .inventory-panel{padding:14px}body .content #inventory .inventory-panel-head{gap:5px 8px}body .content #inventory .inventory-panel-head h2{font-size:16px}body .content #inventory .inventory-filter-status{grid-column:1}}
+@media(max-width:1100px){body .content #inventory .inventory-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){body .content #inventory :is(.inventory-filterbar,.inventory-master-toolbar){grid-template-columns:1fr}body .content #inventory .inventory-panel{padding:14px}body .content #inventory .inventory-panel-head{gap:5px 8px}body .content #inventory .inventory-panel-head h2{font-size:16px}body .content #inventory .inventory-filter-status{grid-column:1}}
 /* Compact yellow actions; retain larger touch targets on narrow screens. */
 body .content .section:not(#costing) button.primary,
 body .content #costing button.primary{min-height:32px;height:auto;padding:7px 12px;font-size:11px;font-weight:500;line-height:1.4;border-radius:7px;letter-spacing:0;width:fit-content;max-width:100%;justify-self:start;align-self:center;white-space:normal}

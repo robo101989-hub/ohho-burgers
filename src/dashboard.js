@@ -43,7 +43,7 @@ const state = {
   customerReviews: [],
   customerReviewsError: '',
   editingOutletId: null,
-  inventory: { items: [], itemById: new Map(), stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], staffRules: [], staffEvents: [], openSessions: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], openingStockDrafts: {}, billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, editingStaffRuleId: null, localPurchaseEditingBillId: null, historyItemId: null, historyMode: 'ALL', historyFrom: '', historyTo: '', expenseHistoryMode: 'ALL', expenseHistoryFrom: '', expenseHistoryTo: '', loaded: false },
+  inventory: { items: [], itemById: new Map(), stockCategories: [], expenseCategories: [], menuItems: [], menuCategories: [], recipes: [], packagingRules: [], staffRules: [], staffEvents: [], openSessions: [], outlets: [], balances: [], bills: [], movements: [], notifications: [], requests: [], expenses: [], openingStockEvents: [], openingStockDrafts: {}, billLines: [], requestLines: [], activeRequestId: null, activeDraftId: null, editingExpenseId: null, editingItemId: null, editingPackagingRuleId: null, editingStaffRuleId: null, localPurchaseEditingBillId: null, historyItemId: null, historyMode: 'ALL', historyFrom: '', historyTo: '', expenseHistoryMode: 'ALL', expenseHistoryFrom: '', expenseHistoryTo: '', activeView: 'work', loaded: false },
   orderEdit: {
     orderId: null,
     items: []
@@ -62,7 +62,9 @@ const state = {
     spinReward: null,
     cart: [],
     submitting: false,
-    menuLoaded: false
+    menuLoaded: false,
+    loadedOutlet: null,
+    mobileCartExpanded: false
   }
 };
 
@@ -1143,11 +1145,19 @@ function renderStaffList() {
 }
 
 async function loadPosMenu() {
+  if (state.posMenuLoadPromise) {
+    await state.posMenuLoadPromise;
+    if (state.pos.loadedOutlet !== state.selectedOutlet) return loadPosMenu();
+    return;
+  }
+
   const menuGrid = $('#posMenuGrid');
   if (!menuGrid) return;
 
   menuGrid.innerHTML = '<div class="pos-loading">Loading menu…</div>';
+  const requestedOutlet = state.selectedOutlet;
 
+  const request = (async () => {
   const [{ data: categories, error: categoryError }, { data: items, error: itemError }] = await Promise.all([
     supabase
       .from('menu_categories')
@@ -1167,8 +1177,8 @@ async function loadPosMenu() {
   state.pos.categories = categories || [];
 
   let availability = [];
-  if (state.selectedOutlet !== 'ALL') {
-    const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
+  if (requestedOutlet !== 'ALL') {
+    const outlet = state.outlets.find(o => o.slug === requestedOutlet);
     if (outlet) {
       const { data, error } = await supabase
         .from('outlet_menu_items')
@@ -1180,22 +1190,34 @@ async function loadPosMenu() {
     }
   }
 
+  if (requestedOutlet !== state.selectedOutlet) return;
+
   const availabilityMap = new Map(
     availability.map(row => [row.menu_item_id, row.is_available])
   );
 
   state.pos.items = (items || []).map(item => ({
     ...item,
-    outletAvailable: state.selectedOutlet === 'ALL'
+    outletAvailable: requestedOutlet === 'ALL'
       ? true
       : availabilityMap.get(item.id) === true
   }));
   state.pos.menuLoaded = true;
+  state.pos.loadedOutlet = requestedOutlet;
 
   renderPosCategories();
   renderPosMenu();
   updatePosOutletName();
   renderPosCart();
+  })();
+
+  state.posMenuLoadPromise = request;
+  try {
+    await request;
+  } finally {
+    if (state.posMenuLoadPromise === request) state.posMenuLoadPromise = null;
+  }
+  if (state.pos.loadedOutlet !== state.selectedOutlet) return loadPosMenu();
 }
 
 function renderPosCategories() {
@@ -1419,6 +1441,13 @@ function renderPosCart() {
   if (subtotalNode) subtotalNode.textContent = `₹${subtotal.toFixed(0)}`;
   if ($('#posDiscount')) $('#posDiscount').textContent = discount ? `−₹${discount.toFixed(0)}` : spinReward?.type === 'FREE_ITEM' ? spinReward.label : '₹0';
   if (totalNode) totalNode.textContent = `₹${Math.max(0, subtotal - discount).toFixed(0)}`;
+  const itemCount = state.pos.cart.reduce((sum, item) => sum + item.quantity, 0);
+  if ($('#posMobileCartCount')) $('#posMobileCartCount').textContent = `${itemCount} item${itemCount === 1 ? '' : 's'}`;
+  if ($('#posMobileCartTotal')) $('#posMobileCartTotal').textContent = `₹${Math.max(0, subtotal - discount).toFixed(0)}`;
+  const mobileCartToggle = $('#posMobileCartToggle');
+  const cartPanel = mobileCartToggle?.closest('.pos-cart-panel');
+  if (cartPanel) cartPanel.classList.toggle('is-mobile-expanded', Boolean(state.pos.mobileCartExpanded));
+  mobileCartToggle?.setAttribute('aria-expanded', String(Boolean(state.pos.mobileCartExpanded)));
   const selectedOutlet = state.outlets.some(outlet => outlet.slug === state.selectedOutlet);
   if (placeButton) {
     placeButton.disabled = state.pos.submitting || state.pos.cart.length === 0 || Boolean(rewardError) || !selectedOutlet;
@@ -1428,6 +1457,7 @@ function renderPosCart() {
 
 function resetPosOrder() {
   state.pos.cart = [];
+  state.pos.mobileCartExpanded = false;
   state.pos.orderType = 'TAKEAWAY';
   state.pos.tableNumber = '';
   state.pos.customerName = '';
@@ -1624,6 +1654,10 @@ async function printOhhoReceipt(order, outlet, cart) {
 
 function wirePosActions() {
   $('#posPrinterBtn')?.addEventListener('click', connectOhhoPrinter);
+  $('#posMobileCartToggle')?.addEventListener('click', () => {
+    state.pos.mobileCartExpanded = !state.pos.mobileCartExpanded;
+    renderPosCart();
+  });
   $('#posCartItems')?.addEventListener('change', event => {
     const input = event.target.closest('[data-pos-quantity]');
     if (input) setPosQuantity(input.dataset.posQuantity, input.value);
@@ -2854,20 +2888,48 @@ function wireMenuImagePicker() {
 }
 
 
+async function optimizeMenuItemImage(file) {
+  if (!file || typeof createImageBitmap !== 'function') return file;
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+    const maxDimension = 800;
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext('2d', { alpha: true });
+    if (!context) return file;
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const encode = type => new Promise(resolve => canvas.toBlob(resolve, type, 0.82));
+    let blob = await encode('image/webp');
+    if (!blob || !['image/webp', 'image/jpeg'].includes(blob.type)) blob = await encode('image/jpeg');
+    if (!blob || blob.size >= file.size || !['image/webp', 'image/jpeg'].includes(blob.type)) return file;
+    const extension = blob.type === 'image/webp' ? 'webp' : 'jpg';
+    const baseName = file.name.replace(/\.[^.]+$/, '') || 'menu-image';
+    return new File([blob], `${baseName}.${extension}`, { type: blob.type, lastModified: file.lastModified });
+  } catch {
+    return file;
+  } finally {
+    bitmap?.close?.();
+  }
+}
+
 async function uploadMenuItemImage(file, itemKey) {
   if (!file) return null;
 
-  const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+  const uploadFile = await optimizeMenuItemImage(file);
+  const extension = uploadFile.name.split('.').pop()?.toLowerCase() || 'jpg';
   const safeKey = String(itemKey || 'menu-item').replace(/[^a-z0-9-]/gi, '-').toLowerCase();
   const path = `${safeKey}/${Date.now()}.${extension}`;
 
   const { error: uploadError } = await supabase
     .storage
     .from('menu-images')
-    .upload(path, file, {
+    .upload(path, uploadFile, {
       cacheControl: '3600',
       upsert: false,
-      contentType: file.type
+      contentType: uploadFile.type
     });
 
   if (uploadError) throw uploadError;
@@ -3268,6 +3330,25 @@ function inventoryDate(value) {
   return value ? new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 }
 function inventorySelectedOutletId() { return $('#inventoryOutletFilter')?.value || ''; }
+function applyInventoryViewVisibility() {
+  const view = state.inventory.activeView || 'work';
+  $$('[data-inventory-view]').forEach(panel => panel.classList.toggle('hidden', panel.dataset.inventoryView !== view));
+  $$('#inventoryQuickNav [data-inventory-tab]').forEach(button => {
+    const selected = button.dataset.inventoryTab === view;
+    button.setAttribute('aria-pressed', String(selected));
+    button.classList.toggle('active', selected);
+  });
+}
+function setInventoryView(view, { scroll = false } = {}) {
+  const allowedView = view === 'setup' && state.profile?.role !== 'ADMIN' ? 'work' : view;
+  state.inventory.activeView = ['work', 'stock', 'history', 'setup'].includes(allowedView) ? allowedView : 'work';
+  applyInventoryViewVisibility();
+  if (state.selectedSection === 'inventory' && state.inventory.loaded) renderInventory();
+  if (scroll) {
+    const firstPanel = $(`[data-inventory-view="${state.inventory.activeView}"]:not(.hidden)`);
+    firstPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
 function completedInventorySessions(outletId, from = '', to = '') {
   const reports = (state.salesReports || []).filter(report => !outletId || report.outlet_id === outletId);
   return selectCompletedSessions(reports, { range: from || to ? 'CUSTOM' : 'ALL', from, to });
@@ -3352,6 +3433,7 @@ function fillInventoryControls() {
   if ($('#staffRuleSetupPanel')) $('#staffRuleSetupPanel').style.display = (admin || owner) ? '' : 'none';
   if ($('#requestOperationsToolbar')) $('#requestOperationsToolbar').style.display = admin ? '' : 'none';
   $$('#inventoryQuickNav [data-admin-only]').forEach(button => button.classList.toggle('hidden', !admin));
+  applyInventoryViewVisibility();
   if ($('#inventoryPageTitle')) $('#inventoryPageTitle').textContent = admin ? 'Stock & Supply Management' : 'Stock Requirements & Supply Bills';
   if ($('#inventoryMasterPanel')) $('#inventoryMasterPanel').style.display = admin ? '' : 'none';
   if ($('#openingStockPanel')) $('#openingStockPanel').style.display = admin ? '' : 'none';
@@ -3815,6 +3897,7 @@ function editRecipeIngredient(menuItemId, itemId) {
   const menu = state.inventory.menuItems.find(entry => entry.id === menuItemId);
   const item = inventoryItem(itemId);
   if (!row || !menu || !item) return toast('This saved recipe ingredient could not be opened.', 'bad');
+  setInventoryView('setup');
   if ($('#recipeMenuCategory')) $('#recipeMenuCategory').value = menu.category_id || '';
   fillInventoryControls();
   if ($('#recipeMenuItem')) $('#recipeMenuItem').value = menuItemId;
@@ -3889,18 +3972,24 @@ function inventoryMovementTotals(totals, outletId, itemId) {
 
 function renderInventory() {
   if (state.selectedSection === 'costing') { renderCostingScreen(); return; }
-  if (state.selectedSection === 'daily-expenses') { fillInventoryControls(); renderDailyExpenses(); return; }
+  if (state.selectedSection === 'daily-expenses') { fillInventoryControls(); renderExpenseCategories(); renderDailyExpenses(); return; }
   if (state.selectedSection === 'reports') { renderReportDashboard(); return; }
   if (state.selectedSection !== 'inventory') { renderOverviewOperations(); return; }
 
   fillInventoryControls();
+  const view = state.inventory.activeView || 'work';
   const outletId = inventorySelectedOutletId();
   const balances = state.inventory.balances.filter(row => (!outletId || row.outlet_id === outletId) && inventoryItem(row.item_id)?.active !== false);
   const bills = centralSupplyHistoryRows();
-  const allMovements = inventoryHistoryRows(state.inventory.movements, 'occurred_at');
+  const allMovements = view === 'history' ? inventoryHistoryRows(state.inventory.movements, 'occurred_at') : [];
   const movements = state.inventory.historyItemId ? allMovements.filter(row => row.item_id === state.inventory.historyItemId) : allMovements;
   const calculateStockValue = createStockValueCalculator({ items: state.inventory.items, bills: state.inventory.bills, movements: state.inventory.movements });
-  const stockValue = calculateStockValue(balances, outletId);
+  const stockValueKey = `${inventoryLoadVersion}:${outletId}`;
+  let stockValue = inventoryStockValueCache.get(stockValueKey);
+  if (stockValue === undefined) {
+    stockValue = calculateStockValue(balances, outletId);
+    inventoryStockValueCache.set(stockValueKey, stockValue);
+  }
   const lowCount = balances.filter(row => {
     const item = inventoryItem(row.item_id);
     return inventoryDisplayQuantity(item, row.quantity_on_hand) <= Number(item?.low_stock_threshold || 0);
@@ -3910,15 +3999,16 @@ function renderInventory() {
   const movementTotals = new Map();
   let sessionReceived = 0;
   for (const row of currentMovements) {
-    const key = `${row.outlet_id}:${row.item_id}`;
-    const totals = movementTotals.get(key) || { received: 0, used: 0 };
     if (row.movement_type === 'STOCK_RECEIVED') {
-      totals.received += Number(row.quantity_delta || 0);
       sessionReceived += 1;
-    } else if (['USAGE', 'WASTE', 'SALE_DEDUCTION', 'PACKAGING_CONSUMPTION', 'STAFF_CONSUMPTION'].includes(row.movement_type)) {
-      totals.used += Number(row.quantity_delta || 0);
     }
-    movementTotals.set(key, totals);
+    if (view === 'stock') {
+      const key = `${row.outlet_id}:${row.item_id}`;
+      const totals = movementTotals.get(key) || { received: 0, used: 0 };
+      if (row.movement_type === 'STOCK_RECEIVED') totals.received += Number(row.quantity_delta || 0);
+      else if (['USAGE', 'WASTE', 'SALE_DEDUCTION', 'PACKAGING_CONSUMPTION', 'STAFF_CONSUMPTION'].includes(row.movement_type)) totals.used += Number(row.quantity_delta || 0);
+      movementTotals.set(key, totals);
+    }
   }
   if ($('#inventoryStockValue')) $('#inventoryStockValue').textContent = formatReportMoney(stockValue);
   if ($('#inventoryLowCount')) $('#inventoryLowCount').textContent = String(lowCount);
@@ -3930,7 +4020,7 @@ function renderInventory() {
   const scopeSessions = inventoryHistorySessions().filter(s => !outletId || s.outlet_id === outletId);
   const range = state.inventory.historyMode === 'CUSTOM' ? historyBounds(state.inventory.historyFrom, state.inventory.historyTo) : {};
   const sessionCount = scopeSessions.filter(s => currentHistory ? !s.closed_at : (!range.start || new Date(s.opened_at).getTime() >= range.start) && (!range.end || new Date(s.opened_at).getTime() < range.end)).length;
-  if ($('#inventoryFilterStatus')) $('#inventoryFilterStatus').textContent = `${sessionCount} session${sessionCount === 1 ? '' : 's'} · ${bills.length} bill${bills.length === 1 ? '' : 's'} · ${movements.length} movement${movements.length === 1 ? '' : 's'}`;
+  if ($('#inventoryFilterStatus')) $('#inventoryFilterStatus').textContent = `${sessionCount} session${sessionCount === 1 ? '' : 's'} · ${bills.length} bill${bills.length === 1 ? '' : 's'}${view === 'history' ? ` · ${movements.length} movement${movements.length === 1 ? '' : 's'}` : ''}`;
   if ($('#supplyHistoryRangeLabel')) {
     const from = state.inventory.historyFrom || '';
     const to = state.inventory.historyTo || '';
@@ -3938,7 +4028,7 @@ function renderInventory() {
   }
 
   const masterList = $('#inventoryMasterList');
-  if (masterList) {
+  if (view === 'setup' && masterList) {
     const categoryNames = new Map(state.inventory.stockCategories.map(row => [row.id, row.name]));
     const groupName = item => categoryNames.get(item.category_id) || 'Other items';
     const categoryId = $('#inventoryMasterCategory')?.value || '';
@@ -3949,6 +4039,7 @@ function renderInventory() {
   }
 
   const stockList = $('#inventoryStockList');
+  if (view === 'stock' && stockList) {
   const selectedCategory = $('#liveStockCategory')?.value || '';
   inventorySelectOptions($('#liveStockCategory'), [{ value: '', label: 'All categories' }, ...state.inventory.stockCategories.map(c => ({ value:c.id, label:c.name })), { value:'unassigned', label:'Unassigned' }], selectedCategory);
   const searchStock = ($('#liveStockSearch')?.value || '').trim().toLowerCase();
@@ -3977,9 +4068,10 @@ function renderInventory() {
     }).join('')}</details>`;
   }).join('') : '<div class="inventory-empty">No stock matches these filters.</div>';
   if ($('#inventoryStockCount')) $('#inventoryStockCount').textContent = `${[...stockGroups.values()].reduce((sum, group) => sum + group.rows.length, 0)} of ${balances.length} items`;
+  }
 
   const billsList = $('#inventoryBillsList');
-  if (billsList) billsList.innerHTML = bills.length ? bills.map(bill => {
+  if (view === 'history' && billsList) billsList.innerHTML = bills.length ? bills.map(bill => {
     const outstanding = Math.max(0, Number(bill.total_amount || 0) - Number(bill.paid_amount || 0));
     const receiptStatus = bill.receipt_status || 'RECEIVED';
     const lines = bill.supply_bill_items || [];
@@ -3987,34 +4079,41 @@ function renderInventory() {
   }).join('') : '<div class="inventory-empty">No central supply bills in this period.</div>';
 
   const movementList = $('#inventoryMovementList');
-  if (movementList) movementList.innerHTML = movements.length ? '<div class="inventory-movement inventory-movement-heading"><span>Date / time</span><span>Stock item</span><span>Outlet</span><span>Change</span><span>Activity / note</span></div>' + movements.map(row => {
+  if (view === 'history' && movementList) movementList.innerHTML = movements.length ? '<div class="inventory-movement inventory-movement-heading"><span>Date / time</span><span>Stock item</span><span>Outlet</span><span>Change</span><span>Activity / note</span></div>' + movements.map(row => {
     const item = inventoryItem(row.item_id) || {};
     const snapshotUnit = row.inventory_unit_snapshot;
     const delta = snapshotUnit ? Number(row.quantity_delta) : inventoryDisplayQuantity(item, row.quantity_delta);
     return `<div class="inventory-movement"><span>${inventoryDate(row.occurred_at)}</span><strong>${escapeHtml(row.item_name_snapshot || item.name || 'Item')}</strong><span>${escapeHtml(inventoryOutlet(row.outlet_id)?.name || 'Outlet')}</span><span class="${delta >= 0 ? 'positive' : 'negative'}">${delta >= 0 ? '+' : ''}${inventoryQty(delta)} ${escapeHtml(unitLabel(snapshotUnit || item.display_unit || '', delta))}</span><span>${escapeHtml(row.movement_type.replaceAll('_', ' '))}${row.notes ? ` · ${escapeHtml(row.notes)}` : ''}</span></div>`;
   }).join('') : '<div class="inventory-empty">No stock movements in this period.</div>';
   const historyItem = inventoryItem(state.inventory.historyItemId);
-  if ($('#inventoryMovementFilterLabel')) $('#inventoryMovementFilterLabel').textContent = historyItem ? `${historyItem.name} · ${movements.length} movements` : 'Every receipt, usage and adjustment';
-  $('#inventoryMovementClearItem')?.classList.toggle('hidden', !historyItem);
-  renderSupplyLines();
+  if (view === 'history') {
+    if ($('#inventoryMovementFilterLabel')) $('#inventoryMovementFilterLabel').textContent = historyItem ? `${historyItem.name} · ${movements.length} movements` : 'Every receipt, usage and adjustment';
+    $('#inventoryMovementClearItem')?.classList.toggle('hidden', !historyItem);
+    renderLocalPurchases({ historyOnly: true });
+  }
   renderSupplyNotification();
-  renderLocalPurchases();
-  prepareClosedSessionRequirements();
-  renderStockRequestCatalogue();
-  renderStockRequests();
-  renderStockCategories();
-  renderExpenseCategories();
-  renderRecipeIngredients();
-  renderRecipeMonitor();
-  renderPackagingRules();
-  renderStaffRules();
-  renderStaffConsumption();
-  updateRecipeQuantityUnit();
-  updateStaffRuleUnit();
-  renderOpeningStock();
+  if (view === 'work') {
+    renderSupplyLines();
+    renderLocalPurchases({ formOnly: true });
+    prepareClosedSessionRequirements();
+    renderStockRequestCatalogue();
+    renderStockRequests();
+    renderStaffConsumption();
+    updateStaffRuleUnit();
+  }
+  if (view === 'setup') {
+    renderStockCategories();
+    renderRecipeIngredients();
+    renderRecipeMonitor();
+    renderPackagingRules();
+    renderStaffRules();
+    updateRecipeQuantityUnit();
+    renderOpeningStock();
+  }
 }
 
 let inventoryLoadVersion = 0;
+const inventoryStockValueCache = new Map();
 let overviewLoadVersion = 0;
 async function loadOverviewOperationsData(from = '', to = '') {
   const version = ++overviewLoadVersion;
@@ -4043,6 +4142,7 @@ async function loadInventory() {
   // Keep one complete, authorized snapshot so one screen's filters cannot erase
   // records needed by Expenses, Financial Summary, or another outlet selection.
   const version = ++inventoryLoadVersion;
+  inventoryStockValueCache.clear();
   const payload = await inventoryApi('GET');
   if (version !== inventoryLoadVersion) return;
   state.inventory.items = payload.items || [];
@@ -4065,6 +4165,7 @@ async function loadInventory() {
   state.inventory.requests = payload.requests || [];
   state.inventory.expenses = payload.expenses || [];
   state.inventory.openingStockEvents = payload.openingStockEvents || [];
+  inventoryStockValueCache.clear();
   state.inventory.loaded = true;
   renderInventory();
 }
@@ -4238,6 +4339,7 @@ function generateStockSuggestions() {
 function editStockDraft(request) {
   if (!canEditStockRequest(request)) return toast('This requirement can no longer be edited. Refresh to see its latest status.', 'bad');
   $('.nav-btn[data-section="inventory"]')?.click();
+  setInventoryView('work');
   state.inventory.activeDraftId = request.id;
   state.inventory.requestLines = (request.franchise_stock_request_items || []).map(row => ({ itemId: row.item_id, quantity: Number(row.quantity), unit: row.unit }));
   if ($('#stockRequestOutlet')) $('#stockRequestOutlet').value = request.outlet_id;
@@ -4297,6 +4399,7 @@ async function useStockRequest(request) {
     request = result.request;
     await loadInventory();
   } catch (error) { return toast(error.message, 'bad'); }
+  setInventoryView('work');
   state.inventory.activeRequestId = request.id;
   state.inventory.activeRequestUpdatedAt = request.updated_at;
   state.inventory.billLines = (request.franchise_stock_request_items || []).map(row => {
@@ -4410,7 +4513,10 @@ async function deleteManagedCategory(type, row) {
   } catch (error) { toast(error.message, 'bad'); }
 }
 
-function renderLocalPurchases() {
+function renderLocalPurchases({ formOnly = false, historyOnly = false } = {}) {
+  const renderForm = !historyOnly && (formOnly || state.inventory.activeView === 'work');
+  const renderHistory = !formOnly && (historyOnly || state.inventory.activeView === 'history');
+  if (renderForm) {
   const outletId = $('#localPurchaseOutlet')?.value;
   const editingBill = state.inventory.bills.find(row => row.id === state.inventory.localPurchaseEditingBillId);
   const editingItemId = editingBill?.supply_bill_items?.[0]?.item_id;
@@ -4432,9 +4538,12 @@ function renderLocalPurchases() {
     $('#saveLocalPurchase').disabled = (!open && !editingBill) || Boolean(state.inventory.localPurchaseSaving);
     $('#saveLocalPurchase').textContent = editingBill ? 'Update purchase' : 'Save purchase & add stock';
   }
+  }
+  if (renderHistory) {
   const bills = inventoryHistoryRows(state.inventory.bills, 'supplied_at').filter(row => row.purchase_source === 'LOCAL' && row.status !== 'VOID');
   if ($('#localPurchaseTotal')) $('#localPurchaseTotal').textContent = formatReportMoney(bills.reduce((sum, bill) => sum + Number(bill.total_amount), 0));
   if ($('#localPurchaseHistory')) $('#localPurchaseHistory').innerHTML = bills.length ? `<table><thead><tr><th>Date / receipt</th><th>Outlet</th><th>Item</th><th>Received</th><th>Total paid</th><th>Actions</th></tr></thead><tbody>${bills.flatMap(bill => (bill.supply_bill_items || []).map(line => `<tr><td>${escapeHtml(inventoryDate(bill.supplied_at))}<br>${escapeHtml(bill.bill_number)}</td><td>${escapeHtml(inventoryOutlet(bill.outlet_id)?.name || '')}</td><td>${escapeHtml(line.item_name)}</td><td>${inventoryQty(line.quantity)} ${escapeHtml(unitLabel(line.unit))}</td><td>${formatReportMoney(line.line_total)}</td><td><button class="secondary" type="button" data-local-purchase-edit="${escapeHtml(bill.id)}">${state.inventory.localPurchaseEditingBillId === bill.id ? 'CANCEL' : 'EDIT'}</button> <button class="secondary" type="button" data-local-purchase-remove="${escapeHtml(bill.id)}">REMOVE</button></td></tr>`)).join('')}</tbody></table>` : '<div class="inventory-empty">No local purchases in the selected outlet/session range.</div>';
+  }
 }
 
 function editLocalPurchase(billId) {
@@ -4444,6 +4553,7 @@ function editLocalPurchase(billId) {
   const item = line && inventoryItem(line.item_id);
   if (!bill || !line || !item) return toast('This local purchase is no longer available to edit.', 'bad');
   state.inventory.localPurchaseEditingBillId = bill.id;
+  setInventoryView('work');
   $('#localPurchaseOutlet').value = bill.outlet_id;
   renderLocalPurchases();
   $('#localPurchaseCategory').value = item.category_id || '';
@@ -4609,12 +4719,8 @@ async function recordInventoryPayment(bill) {
 function wireInventoryActions() {
   const refreshSessionRecords = async () => { await loadSalesReports(); await loadInventory(); };
   $('#inventoryQuickNav')?.addEventListener('click', event => {
-    const button = event.target.closest('[data-inventory-scroll]');
-    const target = button && document.getElementById(button.dataset.inventoryScroll);
-    if (!target) return;
-    sectionDisclosures.reveal(target);
-    if (target instanceof HTMLDetailsElement) target.open = true;
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const button = event.target.closest('[data-inventory-tab]');
+    if (button) setInventoryView(button.dataset.inventoryTab);
   });
   $$('#inventoryAdminWorkspace .inventory-tool-card').forEach(section => section.addEventListener('toggle', () => {
     if (!section.open) return;
@@ -4632,7 +4738,7 @@ function wireInventoryActions() {
       state.inventory.historyMode = 'CUSTOM';
       state.inventory.historyFrom = from;
       state.inventory.historyTo = to;
-      renderInventory();
+      setInventoryView('history');
       const bills = centralSupplyHistoryRows().length;
       const movements = inventoryHistoryRows(state.inventory.movements, 'occurred_at').length;
       revealAndScroll($('#inventoryRecords'));
@@ -4645,7 +4751,7 @@ function wireInventoryActions() {
     state.inventory.historyMode = 'ALL';
     state.inventory.historyFrom = '';
     state.inventory.historyTo = '';
-    renderInventory();
+    setInventoryView('history');
     revealAndScroll($('#inventoryRecords'));
     toast(`Showing all stock history: ${centralSupplyHistoryRows().length} supply bills and ${inventoryHistoryRows(state.inventory.movements, 'occurred_at').length} stock movements.`, 'ok');
   });
@@ -4655,7 +4761,7 @@ function wireInventoryActions() {
     state.inventory.historyMode = 'CURRENT';
     state.inventory.historyFrom = '';
     state.inventory.historyTo = '';
-    renderInventory();
+    setInventoryView('history');
     revealAndScroll($('#inventoryRecords'));
     toast('Showing current open-session stock records.', 'ok');
   });
@@ -4683,7 +4789,7 @@ function wireInventoryActions() {
       state.inventory.historyTo = to;
       if ($('#inventoryFrom')) $('#inventoryFrom').value = from;
       if ($('#inventoryTo')) $('#inventoryTo').value = to;
-      renderInventory();
+      setInventoryView('history');
       toast(`Showing records from ${bounds.sessions.length} session${bounds.sessions.length === 1 ? '' : 's'}.`, 'ok');
     } catch (error) { toast(error.message, 'bad'); }
   });
@@ -4695,7 +4801,7 @@ function wireInventoryActions() {
     if ($('#inventoryTo')) $('#inventoryTo').value = '';
     if ($('#supplyHistoryFrom')) $('#supplyHistoryFrom').value = '';
     if ($('#supplyHistoryTo')) $('#supplyHistoryTo').value = '';
-    renderInventory();
+    setInventoryView('history');
   });
   $('#supplyHistoryCurrentSession')?.addEventListener('click', () => {
     state.inventory.historyMode = 'CURRENT';
@@ -4705,7 +4811,7 @@ function wireInventoryActions() {
     if ($('#inventoryTo')) $('#inventoryTo').value = '';
     if ($('#supplyHistoryFrom')) $('#supplyHistoryFrom').value = '';
     if ($('#supplyHistoryTo')) $('#supplyHistoryTo').value = '';
-    renderInventory();
+    setInventoryView('history');
   });
   $('#supplyHistoryClear')?.addEventListener('click', () => {
     state.inventory.historyMode = 'ALL';
@@ -4713,7 +4819,7 @@ function wireInventoryActions() {
     state.inventory.historyTo = '';
     if ($('#inventoryFrom')) $('#inventoryFrom').value = '';
     if ($('#inventoryTo')) $('#inventoryTo').value = '';
-    renderInventory();
+    setInventoryView('history');
     if ($('#supplyHistoryFrom')) $('#supplyHistoryFrom').value = '';
     if ($('#supplyHistoryTo')) $('#supplyHistoryTo').value = '';
     $('#supplyHistoryCustomPanel')?.classList.add('hidden');
@@ -4867,6 +4973,7 @@ function wireInventoryActions() {
   $('#cancelStockRequestEdit')?.addEventListener('click', resetStockRequestEditor);
   $('#ownerViewRequirements')?.addEventListener('click', () => {
     $('.nav-btn[data-section="inventory"]')?.click();
+    setInventoryView('work');
     revealAndScroll($('#stockRequestAdminPanel'));
   });
   const requestAction = async event => {
@@ -4884,7 +4991,7 @@ function wireInventoryActions() {
     }
     if (viewStock) {
       if ($('#inventoryOutletFilter')) $('#inventoryOutletFilter').value = viewStock.dataset.requestViewStock;
-      renderInventory();
+      setInventoryView('stock');
       revealAndScroll($('#outletStockPanel'));
       return;
     }
@@ -4914,6 +5021,7 @@ function wireInventoryActions() {
   $('#stockRequestList')?.addEventListener('click', requestAction);
   $('#ownerLatestRequirement')?.addEventListener('click', requestAction);
   $('#requestDirectStock')?.addEventListener('click', () => {
+    setInventoryView('work');
     state.inventory.activeRequestId = null;
     state.inventory.activeRequestUpdatedAt = null;
     state.inventory.billLines = [];
@@ -4923,15 +5031,15 @@ function wireInventoryActions() {
     $('#supplyItemSearch')?.focus();
     toast('Direct entry ready. Add actual supplied and inventory quantities, then choose Add & Receive Directly.', 'ok');
   });
-  $('#requestViewLiveStock')?.addEventListener('click', () => revealAndScroll($('#outletStockPanel')));
-  $('#requestViewStockHistory')?.addEventListener('click', () => revealAndScroll($('#inventoryMovementPanel')));
+  $('#requestViewLiveStock')?.addEventListener('click', () => { setInventoryView('stock'); revealAndScroll($('#outletStockPanel')); });
+  $('#requestViewStockHistory')?.addEventListener('click', () => { setInventoryView('history'); revealAndScroll($('#inventoryMovementPanel')); });
   $('#requestViewCurrentBills')?.addEventListener('click', () => {
     state.inventory.historyMode = 'CURRENT'; state.inventory.historyFrom = ''; state.inventory.historyTo = '';
-    renderInventory(); revealAndScroll($('#inventoryRecords'));
+    setInventoryView('history'); revealAndScroll($('#inventoryRecords'));
   });
   $('#requestViewAllBills')?.addEventListener('click', () => {
     state.inventory.historyMode = 'ALL'; state.inventory.historyFrom = ''; state.inventory.historyTo = '';
-    renderInventory(); revealAndScroll($('#inventoryRecords'));
+    setInventoryView('history'); revealAndScroll($('#inventoryRecords'));
   });
   $('#requestViewCustomBills')?.addEventListener('click', () => {
     $('#supplyHistoryCustomPanel')?.classList.remove('hidden');
@@ -4939,14 +5047,14 @@ function wireInventoryActions() {
     const today = localDateInputValue();
     if ($('#supplyHistoryFrom') && !$('#supplyHistoryFrom').value) $('#supplyHistoryFrom').value = state.inventory.historyFrom || today;
     if ($('#supplyHistoryTo') && !$('#supplyHistoryTo').value) $('#supplyHistoryTo').value = state.inventory.historyTo || today;
-    revealAndScroll($('#inventoryRecords'));
+    setInventoryView('history'); revealAndScroll($('#inventoryRecords'));
   });
   $('#inventoryMasterList')?.addEventListener('click', event => { const edit = event.target.closest('[data-inventory-edit-item]'); const remove = event.target.closest('[data-inventory-delete-item]'); const id = edit?.dataset.inventoryEditItem || remove?.dataset.inventoryDeleteItem; const item = id && inventoryItem(id); if (!item) return; if (edit) editInventoryItemPrice(item); if (remove) deleteInventoryItem(item); });
   $('#inventoryStockList')?.addEventListener('click', event => {
     const button = event.target.closest('[data-view-item-history]');
     if (!button) return;
     state.inventory.historyItemId = button.dataset.viewItemHistory;
-    renderInventory();
+    setInventoryView('history');
     revealAndScroll($('#inventoryMovementPanel'));
   });
   $('#inventoryMovementClearItem')?.addEventListener('click', () => { state.inventory.historyItemId = null; renderInventory(); });
@@ -6632,6 +6740,9 @@ function dashboardHasUnsavedWork() {
 }
 
 async function checkForDashboardUpdate() {
+  // Avoid downloading and parsing the full dashboard while the operator is
+  // scrolling or entering an order; the next background check will retry.
+  if (document.hidden || Date.now() - dashboardLastInteractionAt < 12000) return;
   const currentAsset = dashboardAssetPath();
   if (!currentAsset) return;
 
