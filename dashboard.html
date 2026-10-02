@@ -576,7 +576,7 @@
 .utilisation-panel{margin:20px 0;border:1px solid #333;border-radius:14px;padding:16px}.utilisation-panel summary{cursor:pointer;padding:10px;color:#ffd900;font-weight:700}.utilisation-panel p{color:#aaa;font-size:13px}.utilisation-panel table{width:100%;min-width:580px;border-collapse:collapse;text-align:left}.utilisation-panel td,.utilisation-panel th{padding:10px;border-bottom:1px solid #333}.utilisation-panel .table-scroll{overflow:auto}.utilisation-panel meter{width:90px}
 
 .section-disclosure-body[hidden]{display:none!important}.section-toggle{margin-left:auto;flex-shrink:0}
-#inventory .inventory-quick-nav{position:static!important;display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+#inventory .inventory-quick-nav{position:sticky;top:8px;z-index:25;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-bottom:12px}
 #inventory .inventory-panel,#inventory details{scroll-margin-top:24px}
 details[data-disclosure-ready]>summary{display:flex;align-items:center;gap:12px;justify-content:space-between;list-style:none;cursor:pointer}
 details[data-disclosure-ready]>summary::-webkit-details-marker{display:none}
@@ -763,6 +763,21 @@ body{font-size:14px}
   .pos-place-btn{margin-top:7px;padding:10px;font-size:8px}
 }
 @media(max-width:420px){.pos-customer-field span{font-size:5.5px;letter-spacing:.2px}.pos-cart-items{max-height:110px}}
+.pos-cart-content{display:flex;flex:1;flex-direction:column;min-height:0}
+.pos-mobile-cart-summary{display:none}
+@media(max-width:820px){
+  .pos-cart-panel{position:sticky;top:4px;max-height:none;overflow:visible;overscroll-behavior:auto;box-shadow:0 6px 16px rgba(0,0,0,.22)}
+  .pos-mobile-cart-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:50px;padding:8px 12px;border:0;background:transparent;color:#eee;text-align:left;cursor:pointer}
+  .pos-mobile-cart-summary>span:first-child{min-width:0;flex:1}
+  .pos-mobile-cart-summary strong{display:block;font:800 11px var(--sans)}
+  .pos-mobile-cart-summary small{display:block;margin-top:3px;color:#888;font:500 9px var(--sans)}
+  .pos-mobile-cart-summary>b{color:var(--yellow);font:900 13px var(--mono);white-space:nowrap}
+  .pos-mobile-cart-chevron{color:#a3a59b;font-size:15px;transition:transform .15s ease}
+  .pos-cart-panel:not(.is-mobile-expanded) .pos-cart-content{display:none}
+  .pos-cart-panel.is-mobile-expanded{position:relative;top:auto;max-height:none;overflow:visible;box-shadow:none}
+  .pos-cart-panel.is-mobile-expanded .pos-mobile-cart-chevron{transform:rotate(180deg)}
+  .pos-cart-items{flex:0 0 auto;max-height:none;overflow:visible;overscroll-behavior:auto}
+}
 
 /* Overview: live operations */
 .overview-live-orders{display:grid;gap:7px}.overview-live-orders .empty{min-height:260px}.overview-order-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:14px;padding:12px 13px;border:1px solid #252525;border-radius:10px;background:#0a0a0a}.overview-order-main strong{display:block;font-size:11px}.overview-order-main span{display:block;margin-top:4px;color:#666;font-size:8px}.overview-order-status{padding:6px 8px;border:1px solid #493d14;border-radius:6px;color:#ffd21c;background:#191509;font:900 7px var(--mono)}.overview-order-total{text-align:right}.overview-order-total strong{display:block;color:#eee;font:900 11px var(--mono)}.overview-order-total span{display:block;margin-top:4px;color:#666;font-size:8px}.overview-payment-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px}.overview-payment-grid>div{padding:15px;border:1px solid #262626;border-radius:10px;background:#0a0a0a}.overview-payment-grid span{display:block;color:#777;font:900 8px var(--mono);letter-spacing:1px}.overview-payment-grid strong{display:block;margin-top:10px;color:#f3f3ee;font:900 21px var(--mono)}.overview-payment-grid i{display:block;height:5px;margin-top:14px;overflow:hidden;border-radius:5px;background:#202020}.overview-payment-grid b{display:block;height:100%;border-radius:5px;background:#ffd21c}.overview-outlet-list:empty:after{content:"No outlet data available";display:block;padding:20px;text-align:center;color:#666;border:1px dashed #303030;border-radius:9px}
@@ -1017,6 +1032,11 @@ body{font-size:14px}
     </div>
 
     <aside class="pos-cart-panel">
+      <button id="posMobileCartToggle" class="pos-mobile-cart-summary" type="button" aria-controls="posCartContent" aria-expanded="false">
+        <span><strong>Order · <span id="posMobileCartCount">0 items</span></strong><small>Tap to review and checkout</small></span>
+        <b id="posMobileCartTotal">₹0</b><span class="pos-mobile-cart-chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div id="posCartContent" class="pos-cart-content">
       <div class="pos-cart-head">
         <div>
           <div class="card-kicker">Current order</div>
@@ -1058,6 +1078,7 @@ body{font-size:14px}
         <div id="posSpinReward" class="pos-spin-reward"><span>SPIN &amp; WIN REWARD</span><div class="pos-spin-reward-row"><input id="posSpinCode" type="text" maxlength="20" autocomplete="off" placeholder="ENTER CART CODE"><button id="posApplySpinBtn" type="button">APPLY</button></div><small id="posSpinHint">Enter the customer’s cart Spin &amp; Win code.</small></div>
 
         <button id="posPlaceOrderBtn" class="pos-place-btn" type="button" disabled>PLACE ORDER <span>→</span></button>
+      </div>
       </div>
     </aside>
   </div>
@@ -1324,9 +1345,9 @@ body{font-size:14px}
 #inventory .inventory-bill-detail>summary::after{content:"SHOW +";color:#9a9c96;font-size:9px}
 #inventory .inventory-bill-detail[open]>summary::after{content:"HIDE −"}
 #inventory .inventory-bill-detail .inventory-bill-items{margin:0;padding:0 12px 12px}
-#inventory .inventory-quick-nav{position:sticky;top:12px;z-index:25;display:flex;gap:8px;overflow-x:auto;margin:0 0 14px;padding:9px;border:1px solid #30322f;border-radius:12px;background:rgba(13,14,13,.94);backdrop-filter:blur(14px);box-shadow:0 12px 30px rgba(0,0,0,.24)}
-#inventory .inventory-quick-nav button{flex:0 0 auto;min-height:38px;padding:0 13px;border:1px solid #353733;border-radius:8px;background:#151614;color:#c7c9c3;font-size:10px;font-weight:760;letter-spacing:.35px}
-#inventory .inventory-quick-nav button:hover{border-color:#6a5a17;color:#ffd21c;background:#1a180f}
+#inventory .inventory-quick-nav{position:sticky;top:8px;z-index:25;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;overflow:visible;margin:0 0 12px;padding:6px;border:1px solid #30322f;border-radius:11px;background:#11150e;box-shadow:0 6px 18px rgba(0,0,0,.22)}
+#inventory .inventory-quick-nav button{min-height:36px;padding:7px;border:1px solid #353733;border-radius:7px;background:#151614;color:#c7c9c3;font-size:10px;font-weight:650;letter-spacing:0}
+#inventory .inventory-quick-nav button:hover,#inventory .inventory-quick-nav button.active{border-color:#6a5a17;color:#ffd21c;background:#29240f}
 .request-operations-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:-3px 0 16px;padding:12px;border:1px solid #30322f;border-radius:11px;background:#0c0d0c}.request-operations-toolbar button{min-height:38px!important;padding:8px 12px!important}.supply-submit-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.supply-submit-actions .inventory-wide-btn{margin:0}
 .recipe-editor-actions{display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:12px}.recipe-editor-actions .inventory-wide-btn{margin:0}.recipe-monitor{margin-top:18px;padding-top:18px;border-top:1px solid #2d2f2c}.recipe-monitor-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px}.recipe-monitor-head small{display:block;margin-bottom:5px;color:#d4b51e;font-size:9px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase}.recipe-monitor-head h3{margin:0;font-size:17px}.recipe-monitor-head span{color:#979993;font-size:10px}.recipe-monitor-filters{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}.recipe-monitor-group{margin-top:10px;border:1px solid #30322f;border-radius:11px;background:#111210;overflow:hidden}.recipe-monitor-group>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;cursor:pointer;list-style:none}.recipe-monitor-group>summary::-webkit-details-marker{display:none}.recipe-monitor-group>summary strong{display:block;color:#f0f0eb;font-size:13px}.recipe-monitor-group>summary span{display:block;margin-top:4px;color:#969892;font-size:10px}.recipe-monitor-group>summary b{color:#d9ba23;font-size:10px}.recipe-monitor-group>summary b::after{content:" · OPEN +"}.recipe-monitor-group[open]>summary{border-bottom:1px solid #292b28;background:#151614}.recipe-monitor-group[open]>summary b::after{content:" · CLOSE −"}.recipe-monitor-lines{padding:0 14px 10px}.recipe-monitor-lines .daily-expense-row{padding-left:2px;padding-right:2px}
 @media(max-width:760px){.request-operations-toolbar button{flex:1 1 calc(50% - 8px)}.supply-submit-actions{grid-template-columns:1fr}}
@@ -1412,18 +1433,12 @@ body{font-size:14px}
     <article><span>STOCK RECEIVED THIS SESSION</span><strong id="inventoryToday">0</strong><small>Current open-session entries</small></article>
   </div>
   <nav id="inventoryQuickNav" class="inventory-quick-nav" aria-label="Stock and supply sections">
-    <button type="button" data-inventory-scroll="stockRequestAdminPanel">REQUIREMENTS</button>
-    <button type="button" data-inventory-scroll="inventoryBillingPanel" data-admin-only>BILLING</button>
-    <button type="button" data-inventory-scroll="inventoryAdminSetup" data-admin-only>SETUP</button>
-    <button type="button" data-inventory-scroll="openingStockPanel" data-admin-only>OPENING STOCK</button>
-    <button type="button" data-inventory-scroll="localPurchasesPanel">LOCAL PURCHASES</button>
-    <button type="button" data-inventory-scroll="outletStockPanel">LIVE STOCK</button>
-    <button type="button" data-inventory-scroll="inventoryRecords">SUPPLY BILLS</button>
-    <button type="button" data-inventory-scroll="inventoryMovementPanel">STOCK HISTORY</button>
-  <button class="secondary" type="button" data-inventory-scroll="packagingRulesPanel" data-admin-only>ORDER-USE RULES</button>
-    <button class="secondary" type="button" data-inventory-scroll="staffConsumptionPanel">STAFF CONSUMPTION</button>
+    <button type="button" data-inventory-tab="work" aria-pressed="true">WORK</button>
+    <button type="button" data-inventory-tab="stock" aria-pressed="false">STOCK</button>
+    <button type="button" data-inventory-tab="history" aria-pressed="false">HISTORY</button>
+    <button type="button" data-inventory-tab="setup" data-admin-only aria-pressed="false">SETUP</button>
 </nav>
-  <article id="localPurchasesPanel" class="inventory-panel">
+  <article id="localPurchasesPanel" class="inventory-panel" data-inventory-view="work">
     <div class="inventory-panel-head"><div><div class="eyebrow">Bought by the outlet</div><h2>Local purchases</h2><p>Record locally bought items in your outlet stock and session costs.</p></div></div>
     <div class="inventory-form-grid local-purchase-form">
       <label><span>Outlet</span><select id="localPurchaseOutlet"></select></label>
@@ -1438,10 +1453,12 @@ body{font-size:14px}
     </div>
     <p class="local-purchase-help">For packs, enter the total pieces, grams or millilitres received. Purchase costs are included in reports—do not enter them again in Daily Expenses.</p>
     <div class="local-purchase-actions"><p id="localPurchaseSessionHint" role="status"></p><button id="saveLocalPurchase" class="primary" type="button">Save purchase &amp; add stock</button></div>
-    <div class="local-purchase-history-head"><div><h3>Local purchase history</h3><p>Filtered by the outlet and sessions selected in Stock &amp; Supply.</p></div><strong id="localPurchaseTotal">₹0</strong></div>
+  </article>
+  <article id="localPurchaseHistoryPanel" class="inventory-panel inventory-table-panel" data-inventory-view="history">
+    <div class="inventory-panel-head local-purchase-history-head"><div><div class="eyebrow">Outlet spending</div><h2>Local purchase history</h2><p>Filtered by the outlet and sessions selected in Stock &amp; Supply.</p></div><strong id="localPurchaseTotal">₹0</strong></div>
     <div id="localPurchaseHistory" class="table-scroll"></div>
   </article>
-  <article id="wastagePanel" class="inventory-panel inventory-table-panel">
+  <article id="wastagePanel" class="inventory-panel inventory-table-panel" data-inventory-view="work">
     <div class="inventory-panel-head"><div><div class="eyebrow">One-tap kitchen record</div><h2>Record Wastage</h2></div><span>Stock updates when saved</span></div>
     <div class="inventory-form-grid">
       <label><span>TYPE</span><select id="wastageType"><option value="MENU_ITEM">Menu Item</option><option value="STOCK_ITEM">Stock Item</option></select></label>
@@ -1454,7 +1471,7 @@ body{font-size:14px}
     </div>
     <button id="saveWastage" class="primary inventory-wide-btn" type="button">SAVE &amp; DEDUCT</button>
   </article>
-  <article id="stockRequestCreatePanel" class="inventory-panel inventory-table-panel">
+  <article id="stockRequestCreatePanel" class="inventory-panel inventory-table-panel" data-inventory-view="work">
     <div class="inventory-panel-head"><div><div class="eyebrow">Smart requirement</div><h2 id="stockRequestEditorTitle">Review tomorrow's stock</h2></div><span>Available stock and pending supplies are already considered</span></div>
     <div class="request-date-row"><label><span>OUTLET</span><select id="stockRequestOutlet"></select></label><label><span>NEEDED ON</span><input id="stockRequestDate" type="date"></label><label><span>NOTE</span><input id="stockRequestNotes" type="text" maxlength="500" placeholder="Delivery timing or special note"></label></div>
     <div class="stock-request-picker">
@@ -1470,7 +1487,7 @@ body{font-size:14px}
     <button id="saveStockRequestDraft" class="secondary inventory-wide-btn" type="button">SAVE DRAFT</button>
     <button id="submitStockRequest" class="primary inventory-wide-btn" type="button">CONFIRM &amp; SEND</button>
   </article>
-  <article id="stockRequestAdminPanel" class="inventory-panel inventory-table-panel">
+  <article id="stockRequestAdminPanel" class="inventory-panel inventory-table-panel" data-inventory-view="work">
     <div class="inventory-panel-head"><div><div class="eyebrow">Franchise demand</div><h2>Stock requirements</h2></div><span id="stockRequestHistoryHint">Use a request to prepare its supply bill</span></div>
     <div id="requestOperationsToolbar" class="request-operations-toolbar" data-admin-only>
       <button id="requestDirectStock" class="primary" type="button">＋ DIRECT STOCK ENTRY</button>
@@ -1483,7 +1500,7 @@ body{font-size:14px}
     <div id="stockRequestList" class="stock-request-list"></div>
   </article>
   <div id="inventoryAdminWorkspace" class="inventory-admin-grid">
-    <article id="inventoryBillingPanel" class="inventory-panel inventory-billing-panel">
+    <article id="inventoryBillingPanel" class="inventory-panel inventory-billing-panel" data-inventory-view="work">
       <div class="inventory-panel-head"><div><div class="eyebrow">Central billing</div><h2>Generate stock bill</h2></div></div>
       <div class="inventory-form-grid">
         <label><span>OUTLET</span><select id="supplyOutlet"></select></label>
@@ -1501,7 +1518,7 @@ body{font-size:14px}
         <button id="supplyReceiveDirect" class="primary inventory-wide-btn" type="button">ADD &amp; RECEIVE DIRECTLY</button>
       </div>
     </article>
-    <details id="inventoryAdminSetup" class="inventory-panel inventory-setup-details">
+    <details id="inventoryAdminSetup" class="inventory-panel inventory-setup-details" data-inventory-view="setup">
       <summary><span><small>ADMIN SETUP</small><strong>Items, recipes &amp; automation</strong></span><b>OPEN</b></summary>
       <div class="admin-tools-grid">
       <details class="inventory-tool-card">
@@ -1558,7 +1575,7 @@ body{font-size:14px}
       </div>
     </details>
   </div>
-<details id="packagingRulesPanel" class="inventory-panel inventory-setup-details" data-admin-only>
+<details id="packagingRulesPanel" class="inventory-panel inventory-setup-details" data-admin-only data-inventory-view="setup">
       <summary><span><small>Shared item usage</small><strong>Order-use stock rules</strong></span><b>OPEN</b></summary>
       <div class="inventory-tool-body">
       <p class="inventory-edit-help">Configure Brown bag and Carry bag here; staff never choose packaging on POS. Set an item-count range and bags per order for each rule. You can add another rule for the same size—for example, Large for 3–4 items with 1 bag, then Large for 5+ items with 2 bags. POS applies the matching range automatically. Menu item or category minimums can still require a larger size. Bag stock is deducted separately from food recipes.</p>
@@ -1578,7 +1595,7 @@ body{font-size:14px}
       <div id="packagingRuleList" class="daily-expense-list"></div>
       </div>
       </details>
-  <article id="staffConsumptionPanel" class="inventory-panel inventory-table-panel">
+  <article id="staffConsumptionPanel" class="inventory-panel inventory-table-panel" data-inventory-view="work">
     <div class="inventory-panel-head"><div><div class="eyebrow">Staff consumption</div><h2>Daily-use consumables</h2></div><span id="staffConsumptionStatus">Confirm once per open session</span></div>
     <details id="staffRuleSetupPanel" class="inventory-tool-card" open>
       <summary><span><small>ADMIN / OWNER SETUP</small><strong>Staff and session consumable rules</strong></span><b>OPEN</b></summary>
@@ -1602,7 +1619,7 @@ body{font-size:14px}
     <button id="confirmStaffConsumption" class="primary inventory-wide-btn" type="button">CONFIRM STAFF CONSUMPTION</button>
     <div id="staffConsumptionHistory" class="daily-expense-list"></div>
   </article>
-  <details id="openingStockPanel" class="inventory-panel inventory-table-panel inventory-setup-details opening-stock-details">
+  <details id="openingStockPanel" class="inventory-panel inventory-table-panel inventory-setup-details opening-stock-details" data-inventory-view="setup">
     <summary><span><small>ADMIN CONTROL</small><strong>Opening stock &amp; physical corrections</strong></span><b>OPEN</b></summary>
     <div class="opening-stock-body">
     <div class="inventory-panel-head"><div><div class="eyebrow">Physical balance</div><h2>Opening Stock Setup</h2></div><span id="openingStockStatus">Set the physical starting balance once</span></div>
@@ -1614,19 +1631,19 @@ body{font-size:14px}
     <div class="opening-stock-actions"><button id="clearOpeningStock" class="secondary danger hidden" type="button">CLEAR TEST OPENING STOCK</button><button id="confirmOpeningStock" class="primary inventory-wide-btn" type="button">CONFIRM OPENING STOCK</button></div>
     </div>
   </details>
-  <details id="inventoryMasterPanel" class="inventory-panel inventory-table-panel inventory-setup-details">
+  <details id="inventoryMasterPanel" class="inventory-panel inventory-table-panel inventory-setup-details" data-inventory-view="setup">
     <summary><span><small>ITEM DIRECTORY</small><strong>Items, units &amp; fixed prices</strong></span><b>OPEN</b></summary>
     <div class="inventory-master-toolbar"><label><span>CATEGORY</span><select id="inventoryMasterCategory"></select></label><label><span>SEARCH ITEM</span><input id="inventoryMasterSearch" type="search" placeholder="Search name or SKU"></label></div>
     <div id="inventoryMasterList" class="inventory-master-groups"></div>
   </details>
 
-  <article id="outletStockPanel" class="inventory-panel inventory-table-panel">
+  <article id="outletStockPanel" class="inventory-panel inventory-table-panel" data-inventory-view="stock">
     <div class="inventory-panel-head"><div><div class="eyebrow">Live balances</div><h2>Outlet stock</h2></div><span id="inventoryStockCount">0 items</span></div>
     <div class="inventory-master-toolbar"><label><span>CATEGORY</span><select id="liveStockCategory"><option value="">All categories</option></select></label><label><span>SEARCH STOCK</span><input id="liveStockSearch" type="search" placeholder="Item name or SKU"></label><label><span>AVAILABILITY</span><select id="liveStockStatus"><option value="">All stock</option><option value="in">In stock</option><option value="low">Low stock</option><option value="out">Out of stock</option></select></label></div>
     <p>Stock value uses average received costs, or the configured item rate and conversion when no receipt cost exists.</p>
     <div class="inventory-table-wrap"><div class="inventory-table-head"><span>ITEM</span><span>OUTLET</span><span>RECEIVED THIS SESSION</span><span>USED / WASTE THIS SESSION</span><span>CURRENT STOCK</span><span>STATUS</span></div><div id="inventoryStockList"></div></div>
   </article>
-  <article id="inventoryRecords" class="inventory-panel inventory-table-panel">
+  <article id="inventoryRecords" class="inventory-panel inventory-table-panel" data-inventory-view="history">
     <div class="inventory-panel-head"><div><div class="eyebrow">Central billing history</div><h2>Supply bills</h2></div><span id="inventoryBillCount">0 bills</span></div>
     <div class="orders-history-toolbar supply-history-toolbar">
       <button id="supplyHistoryCustomToggle" class="secondary" type="button" aria-expanded="false">CUSTOM SESSIONS</button>
@@ -1644,7 +1661,7 @@ body{font-size:14px}
 
     <div id="inventoryBillsList" class="inventory-bills-list"></div>
   </article>
-  <article id="inventoryMovementPanel" class="inventory-panel inventory-table-panel">
+  <article id="inventoryMovementPanel" class="inventory-panel inventory-table-panel" data-inventory-view="history">
     <div class="inventory-panel-head"><div><div class="eyebrow">Audit trail</div><h2>Stock history</h2></div><div><span id="inventoryMovementFilterLabel">Every receipt, usage and adjustment</span> <button id="inventoryMovementClearItem" class="secondary hidden" type="button">SHOW ALL ITEMS</button></div></div>
     <div id="inventoryMovementList" class="inventory-movement-list"></div>
   </article>
