@@ -218,7 +218,10 @@ function spinDeviceKey() {
 }
 function setHomeSpinMessage(message) { const target = $('#homeSpinMessage'); if (target) target.textContent = message; }
 function setHomeSpinEligibility(minimumOrder) { const target = $('#homeSpinEligibility'); if (target) target.textContent = minimumOrder == null || minimumOrder < 0 ? 'SELECT AN OUTLET TO SEE ELIGIBILITY' : minimumOrder > 0 ? `SPIN ELIGIBLE ON ORDERS ₹${Number(minimumOrder).toFixed(0)}+` : 'SPIN ELIGIBLE ON ALL ORDERS'; }
-function setHomeSpinPrizes(prizes) { drawWheel($('#homeSpinWheel'), wheelSlots(prizes)); }
+function setHomeSpinPrizes(prizes) {
+  $('#homeSpinWheel')?.classList.remove('reward-wheel-placeholder');
+  drawWheel($('#homeSpinWheel'), wheelSlots(prizes));
+}
 function clearHomeSpinPrizes(message) {
   const wheel = $('#homeSpinWheel');
   if (!wheel) return;
@@ -227,6 +230,7 @@ function clearHomeSpinPrizes(message) {
   wheel.style.transform = '';
   delete wheel.dataset.rotation;
   wheel.classList.remove('reward-wheel');
+  wheel.classList.add('reward-wheel-placeholder');
 }
 function showHomeSpinReward(reward) {
   $('#homeSpinLabel').textContent = reward.label;

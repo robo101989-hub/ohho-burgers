@@ -21,8 +21,10 @@ async function staff(req, res, outletId, adminOnly = false) {
   }
   return { user: userData.user, profile };
 }
+// Website visibility is independent of the daily POS sales session.
 async function getOutlet(slug) {
-  const { data } = await supabase.from('outlets').select('id,name,slug,status').eq('slug', String(slug || '').trim().toLowerCase()).maybeSingle();
+  const { data, error } = await supabase.from('outlets').select('id,name,slug,website_enabled').eq('slug', String(slug || '').trim().toLowerCase()).maybeSingle();
+  if (error) throw new Error('Could not load outlet');
   return data;
 }
 async function getSettings(outletId) {
@@ -33,6 +35,7 @@ async function getSettings(outletId) {
 function rewardCode() { return `OHHO-${randomBytes(5).toString('hex').toUpperCase()}`; }
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
   try {
     if (req.method === 'GET') {
       if (req.query?.action === 'settings') {
@@ -46,9 +49,8 @@ export default async function handler(req, res) {
         return res.status(200).json({ outlets: outlets || [], settings: (settings || []).map(item => ({ ...item, prizes: cleanPrizes(item.prizes) })), history: history || [] });
       }
       const outlet = await getOutlet(req.query?.outlet);
-      if (!outlet || outlet.status !== 'ACTIVE') return res.status(404).json({ error: 'Spin & Win is not active at this outlet.' });
+      if (!outlet || outlet.website_enabled !== true) return res.status(404).json({ error: 'Spin & Win is not active at this outlet.' });
       const settings = await getSettings(outlet.id);
-      res.setHeader('Cache-Control', 'no-store');
       return res.status(200).json({ outlet: { name: outlet.name, slug: outlet.slug }, enabled: settings.enabled, prizes: settings.prizes, slots: wheelSlots(settings.prizes), minimumOrder: settings.minimumOrder });
     }
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -58,7 +60,7 @@ export default async function handler(req, res) {
     if (action === 'spin') {
       const outlet = await getOutlet(body.outlet);
       const deviceKey = String(body.deviceKey || '').trim().slice(0, 120);
-      if (!outlet || outlet.status !== 'ACTIVE' || !deviceKey) return res.status(400).json({ error: 'Choose an active OHHO outlet to spin.' });
+      if (!outlet || outlet.website_enabled !== true || !deviceKey) return res.status(400).json({ error: 'Choose an outlet available on the OHHO website to spin.' });
       const settings = await getSettings(outlet.id);
       if (!settings.enabled) return res.status(403).json({ error: 'Spin & Win is paused at this cart.' });
       const indiaDate = new Date(Date.now() + 19800000).toISOString().slice(0, 10);

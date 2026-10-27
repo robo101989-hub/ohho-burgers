@@ -14,7 +14,7 @@ function fixture(fetch, search = '') {
   const nodes = new Map();
   const focus = {};
   const $ = id => {
-    if (!nodes.has(id)) nodes.set(id, { value: '', textContent: '', innerHTML: '', dataset: {}, style: {}, listeners: {}, classList: { remove() {} }, setAttribute(key, value) { this[key] = value; }, addEventListener(event, callback) { this.listeners[event] = callback; } });
+    if (!nodes.has(id)) nodes.set(id, { value: '', textContent: '', innerHTML: '', dataset: {}, style: {}, listeners: {}, classList: { remove() {}, add() {} }, setAttribute(key, value) { this[key] = value; }, addEventListener(event, callback) { this.listeners[event] = callback; } });
     return nodes.get(id);
   };
   const context = vm.createContext({ $, fetch, wheelSlots, escapeHtml: v => v, URLSearchParams, location: { search }, window: { addEventListener(event, callback) { focus[event] = callback; } }, drawWheel: (node, slots) => { node.textContent = slots.map(p => p.label).join(', '); } });
