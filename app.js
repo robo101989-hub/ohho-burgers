@@ -1,6 +1,6 @@
 import { instagramPlayback, withOriginalVideo } from './lib/instagram-media.js';
 import { drawWheel, animateWheel, rewardMessage } from './src/spin-wheel.js';
-import { wheelSlots, DEFAULT_PRIZES } from './lib/spin-rewards.js';
+import { wheelSlots } from './lib/spin-rewards.js';
 import { supabase } from "./src/supabase.js";
 
 const siteData = {
@@ -209,49 +209,78 @@ function renderOrderOutletPicker(outlets) {
 
 let homeSpinBusy = false;
 let homeSpinOutlet = '';
+let homeSpinSettingsRequest = 0;
+let homeSpinUsed = false;
 function spinDeviceKey() {
   let key = localStorage.getItem('ohho_spin_device');
   if (!key) { key = crypto.randomUUID(); localStorage.setItem('ohho_spin_device', key); }
   return key;
 }
 function setHomeSpinMessage(message) { const target = $('#homeSpinMessage'); if (target) target.textContent = message; }
-function setHomeSpinEligibility(minimumOrder) { const target = $('#homeSpinEligibility'); if (target) target.textContent = minimumOrder > 0 ? `SPIN ELIGIBLE ON ORDERS ₹${Number(minimumOrder).toFixed(0)}+` : 'SPIN ELIGIBLE ON ALL ORDERS'; }
+function setHomeSpinEligibility(minimumOrder) { const target = $('#homeSpinEligibility'); if (target) target.textContent = minimumOrder == null || minimumOrder < 0 ? 'SELECT AN OUTLET TO SEE ELIGIBILITY' : minimumOrder > 0 ? `SPIN ELIGIBLE ON ORDERS ₹${Number(minimumOrder).toFixed(0)}+` : 'SPIN ELIGIBLE ON ALL ORDERS'; }
 function setHomeSpinPrizes(prizes) { drawWheel($('#homeSpinWheel'), wheelSlots(prizes)); }
+function clearHomeSpinPrizes(message) {
+  const wheel = $('#homeSpinWheel');
+  if (!wheel) return;
+  wheel.textContent = message;
+  wheel.setAttribute('aria-label', message);
+  wheel.style.transform = '';
+  delete wheel.dataset.rotation;
+  wheel.classList.remove('reward-wheel');
+}
 function showHomeSpinReward(reward) {
   $('#homeSpinLabel').textContent = reward.label;
   $('#homeSpinCode').textContent = reward.code;
   $('#homeSpinReward').hidden = false;
 }
 async function checkHomeSpinOutlet() {
+  if (homeSpinBusy) return;
+  const request = ++homeSpinSettingsRequest;
+  const outlet = homeSpinOutlet;
   const button = $('#homeSpinButton');
   const reward = $('#homeSpinReward');
   if (reward) reward.hidden = true;
-  if (!homeSpinOutlet) { if (button) button.disabled = true; setHomeSpinMessage('Choose the cart where you are ordering.'); setHomeSpinEligibility(-1); return; }
   if (button) button.disabled = true;
+  setHomeSpinEligibility(null);
+  clearHomeSpinPrizes(outlet ? 'Loading saved rewards…' : 'Choose your outlet to see rewards.');
+  if (!outlet) {
+    setHomeSpinMessage('Choose the cart where you are ordering.');
+    return;
+  }
   setHomeSpinMessage('Checking today’s OHHO rewards…');
   try {
-    const response = await fetch(`/api/spin?outlet=${encodeURIComponent(homeSpinOutlet)}`, { cache: 'no-store' });
+    const response = await fetch(`/api/spin?outlet=${encodeURIComponent(outlet)}`, { cache: 'no-store' });
     const data = await response.json();
+    // A slower response for a previous selection must not replace this outlet.
+    if (request !== homeSpinSettingsRequest || outlet !== homeSpinOutlet) return;
     if (!response.ok) throw new Error(data.error || 'Spin & Win is unavailable at this outlet.');
     if (button) { button.disabled = !data.enabled; button.textContent = 'START OHHO SPIN ↻'; }
     setHomeSpinEligibility(data.minimumOrder);
     setHomeSpinPrizes(data.prizes);
+    $('#homeSpinWheel')?.setAttribute('aria-label', `Saved rewards for ${data.outlet.name}`);
     setHomeSpinMessage(data.enabled ? 'Ready. Start the spinner and show your code at the POS.' : 'Spin & Win is paused at this outlet.');
   } catch (error) {
+    if (request !== homeSpinSettingsRequest || outlet !== homeSpinOutlet) return;
+    clearHomeSpinPrizes('Rewards unavailable');
     setHomeSpinMessage(error.message || 'Spin & Win is unavailable right now.');
   }
 }
 function renderHomeSpinnerOutlets(outlets) {
   const select = $('#homeSpinOutlet');
   if (!select) return;
-  setHomeSpinPrizes(DEFAULT_PRIZES);
+  clearHomeSpinPrizes('Loading saved rewards…');
   select.disabled = false;
   select.innerHTML = `<option value="">CHOOSE YOUR OUTLET</option>${outlets.filter(outlet => outlet.slug).map(outlet => `<option value="${escapeHtml(outlet.slug)}">${escapeHtml(outlet.name).toUpperCase()}</option>`).join('')}`;
-  select.addEventListener('change', () => { homeSpinOutlet = select.value; void checkHomeSpinOutlet(); });
+  select.addEventListener('change', () => { homeSpinUsed = false; homeSpinOutlet = select.value; void checkHomeSpinOutlet(); });
   const requestedOutlet = new URLSearchParams(location.search).get('outlet');
-  if (requestedOutlet && outlets.some(outlet => outlet.slug === requestedOutlet)) {
-    select.value = requestedOutlet; homeSpinOutlet = requestedOutlet; void checkHomeSpinOutlet();
-  }
+  const initialOutlet = outlets.find(outlet => outlet.slug === requestedOutlet) || outlets.find(outlet => outlet.slug);
+  select.value = initialOutlet?.slug || '';
+  homeSpinOutlet = select.value;
+  void checkHomeSpinOutlet();
+  // Reload saved settings when returning from the dashboard, even across domains.
+  window.addEventListener('focus', () => {
+    if (!homeSpinBusy && !homeSpinUsed) void checkHomeSpinOutlet();
+  });
   $('#homeSpinButton')?.addEventListener('click', async () => {
     if (homeSpinBusy || !homeSpinOutlet) return;
     homeSpinBusy = true;
@@ -264,6 +293,7 @@ function renderHomeSpinnerOutlets(outlets) {
       const response = await fetch('/api/spin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'spin', outlet: homeSpinOutlet, deviceKey: spinDeviceKey() }) });
       const data = await response.json();
       if (!response.ok && !data.reward && !data.outcome) throw new Error(data.error || 'Could not create your reward.');
+      homeSpinUsed = true;
       await animateWheel($('#homeSpinWheel'), data);
       setHomeSpinMessage(rewardMessage(data));
       button.textContent = 'Today’s spin used';
