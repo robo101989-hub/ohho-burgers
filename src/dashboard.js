@@ -5163,7 +5163,8 @@ function wireDashboardActions() {
     renderCostingScreen();
   });
   $('#costingOrderSearch')?.addEventListener('input',renderCostingScreen);
-  $('#costingDownloadAll')?.addEventListener('click', downloadAllRecipeCosts);
+  $('#costingDownloadAll')?.addEventListener('click', () => downloadAllRecipeCosts('csv'));
+  $('#costingDownloadPdf')?.addEventListener('click', () => downloadAllRecipeCosts('pdf'));
   $('#costingContent')?.addEventListener('click', event => { const button = event.target.closest('[data-cost-order]'); if (button) { state.costingOrderId = button.dataset.costOrder; const scroll = $('#costingOrderList')?.scrollTop || 0; renderCostingScreen(); if ($('#costingOrderList')) $('#costingOrderList').scrollTop = scroll; } });
   $$('[data-cost-view]').forEach(button => button.addEventListener('click', () => { $('#costingMode').value = button.dataset.costView; renderCostingScreen(); if (button.dataset.costView !== 'menu') loadReports().then(renderCostingScreen).catch(error => toast(error.message, 'bad')); }));
   ['#costingOutlet','#costingCategory','#costingMenu','#costingService','#costingMode','#costingOrderStatus'].forEach(id => $(id)?.addEventListener('change',renderCostingScreen));
@@ -5842,9 +5843,10 @@ function operationsLedgerRows(snapshot) {
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
-async function downloadAllRecipeCosts() {
-  const button = $('#costingDownloadAll');
-  if (!button || button.disabled) return;
+async function downloadAllRecipeCosts(format = 'csv') {
+  const button = $(format === 'pdf' ? '#costingDownloadPdf' : '#costingDownloadAll');
+  const buttons = [$('#costingDownloadAll'), $('#costingDownloadPdf')].filter(Boolean);
+  if (!button || buttons.some(item => item.disabled)) return;
   const inventory = state.inventory;
   const outletId = $('#costingOutlet')?.value;
   const outlet = (inventory.outlets || []).find(item => item.id === outletId);
@@ -5852,7 +5854,7 @@ async function downloadAllRecipeCosts() {
   const serviceLabel = service === 'DINE_IN' ? 'Dine-in' : 'Takeaway / delivery';
   const menus = (inventory.menuItems || []).filter(item => !item.is_archived);
   if (!outlet || !menus.length) { toast('Load an outlet and menu items before downloading recipes.', 'bad'); return; }
-  button.disabled = true;
+  buttons.forEach(item => item.disabled = true);
   const original = button.textContent;
   button.textContent = 'Preparing all recipes…';
   try {
@@ -5873,15 +5875,21 @@ async function downloadAllRecipeCosts() {
     }
     categories.sort((a, b) => a.name.localeCompare(b.name));
     for (const category of categories) category.items.sort((a, b) => a.name.localeCompare(b.name));
-    const csv = recipeBookCsv({ outlet: outlet.name, service: serviceLabel, generatedAt: new Date().toLocaleString('en-IN'), categories: categories.filter(category => category.items.length) });
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url; link.download = `ohho-all-recipes-${service.toLowerCase()}-${localDateInputValue()}.csv`;
-    document.body.appendChild(link); link.click(); link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    const book = { outlet: outlet.name, service: serviceLabel, generatedAt: new Date().toLocaleString('en-IN'), categories: categories.filter(category => category.items.length) };
+    const filename = `ohho-all-recipes-${service.toLowerCase()}-${localDateInputValue()}`;
+    if (format === 'pdf') {
+      const { createRecipeBookPdf } = await import('../lib/recipe-pdf.js');
+      createRecipeBookPdf(book).save(`${filename}.pdf`);
+    } else {
+      const url = URL.createObjectURL(new Blob([recipeBookCsv(book)], { type: 'text/csv;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url; link.download = `${filename}.csv`;
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
     toast(`Downloaded ${menus.length} recipes, grouped by category.`, 'ok');
   } catch (error) { console.error('Recipe export failed:', error); toast('Unable to download recipes. Refresh the costing data and try again.', 'bad'); }
-  finally { button.disabled = false; button.textContent = original; }
+  finally { buttons.forEach(item => item.disabled = false); button.textContent = original; }
 }
 
 function renderCostingScreen() {
