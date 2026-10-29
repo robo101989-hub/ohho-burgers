@@ -1,3 +1,4 @@
+import { recipeBookCsv } from "../lib/recipe-export.js";
 import { cleanPrizes, normalizePrize, rewardDiscount } from '../lib/spin-rewards.js';
 import { installSectionDisclosures } from './section-disclosures.js';
 import { stockHistoryRows, orderUtilisation, recipeCostLines } from '../lib/inventory-reporting.js';
@@ -8,7 +9,7 @@ import { normalizeLocalPurchase } from '../lib/local-purchases.js';
 import { calculateSuggestedRequirements, closedSessionRequirementReview } from '../lib/stock-requirements.js';
 import { createStockValueCalculator } from '../lib/inventory-valuation.js';
 import { defaultNetQuantity, standardConversion, unitLabel, stockRequestUnit, requestSupplyQuantities } from '../lib/inventory-measurements.js';
-import { recordIsInOpenSessions, recordIsInSessions, selectCompletedSessions } from '../lib/session-reporting.js';
+import { createSessionMatcher, recordIsInOpenSessions, recordIsInSessions, selectCompletedSessions } from '../lib/session-reporting.js';
 
 const ROLE_PERMISSIONS = {
   ADMIN: ['overview', 'pos', 'orders', 'menu', 'costing', 'inventory', 'daily-expenses', 'outlets', 'staff', 'reports', 'settings'],
@@ -5162,8 +5163,9 @@ function wireDashboardActions() {
     renderCostingScreen();
   });
   $('#costingOrderSearch')?.addEventListener('input',renderCostingScreen);
+  $('#costingDownloadAll')?.addEventListener('click', downloadAllRecipeCosts);
   $('#costingContent')?.addEventListener('click', event => { const button = event.target.closest('[data-cost-order]'); if (button) { state.costingOrderId = button.dataset.costOrder; const scroll = $('#costingOrderList')?.scrollTop || 0; renderCostingScreen(); if ($('#costingOrderList')) $('#costingOrderList').scrollTop = scroll; } });
-  $$('[data-cost-view]').forEach(button => button.addEventListener('click', () => { $('#costingMode').value = button.dataset.costView; renderCostingScreen(); }));
+  $$('[data-cost-view]').forEach(button => button.addEventListener('click', () => { $('#costingMode').value = button.dataset.costView; renderCostingScreen(); if (button.dataset.costView !== 'menu') loadReports().then(renderCostingScreen).catch(error => toast(error.message, 'bad')); }));
   ['#costingOutlet','#costingCategory','#costingMenu','#costingService','#costingMode','#costingOrderStatus'].forEach(id => $(id)?.addEventListener('change',renderCostingScreen));
   $$('.nav-btn[data-section]').forEach(button => button.addEventListener('click', () => {
     let id = button.dataset.section;
@@ -5187,7 +5189,10 @@ function wireDashboardActions() {
         toast(error.message || 'Unable to refresh reports.', 'bad');
       });
     }
-    if (id === 'costing') loadReports().then(renderCostingScreen).catch(error => toast(error.message, 'bad'));
+    if (id === 'costing') {
+      renderCostingScreen();
+      if ($('#costingMode')?.value !== 'menu') loadReports().then(renderCostingScreen).catch(error => toast(error.message, 'bad'));
+    }
     if (id === 'costing' || id === 'inventory' || id === 'daily-expenses' || id === 'reports') loadInventory().catch(error => { console.error('Unable to load stock and expense records:', error); toast(error.message || 'Unable to load records.', 'bad'); });
     if (id === 'overview' && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) {
       loadOverviewOperationsData().catch(error => console.error('Unable to load overview operations:', error));
@@ -5254,7 +5259,7 @@ function wireDashboardActions() {
   $('#staffSearch')?.addEventListener('input', renderStaffList);
   $('#staffRoleFilter')?.addEventListener('change', renderStaffList);
   $('#staffOutletFilter')?.addEventListener('change', renderStaffList);
-  $('#reportsRefreshBtn')?.addEventListener('click', loadReports);
+  $('#reportsRefreshBtn')?.addEventListener('click', () => loadReports().catch(error => { console.error('Report refresh failed:', error); toast('Unable to refresh reports. Please try again.', 'bad'); }));
   $$('[data-report-range]').forEach(button => {
     button.addEventListener('click', () => activateReportRange(button.dataset.reportRange || 'SESSION'));
   });
@@ -5796,7 +5801,10 @@ function operationInRange(row, field, bounds) {
     const openedAt = outlet?.current_session_started_at || outlet?.updated_at;
     return Boolean(outlet?.status === 'ACTIVE' && openedAt && timestamp >= new Date(openedAt).getTime());
   }
-  if (bounds.sessions) return recordIsInSessions(row, field, bounds.sessions);
+  if (bounds.sessions) {
+    bounds.matchesSession ||= createSessionMatcher(bounds.sessions);
+    return bounds.matchesSession(row, field);
+  }
   const start = bounds.start instanceof Date ? bounds.start.getTime() : bounds.start;
   const end = bounds.end instanceof Date ? bounds.end.getTime() : bounds.end;
   return (!start || timestamp >= start) && (!end || timestamp < end);
@@ -5834,6 +5842,48 @@ function operationsLedgerRows(snapshot) {
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+async function downloadAllRecipeCosts() {
+  const button = $('#costingDownloadAll');
+  if (!button || button.disabled) return;
+  const inventory = state.inventory;
+  const outletId = $('#costingOutlet')?.value;
+  const outlet = (inventory.outlets || []).find(item => item.id === outletId);
+  const service = $('#costingService')?.value || 'DINE_IN';
+  const serviceLabel = service === 'DINE_IN' ? 'Dine-in' : 'Takeaway / delivery';
+  const menus = (inventory.menuItems || []).filter(item => !item.is_archived);
+  if (!outlet || !menus.length) { toast('Load an outlet and menu items before downloading recipes.', 'bad'); return; }
+  button.disabled = true;
+  const original = button.textContent;
+  button.textContent = 'Preparing all recipes…';
+  try {
+    const categories = (inventory.menuCategories || []).map(category => ({ ...category, items: [] }));
+    const categoryMap = new Map(categories.map(category => [category.id, category]));
+    const uncategorized = { name: 'Uncategorized', items: [] };
+    categories.push(uncategorized);
+    const recipesByMenu = new Map();
+    for (const recipe of inventory.recipes || []) {
+      if (!recipesByMenu.has(recipe.menu_item_id)) recipesByMenu.set(recipe.menu_item_id, []);
+      recipesByMenu.get(recipe.menu_item_id).push(recipe);
+    }
+    for (let index = 0; index < menus.length; index++) {
+      const menu = menus[index];
+      const lines = recipeCostLines(menu.id, recipesByMenu.get(menu.id) || [], inventory.items || [], outletId, inventory.bills || [], inventory.movements || [], service, 'CONFIGURED');
+      (categoryMap.get(menu.category_id) || uncategorized).items.push({ name: menu.name, price: Number(menu.price || 0), lines });
+      if (index % 5 === 0) await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    categories.sort((a, b) => a.name.localeCompare(b.name));
+    for (const category of categories) category.items.sort((a, b) => a.name.localeCompare(b.name));
+    const csv = recipeBookCsv({ outlet: outlet.name, service: serviceLabel, generatedAt: new Date().toLocaleString('en-IN'), categories: categories.filter(category => category.items.length) });
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url; link.download = `ohho-all-recipes-${service.toLowerCase()}-${localDateInputValue()}.csv`;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    toast(`Downloaded ${menus.length} recipes, grouped by category.`, 'ok');
+  } catch (error) { console.error('Recipe export failed:', error); toast('Unable to download recipes. Refresh the costing data and try again.', 'bad'); }
+  finally { button.disabled = false; button.textContent = original; }
+}
+
 function renderCostingScreen() {
   const host = $('#costingContent');
   if (!host) return;
@@ -5853,7 +5903,7 @@ function renderCostingScreen() {
   if ($('#costingHistoryLabel')) $('#costingHistoryLabel').textContent = historyMode === 'CUSTOM' ? `Sessions opened ${state.costingHistoryFrom} to ${state.costingHistoryTo}` : historyMode === 'CURRENT' ? 'Current open session' : 'All history';
   const outletOrders = (state.reportOrders || []).filter(o=>o.outlet_id===outlet && isReportableOrder(o));
   const orders = mode === 'order' ? stockHistoryRows(outletOrders, 'created_at', { mode:historyMode, outletId:outlet, sessions:inventoryHistorySessions(), from:state.costingHistoryFrom || '', to:state.costingHistoryTo || '' }) : outletOrders;
-  const usage = orderUtilisation(orders,inv.movements||[],inv.items||[],inv.bills||[]);
+  const usage = mode === 'menu' ? [] : orderUtilisation(orders,inv.movements||[],inv.items||[],inv.bills||[]);
   $('#costingMenuFilters').hidden = mode !== 'menu';
   $('#costingOrderFilter').hidden = mode !== 'order';
   if (mode === 'menu') {
@@ -6036,6 +6086,7 @@ function filteredSessionReports() {
 
 function filteredReportOrders() {
   const { invalid, session, sessions } = reportDateBounds();
+  const matchesSession = createSessionMatcher(sessions || []);
   if (invalid) return [];
   return (state.reportOrders || []).filter(order => {
     const createdAt = new Date(order.created_at).getTime();
@@ -6049,7 +6100,7 @@ function filteredReportOrders() {
         createdAt >= new Date(startedAt).getTime()
       );
     }
-    return isReportableOrder(order) && recordIsInSessions(order, 'created_at', sessions);
+    return isReportableOrder(order) && matchesSession(order, 'created_at');
   });
 }
 
@@ -6157,12 +6208,12 @@ function renderReportDashboard() {
   if ($('#financialDailyExpenses')) $('#financialDailyExpenses').textContent = formatReportMoney(operations.dailyExpenses);
   if ($('#financialTotalExpenses')) $('#financialTotalExpenses').textContent = formatReportMoney(totalExpenses);
   if ($('#financialNet')) $('#financialNet').textContent = formatReportMoney(operations.net);
-  renderCostingScreen();
+  if (state.selectedSection === 'costing') renderCostingScreen();
   renderItemWiseSales(orders);
   renderSalesReports(reports);
 }
 
-async function loadLegacyReports() {
+async function loadLegacyReports(outletScope = state.selectedOutlet) {
   const orders = [];
   const pageSize = 500;
   for (let offset = 0; ; offset += pageSize) {
@@ -6171,49 +6222,49 @@ async function loadLegacyReports() {
       .select('id,order_number,outlet_id,status,payment_method,payment_status,order_source,total,created_at')
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1);
-    if (state.selectedOutlet !== 'ALL') {
-      const outlet = state.outlets.find(item => item.slug === state.selectedOutlet);
+    if (outletScope !== 'ALL') {
+      const outlet = state.outlets.find(item => item.slug === outletScope);
       if (outlet?.id) query = query.eq('outlet_id', outlet.id);
     }
     const { data, error } = await query;
     if (error) {
       console.error('Unable to load session order details:', error);
-      state.reportOrders = [];
-      state.reportItems = [];
-      return;
+      throw error;
     }
     orders.push(...(data || []));
     if (!data || data.length < pageSize) break;
   }
 
   const itemCounts = new Map();
-  state.reportItems = [];
+  const reportItems = [];
   const orderIds = orders.map(order => order.id);
-
-  for (let index = 0; index < orderIds.length; index += 200) {
-    const { data: items, error: itemsError } = await supabase
-      .from('order_items')
-      .select('order_id,menu_item_id,quantity,item_name,line_total')
-      .in('order_id', orderIds.slice(index, index + 200));
-
-    if (itemsError) {
-      console.error('Unable to load report item totals:', itemsError);
-      continue;
+  // Four bounded requests at a time; paginate line items so large orders are complete.
+  for (let index = 0; index < orderIds.length; index += 800) {
+    const batches = [];
+    for (let chunk = index; chunk < Math.min(index + 800, orderIds.length); chunk += 200) {
+      const ids = orderIds.slice(chunk, chunk + 200);
+      batches.push((async () => {
+        const rows = [];
+        for (let offset = 0; ; offset += 1000) {
+          const { data, error } = await supabase.from('order_items')
+            .select('order_id,menu_item_id,quantity,item_name,line_total')
+            .in('order_id', ids).order('id').range(offset, offset + 999);
+          if (error) throw error;
+          rows.push(...(data || []));
+          if (!data || data.length < 1000) return rows;
+        }
+      })());
     }
-
-    (items || []).forEach(item => {
-      state.reportItems.push(item);
-      itemCounts.set(
-        item.order_id,
-        Number(itemCounts.get(item.order_id) || 0) + Number(item.quantity || 0)
-      );
-    });
+    for (const rows of await Promise.all(batches)) for (const item of rows) {
+      reportItems.push(item);
+      itemCounts.set(item.order_id, (itemCounts.get(item.order_id) || 0) + Number(item.quantity || 0));
+    }
+    await new Promise(resolve => setTimeout(resolve, 0));
   }
-
-  state.reportOrders = orders.map(order => ({
+  return { items: reportItems, orders: orders.map(order => ({
     ...order,
     item_count: itemCounts.get(order.id) || 0
-  }));
+  })) };
 }
 
 function csvCell(value) {
@@ -6497,15 +6548,37 @@ async function clearSelectedReportLogs() {
   }
 }
 
+let reportsLoadPromise = null;
+let reportsLoadScope = null;
 async function loadReports() {
-  await Promise.all([loadLegacyReports(), loadSalesReports()]);
-  renderReportDashboard();
-  renderOverviewOperations();
+  const scope = state.selectedOutlet;
+  if (reportsLoadPromise) {
+    if (reportsLoadScope === scope) return reportsLoadPromise;
+    await reportsLoadPromise;
+    return loadReports();
+  }
+  reportsLoadScope = scope;
+  const refreshButton = $('#reportsRefreshBtn');
+  if (refreshButton) refreshButton.disabled = true;
+  reportsLoadPromise = (async () => {
+    const [details, reports] = await Promise.all([loadLegacyReports(scope), loadSalesReports(scope)]);
+    // Paint after data is ready, without holding up navigation clicks.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    if (state.selectedOutlet === scope) {
+      state.reportOrders = details.orders;
+      state.reportItems = details.items;
+      state.salesReports = reports;
+      renderReportDashboard();
+      renderOverviewOperations();
+    }
+  })();
+  try { await reportsLoadPromise; }
+  finally { reportsLoadPromise = null; if (refreshButton) refreshButton.disabled = false; }
 }
 
-async function loadSalesReports() {
+async function loadSalesReports(outletScope = state.selectedOutlet) {
   const list = $('#salesReportsList');
-  if (!list) return;
+  if (!list) return [];
 
   list.innerHTML = '<div class="orders-loading">Loading sales reports…</div>';
 
@@ -6518,8 +6591,8 @@ async function loadSalesReports() {
         .select('id,outlet_id,opened_at,closed_at,order_count,item_count,gross_sales,cash_sales,upi_sales,card_sales,stock_received_amount,other_expense_amount,total_expense_amount,net_after_expenses,created_at')
         .order('closed_at', { ascending: false })
         .range(offset, offset + pageSize - 1);
-      if (state.selectedOutlet !== 'ALL') {
-        const outlet = state.outlets.find(o => o.slug === state.selectedOutlet);
+      if (outletScope !== 'ALL') {
+        const outlet = state.outlets.find(o => o.slug === outletScope);
         if (outlet?.id) query = query.eq('outlet_id', outlet.id);
       }
       const { data, error } = await query;
@@ -6527,11 +6600,11 @@ async function loadSalesReports() {
       reports.push(...(data || []));
       if (!data || data.length < pageSize) break;
     }
-    state.salesReports = reports;
+    return reports;
   } catch (error) {
     console.error('Unable to load sales reports:', error);
-    state.salesReports = [];
-    list.innerHTML = '<div class="orders-empty"><strong>Sales reports are not ready yet</strong><span>Apply the outlet session database migration, then close an outlet session to generate the first report.</span></div>';
+    list.innerHTML = '<div class="orders-empty"><strong>Unable to refresh reports</strong><span>Please use Refresh to try again.</span></div>';
+    throw error;
   }
 }
 

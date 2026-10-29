@@ -239,3 +239,7 @@ body #spinSettingsPanel #saveSpinSettingsBtn{justify-self:start}
   body .content #inventory .supply-line>b{grid-column:1;grid-row:3;align-self:center;white-space:nowrap}
   body .content #inventory .supply-line>button{grid-column:2;grid-row:3;justify-self:end;min-width:38px;min-height:36px}
 }
+
+.cost-export-actions { display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin:16px 0; }
+.cost-export-actions span { color:var(--muted,#a0a58f); font-size:13px; line-height:1.5; }
+.cost-export-actions button:disabled { opacity:.6; cursor:wait; }
