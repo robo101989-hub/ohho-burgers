@@ -3296,7 +3296,7 @@ async function inventoryApi(method = 'GET', body = null, params = {}) {
   url.searchParams.set('resource', 'inventory');
   Object.entries(params).forEach(([key, value]) => { if (value) url.searchParams.set(key, value); });
   const response = await fetch(url, {
-    method,
+    method, cache: 'no-store',
     headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
     body: body ? JSON.stringify(body) : undefined
   });
@@ -3799,6 +3799,13 @@ async function deactivatePackagingRule(ruleId) {
 function renderOpeningStock() {
   const list = $('#openingStockItems');
   if (!list || state.profile?.role !== 'ADMIN') return;
+  const ready = (state.inventory.setupLoaded || state.inventory.loaded) && !state.inventory.setupLoadError && !state.inventory.setupLoading;
+  const confirm = $('#confirmOpeningStock');
+  if (confirm) confirm.disabled = !ready;
+  if (!ready) {
+    list.innerHTML = `<div class="inventory-empty">${state.inventory.setupLoading ? 'Loading stock items and current balances…' : 'Stock setup is not ready. Use Retry loading above before entering opening stock.'}</div>`;
+    return;
+  }
   const outletId = $('#openingStockOutlet')?.value || state.inventory.outlets[0]?.id || '';
   const previous = state.inventory.openingStockEvents.find(row => row.outlet_id === outletId);
   const draft = state.inventory.openingStockDrafts[outletId] || {};
@@ -3807,6 +3814,7 @@ function renderOpeningStock() {
   $('#clearOpeningStock')?.classList.toggle('hidden', !previous);
   if ($('#openingStockReason')) $('#openingStockReason').placeholder = previous ? 'Required: explain this correction' : 'Optional opening note';
   const items = state.inventory.items.filter(item => item.active !== false);
+  if (confirm) confirm.disabled = !outletId || !items.length;
   const categoryName = item => state.inventory.stockCategories.find(category => category.id === item.category_id)?.name || 'Uncategorised stock';
   const categories = [...new Set(items.map(categoryName))].sort((a, b) => a.localeCompare(b));
   list.innerHTML = items.length ? categories.map(category => {
@@ -4041,7 +4049,7 @@ function renderInventory() {
     const status = $('#inventoryMasterStatus')?.value || 'active';
     const filteredItems = state.inventory.items.filter(item => (status === 'all' || (status === 'inactive' ? item.active === false : item.active !== false)) && (!categoryId || item.category_id === categoryId) && (!search || String(item.name || '').toLowerCase().includes(search) || String(item.sku || '').toLowerCase().includes(search)));
     const names = [...new Set(filteredItems.map(groupName))];
-    masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}${item.active === false ? ' · INACTIVE' : ''}</strong><small>${escapeHtml(item.sku)} · REQUEST ${escapeHtml(unitLabel(item.request_unit).toUpperCase())} × ${inventoryQty(item.request_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · BILL ${escapeHtml(unitLabel(item.billing_unit || item.supply_unit).toUpperCase())} × ${inventoryQty(item.billing_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · LOW ${inventoryQty(item.low_stock_threshold)} · TARGET ${inventoryQty(item.target_stock_level)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${inventoryBillingUnit(item)}` : 'SET RATE'}</b><div class="inventory-row-actions"><button type="button" data-inventory-edit-item="${item.id}">EDIT</button>${item.active === false ? `<button type="button" data-inventory-reactivate-item="${item.id}">REACTIVATE</button>` : `<button class="danger" type="button" data-inventory-delete-item="${item.id}">DEACTIVATE</button>`}</div></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
+    masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}${item.active === false ? ' · INACTIVE' : ''}</strong><small>${escapeHtml(item.sku)} · REQUEST ${escapeHtml(unitLabel(item.request_unit).toUpperCase())} × ${inventoryQty(item.request_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · BILL ${escapeHtml(unitLabel(item.billing_unit || item.supply_unit).toUpperCase())} × ${inventoryQty(item.billing_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · LOW ${inventoryQty(item.low_stock_threshold)} · TARGET ${inventoryQty(item.target_stock_level)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${inventoryBillingUnit(item)}` : 'SET RATE'}</b><div class="inventory-row-actions"><button type="button" data-inventory-edit-item="${item.id}">EDIT</button>${item.active === false ? `<button type="button" data-inventory-reactivate-item="${item.id}">REACTIVATE</button>` : `<button class="danger" type="button" data-inventory-delete-item="${item.id}">DEACTIVATE</button>`}</div></div></div>`).join('')}</div></div>`; }).join('') : `<div class="inventory-empty">${!state.inventory.setupLoaded && !state.inventory.loaded ? (state.inventory.setupLoading ? 'Loading stock items…' : 'Stock items have not loaded. Use Retry loading above.') : 'No matching stock items. Check the category, status or search text.'}</div>`;
   }
 
   const stockList = $('#inventoryStockList');
@@ -4144,36 +4152,86 @@ async function loadOverviewOperationsData(from = '', to = '') {
   if (state.selectedSection === 'overview') renderOverviewOperations();
 }
 
+function renderInventoryLoadStatus() {
+  const node = $('#inventoryDataStatus');
+  if (!node) return;
+  const inventory = state.inventory;
+  const error = inventory.setupLoadError || inventory.historyLoadError;
+  node.hidden = !inventory.setupLoading && !inventory.historyLoading && !error;
+  node.innerHTML = error
+    ? `<span>${escapeHtml(error)}</span><button type="button" class="secondary" data-retry-inventory>Retry loading</button>`
+    : `<span>${inventory.setupLoading ? 'Loading stock items, categories and opening balances…' : 'Stock items are ready. Loading transaction history…'}</span>`;
+  node.classList.toggle('inventory-load-error', Boolean(error));
+}
+
 async function loadInventory() {
-  // Keep one complete, authorized snapshot so one screen's filters cannot erase
-  // records needed by Expenses, Financial Summary, or another outlet selection.
   const version = ++inventoryLoadVersion;
-  inventoryStockValueCache.clear();
-  const payload = await inventoryApi('GET');
-  if (version !== inventoryLoadVersion) return;
-  state.inventory.items = payload.items || [];
-  state.inventory.itemById = new Map(state.inventory.items.map(item => [item.id, item]));
-  state.inventory.stockCategories = payload.stockCategories || [];
-  state.inventory.expenseCategories = payload.expenseCategories || [];
-  state.inventory.menuItems = payload.menuItems || [];
-  state.inventory.menuCategories = payload.menuCategories || [];
-  state.inventory.recipes = payload.recipes || [];
-  state.inventory.packagingRules = payload.packagingRules || [];
-  state.inventory.staffRules = payload.staffRules || [];
-  state.inventory.staffEvents = payload.staffEvents || [];
-  state.inventory.openSessions = payload.openSessions || [];
-  state.inventory.latestSessions = payload.latestSessions || [];
-  state.inventory.outlets = payload.outlets || [];
-  state.inventory.balances = payload.inventory || [];
-  state.inventory.bills = payload.bills || [];
-  state.inventory.movements = payload.movements || [];
-  state.inventory.notifications = payload.notifications || [];
-  state.inventory.requests = payload.requests || [];
-  state.inventory.expenses = payload.expenses || [];
-  state.inventory.openingStockEvents = payload.openingStockEvents || [];
-  inventoryStockValueCache.clear();
-  state.inventory.loaded = true;
-  renderInventory();
+  state.inventory.setupLoading = true;
+  state.inventory.setupLoadError = '';
+  state.inventory.historyLoadError = '';
+  renderInventoryLoadStatus();
+  if (!state.inventory.loaded && state.selectedSection === 'inventory') renderInventory();
+  try {
+    const setup = await inventoryApi('GET', null, { scope: 'setup' });
+    if (version !== inventoryLoadVersion) return;
+    if (!Array.isArray(setup.items) || !Array.isArray(setup.outlets) || !Array.isArray(setup.stockCategories) || !Array.isArray(setup.inventory) || !Array.isArray(setup.openingStockEvents)) {
+      throw new Error('Stock setup did not load completely. Please retry.');
+    }
+    for (const key of ['items','stockCategories','expenseCategories','menuItems','menuCategories','recipes','packagingRules','staffRules','outlets','openingStockEvents']) state.inventory[key] = setup[key] || [];
+    state.inventory.balances = setup.inventory;
+    state.inventory.itemById = new Map(setup.items.map(item => [item.id, item]));
+    state.inventory.setupLoaded = true;
+    state.inventory.setupLoading = false;
+    state.inventory.historyLoading = true;
+    inventoryStockValueCache.clear();
+    renderInventory();
+    renderInventoryLoadStatus();
+  } catch (error) {
+    if (version === inventoryLoadVersion) {
+      state.inventory.setupLoading = false;
+      state.inventory.setupLoadError = 'Stock items could not be refreshed. Retry loading before making stock changes.';
+      renderInventoryLoadStatus();
+      if (state.selectedSection === 'inventory') renderInventory();
+    }
+    throw error;
+  }
+  try {
+    const payload = await inventoryApi('GET', null, { scope: 'full' });
+    if (version !== inventoryLoadVersion) return;
+    if (!Array.isArray(payload.items) || !Array.isArray(payload.outlets)) throw new Error('Inventory history did not load completely. Please retry.');
+    state.inventory.items = payload.items || [];
+    state.inventory.itemById = new Map(state.inventory.items.map(item => [item.id, item]));
+    state.inventory.stockCategories = payload.stockCategories || [];
+    state.inventory.expenseCategories = payload.expenseCategories || [];
+    state.inventory.menuItems = payload.menuItems || [];
+    state.inventory.menuCategories = payload.menuCategories || [];
+    state.inventory.recipes = payload.recipes || [];
+    state.inventory.packagingRules = payload.packagingRules || [];
+    state.inventory.staffRules = payload.staffRules || [];
+    state.inventory.staffEvents = payload.staffEvents || [];
+    state.inventory.openSessions = payload.openSessions || [];
+    state.inventory.latestSessions = payload.latestSessions || [];
+    state.inventory.outlets = payload.outlets || [];
+    state.inventory.balances = payload.inventory || [];
+    state.inventory.bills = payload.bills || [];
+    state.inventory.movements = payload.movements || [];
+    state.inventory.notifications = payload.notifications || [];
+    state.inventory.requests = payload.requests || [];
+    state.inventory.expenses = payload.expenses || [];
+    state.inventory.openingStockEvents = payload.openingStockEvents || [];
+    inventoryStockValueCache.clear();
+    state.inventory.loaded = true;
+    state.inventory.historyLoading = false;
+    renderInventory();
+    renderInventoryLoadStatus();
+  } catch (error) {
+    if (version === inventoryLoadVersion) {
+      state.inventory.historyLoading = false;
+      state.inventory.historyLoadError = 'Stock items are available, but transaction history could not be refreshed.';
+      renderInventoryLoadStatus();
+    }
+    throw error;
+  }
 }
 
 function updateSupplyDefaultPrice() {
@@ -4764,6 +4822,7 @@ function wireInventoryActions() {
     if (!section.open) return;
     $$('#inventoryAdminWorkspace .inventory-tool-card').forEach(other => { if (other !== section) other.open = false; });
   }));
+  $('#inventoryDataStatus')?.addEventListener('click', event => { if (event.target.closest('[data-retry-inventory]')) loadInventory().catch(error => toast(error.message, 'bad')); });
   $('#inventoryRefreshBtn')?.addEventListener('click', () => refreshSessionRecords().catch(error => toast(error.message, 'bad')));
   $('#inventoryApplyFilter')?.addEventListener('click', () => {
     try {
