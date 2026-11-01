@@ -3301,7 +3301,11 @@ async function inventoryApi(method = 'GET', body = null, params = {}) {
     body: body ? JSON.stringify(body) : undefined
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || 'Unable to complete inventory request.');
+  if (!response.ok) {
+    const error = new Error(payload.error || 'Unable to complete inventory request.');
+    error.existingItem = payload.existingItem || null;
+    throw error;
+  }
   return payload;
 }
 
@@ -4034,9 +4038,10 @@ function renderInventory() {
     const groupName = item => categoryNames.get(item.category_id) || 'Other items';
     const categoryId = $('#inventoryMasterCategory')?.value || '';
     const search = String($('#inventoryMasterSearch')?.value || '').trim().toLowerCase();
-    const filteredItems = state.inventory.items.filter(item => item.active !== false && (!categoryId || item.category_id === categoryId) && (!search || item.name.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search)));
+    const status = $('#inventoryMasterStatus')?.value || 'active';
+    const filteredItems = state.inventory.items.filter(item => (status === 'all' || (status === 'inactive' ? item.active === false : item.active !== false)) && (!categoryId || item.category_id === categoryId) && (!search || String(item.name || '').toLowerCase().includes(search) || String(item.sku || '').toLowerCase().includes(search)));
     const names = [...new Set(filteredItems.map(groupName))];
-    masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}${item.active === false ? ' · INACTIVE' : ''}</strong><small>${escapeHtml(item.sku)} · REQUEST ${escapeHtml(unitLabel(item.request_unit).toUpperCase())} × ${inventoryQty(item.request_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · BILL ${escapeHtml(unitLabel(item.billing_unit || item.supply_unit).toUpperCase())} × ${inventoryQty(item.billing_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · LOW ${inventoryQty(item.low_stock_threshold)} · TARGET ${inventoryQty(item.target_stock_level)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${inventoryBillingUnit(item)}` : 'SET RATE'}</b><div class="inventory-row-actions"><button type="button" data-inventory-edit-item="${item.id}">EDIT</button><button class="danger" type="button" data-inventory-delete-item="${item.id}">DEACTIVATE</button></div></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
+    masterList.innerHTML = filteredItems.length ? names.map(label => { const items = filteredItems.filter(item => groupName(item) === label); return `<div class="request-group"><h3>${escapeHtml(label)}</h3><div class="inventory-master-list">${items.map(item => `<div class="inventory-master-item"><div><strong>${escapeHtml(item.name)}${item.active === false ? ' · INACTIVE' : ''}</strong><small>${escapeHtml(item.sku)} · REQUEST ${escapeHtml(unitLabel(item.request_unit).toUpperCase())} × ${inventoryQty(item.request_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · BILL ${escapeHtml(unitLabel(item.billing_unit || item.supply_unit).toUpperCase())} × ${inventoryQty(item.billing_to_inventory || 1)} → ${escapeHtml(inventoryInternalUnit(item).toUpperCase())} · LOW ${inventoryQty(item.low_stock_threshold)} · TARGET ${inventoryQty(item.target_stock_level)}</small></div><div class="inventory-master-rate"><b>${Number(item.default_supply_price) > 0 ? `${formatReportMoney(item.default_supply_price)} / ${inventoryBillingUnit(item)}` : 'SET RATE'}</b><div class="inventory-row-actions"><button type="button" data-inventory-edit-item="${item.id}">EDIT</button>${item.active === false ? `<button type="button" data-inventory-reactivate-item="${item.id}">REACTIVATE</button>` : `<button class="danger" type="button" data-inventory-delete-item="${item.id}">DEACTIVATE</button>`}</div></div></div>`).join('')}</div></div>`; }).join('') : '<div class="inventory-empty">No matching stock items.</div>';
   }
 
   const stockList = $('#inventoryStockList');
@@ -4501,7 +4506,7 @@ async function deleteInventoryItem(item) {
   try {
     await inventoryApi('POST', { action: 'delete_item', itemId: item.id });
     await loadInventory();
-    toast(`${item.name} deactivated. You can reactivate it from Edit.`, 'ok');
+    toast(`${item.name} deactivated. Choose Inactive items in Setup and click Reactivate to restore it.`, 'ok');
   } catch (error) { toast(error.message, 'bad'); }
 }
 
@@ -4632,13 +4637,45 @@ async function saveLocalPurchase() {
   finally { state.inventory.localPurchaseSaving = false; renderLocalPurchases(); }
 }
 
+function openExistingInventoryItem(item) {
+  setInventoryView('setup');
+  if ($('#inventoryMasterCategory')) $('#inventoryMasterCategory').value = '';
+  if ($('#inventoryMasterStatus')) $('#inventoryMasterStatus').value = 'all';
+  if ($('#inventoryMasterSearch')) $('#inventoryMasterSearch').value = item.sku || item.name;
+  if ($('#inventoryMasterPanel')) $('#inventoryMasterPanel').open = true;
+  renderInventory();
+  editInventoryItemPrice(item);
+  toast(item.active === false ? `${item.name} already exists but is inactive. Enable Active and save to restore it.` : `${item.name} already exists. Its saved details are open for editing.`, 'ok');
+}
+
+async function reactivateInventoryItem(item, button) {
+  if (button) button.disabled = true;
+  try {
+    await inventoryApi('POST', { action: 'reactivate_item', itemId: item.id });
+    await loadInventory();
+    toast(`${item.name} reactivated. Its price, recipes and stock history are preserved.`, 'ok');
+  } catch (error) { toast(error.message, 'bad'); }
+  finally { if (button) button.disabled = false; }
+}
+
 async function createInventoryItem() {
+  const requestedSku = String($('#inventoryItemSku')?.value || $('#inventoryItemName')?.value || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const existing = state.inventory.items.find(item => item.sku === requestedSku);
+  if (existing) { openExistingInventoryItem(existing); return; }
   const button = $('#inventoryCreateItem'); button.disabled = true;
   try {
     await inventoryApi('POST', { action: 'create_item', name: $('#inventoryItemName')?.value, sku: $('#inventoryItemSku')?.value, categoryId: $('#inventoryItemCategory')?.value, requestUnit: $('#inventoryRequestUnit')?.value, supplyUnit: $('#inventorySupplyUnit')?.value, inventoryUnit: $('#inventoryInternalUnit')?.value, requestConversion: $('#inventoryRequestConversion')?.value, billingConversion: $('#inventoryBillingConversion')?.value, lowStockThreshold: $('#inventoryItemThreshold')?.value, targetStockLevel: $('#inventoryItemTarget')?.value, defaultSupplyPrice: $('#inventoryItemPrice')?.value });
     ['inventoryItemName','inventoryItemSku','inventoryItemThreshold','inventoryItemTarget','inventoryItemPrice'].forEach(id => { if ($(`#${id}`)) $(`#${id}`).value = ''; });
     await loadInventory(); toast('Stock item created.', 'ok');
-  } catch (error) { toast(error.message, 'bad'); } finally { button.disabled = false; }
+  } catch (error) {
+    if (error.existingItem?.id) {
+      try {
+        await loadInventory();
+        const item = inventoryItem(error.existingItem.id);
+        if (item) openExistingInventoryItem(item); else toast(error.message, 'bad');
+      } catch { toast(error.message, 'bad'); }
+    } else toast(error.message, 'bad');
+  } finally { button.disabled = false; }
 }
 
 function syncCreateConversionDefaults() {
@@ -5050,7 +5087,7 @@ function wireInventoryActions() {
     if ($('#supplyHistoryTo') && !$('#supplyHistoryTo').value) $('#supplyHistoryTo').value = state.inventory.historyTo || today;
     setInventoryView('history'); revealAndScroll($('#inventoryRecords'));
   });
-  $('#inventoryMasterList')?.addEventListener('click', event => { const edit = event.target.closest('[data-inventory-edit-item]'); const remove = event.target.closest('[data-inventory-delete-item]'); const id = edit?.dataset.inventoryEditItem || remove?.dataset.inventoryDeleteItem; const item = id && inventoryItem(id); if (!item) return; if (edit) editInventoryItemPrice(item); if (remove) deleteInventoryItem(item); });
+  $('#inventoryMasterList')?.addEventListener('click', event => { const edit = event.target.closest('[data-inventory-edit-item]'); const remove = event.target.closest('[data-inventory-delete-item]'); const restore = event.target.closest('[data-inventory-reactivate-item]'); const id = edit?.dataset.inventoryEditItem || remove?.dataset.inventoryDeleteItem || restore?.dataset.inventoryReactivateItem; const item = id && inventoryItem(id); if (!item) return; if (edit) editInventoryItemPrice(item); if (remove) deleteInventoryItem(item); if (restore) reactivateInventoryItem(item, restore); });
   $('#inventoryStockList')?.addEventListener('click', event => {
     const button = event.target.closest('[data-view-item-history]');
     if (!button) return;
@@ -5060,6 +5097,7 @@ function wireInventoryActions() {
   });
   $('#inventoryMovementClearItem')?.addEventListener('click', () => { state.inventory.historyItemId = null; renderInventory(); });
   $('#inventoryMasterCategory')?.addEventListener('change', renderInventory);
+  $('#inventoryMasterStatus')?.addEventListener('change', renderInventory);
   $('#inventoryMasterSearch')?.addEventListener('input', renderInventory);
   $('#liveStockSearch')?.addEventListener('input', renderInventory);
   $('#liveStockCategory')?.addEventListener('change', renderInventory);
