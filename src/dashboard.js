@@ -745,7 +745,8 @@ function toast(message, type = 'ok') {
 
 function setAuthError(message) {
   const node = $('#authError');
-  node.textContent = message;
+  const quotaRestricted = /exceed_(?:cached_)?egress_quota/.test(message || '');
+  node.textContent = quotaRestricted ? 'Sign-in is temporarily unavailable because the service’s free monthly data-transfer allowance has been used. Your password is not the cause. Access can return when the allowance resets; the administrator can request a review from Supabase support.' : message;
   node.classList.toggle('show', Boolean(message));
 }
 
@@ -2894,7 +2895,7 @@ async function optimizeMenuItemImage(file) {
   let bitmap;
   try {
     bitmap = await createImageBitmap(file);
-    const maxDimension = 800;
+    const maxDimension = 640;
     const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
@@ -2902,8 +2903,12 @@ async function optimizeMenuItemImage(file) {
     const context = canvas.getContext('2d', { alpha: true });
     if (!context) return file;
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const encode = type => new Promise(resolve => canvas.toBlob(resolve, type, 0.82));
+    const encode = (type, quality = 0.72) => new Promise(resolve => canvas.toBlob(resolve, type, quality));
     let blob = await encode('image/webp');
+    for (const quality of [0.6, 0.48]) {
+      if (!blob || blob.size <= 120 * 1024) break;
+      blob = await encode('image/webp', quality);
+    }
     if (!blob || !['image/webp', 'image/jpeg'].includes(blob.type)) blob = await encode('image/jpeg');
     if (!blob || blob.size >= file.size || !['image/webp', 'image/jpeg'].includes(blob.type)) return file;
     const extension = blob.type === 'image/webp' ? 'webp' : 'jpg';
@@ -2920,6 +2925,7 @@ async function uploadMenuItemImage(file, itemKey) {
   if (!file) return null;
 
   const uploadFile = await optimizeMenuItemImage(file);
+  if (uploadFile.size > 200 * 1024) throw new Error('Please choose a smaller photo (under 200 KB after compression) to protect the free data allowance.');
   const extension = uploadFile.name.split('.').pop()?.toLowerCase() || 'jpg';
   const safeKey = String(itemKey || 'menu-item').replace(/[^a-z0-9-]/gi, '-').toLowerCase();
   const path = `${safeKey}/${Date.now()}.${extension}`;
@@ -2928,7 +2934,7 @@ async function uploadMenuItemImage(file, itemKey) {
     .storage
     .from('menu-images')
     .upload(path, uploadFile, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       upsert: false,
       contentType: uploadFile.type
     });
