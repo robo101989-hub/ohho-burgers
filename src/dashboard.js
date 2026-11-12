@@ -4170,7 +4170,11 @@ function renderInventoryLoadStatus() {
   node.classList.toggle('inventory-load-error', Boolean(error));
 }
 
-async function loadInventory() {
+async function loadInventory(options = {}) {
+  if (options.setupOnly && state.inventory.setupLoaded && !state.inventory.setupLoading && Date.now() - (state.inventory.setupRefreshedAt || 0) < 60000) {
+    renderInventory();
+    return;
+  }
   const version = ++inventoryLoadVersion;
   state.inventory.setupLoading = true;
   state.inventory.setupLoadError = '';
@@ -4187,11 +4191,13 @@ async function loadInventory() {
     state.inventory.balances = setup.inventory;
     state.inventory.itemById = new Map(setup.items.map(item => [item.id, item]));
     state.inventory.setupLoaded = true;
+    state.inventory.setupRefreshedAt = Date.now();
     state.inventory.setupLoading = false;
-    state.inventory.historyLoading = true;
+    state.inventory.historyLoading = !options.setupOnly;
     inventoryStockValueCache.clear();
     renderInventory();
     renderInventoryLoadStatus();
+    if (options.setupOnly) return;
   } catch (error) {
     if (version === inventoryLoadVersion) {
       state.inventory.setupLoading = false;
@@ -5269,7 +5275,7 @@ function wireDashboardActions() {
   $('#costingDownloadAll')?.addEventListener('click', () => downloadAllRecipeCosts('csv'));
   $('#costingDownloadPdf')?.addEventListener('click', () => downloadAllRecipeCosts('pdf'));
   $('#costingContent')?.addEventListener('click', event => { const button = event.target.closest('[data-cost-order]'); if (button) { state.costingOrderId = button.dataset.costOrder; const scroll = $('#costingOrderList')?.scrollTop || 0; renderCostingScreen(); if ($('#costingOrderList')) $('#costingOrderList').scrollTop = scroll; } });
-  $$('[data-cost-view]').forEach(button => button.addEventListener('click', () => { $('#costingMode').value = button.dataset.costView; renderCostingScreen(); if (button.dataset.costView !== 'menu') loadReports().then(renderCostingScreen).catch(error => toast(error.message, 'bad')); }));
+  $$('[data-cost-view]').forEach(button => button.addEventListener('click', () => { $('#costingMode').value = button.dataset.costView; renderCostingScreen(); if (button.dataset.costView !== 'menu') Promise.all([loadReports(), loadInventory()]).then(renderCostingScreen).catch(error => toast(error.message, 'bad')); }));
   ['#costingOutlet','#costingCategory','#costingMenu','#costingService','#costingMode','#costingOrderStatus'].forEach(id => $(id)?.addEventListener('change',renderCostingScreen));
   $$('.nav-btn[data-section]').forEach(button => button.addEventListener('click', () => {
     let id = button.dataset.section;
@@ -5297,7 +5303,7 @@ function wireDashboardActions() {
       renderCostingScreen();
       if ($('#costingMode')?.value !== 'menu') loadReports().then(renderCostingScreen).catch(error => toast(error.message, 'bad'));
     }
-    if (id === 'costing' || id === 'inventory' || id === 'daily-expenses' || id === 'reports') loadInventory().catch(error => { console.error('Unable to load stock and expense records:', error); toast(error.message || 'Unable to load records.', 'bad'); });
+    if (id === 'costing' || id === 'inventory' || id === 'daily-expenses' || id === 'reports') loadInventory({ setupOnly: id === 'costing' && $('#costingMode')?.value === 'menu' }).catch(error => { console.error('Unable to load stock and expense records:', error); toast(error.message || 'Unable to load records.', 'bad'); });
     if (id === 'overview' && ['ADMIN','OWNER','MANAGER'].includes(state.profile?.role)) {
       loadOverviewOperationsData().catch(error => console.error('Unable to load overview operations:', error));
     }
